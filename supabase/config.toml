@@ -1,1 +1,7 @@
 project_id = "xrxpacqcuxnrfwvhuxib"
+
+[functions.cadastral-search]
+verify_jwt = false
+
+[functions.test-wfs]
+verify_jwt = false

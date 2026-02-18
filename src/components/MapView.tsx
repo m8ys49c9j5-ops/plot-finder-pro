@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { supabase } from "@/integrations/supabase/client";
 import type { ParcelData } from "./ParcelSidebar";
 
 interface MapViewProps {
@@ -27,38 +28,27 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
       zoomControl: false,
     });
 
-    // Add zoom control to bottom-right
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    // Base tile layer (OSM as fallback)
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
 
-    // Geoportal base layer
-    L.tileLayer(
-      `${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`,
-      {
-        maxZoom: 19,
-        opacity: 0.7,
-        attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
-      }
-    ).addTo(map);
+    L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
+      maxZoom: 19,
+      opacity: 0.7,
+      attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
+    }).addTo(map);
 
-    // Cadastral layer
-    L.tileLayer(
-      `${KADASTRAS_BASE}/tile/{z}/{y}/{x}`,
-      {
-        maxZoom: 19,
-        opacity: 0.6,
-        attribution: "Kadastro žemėlapis",
-      }
-    ).addTo(map);
+    L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
+      maxZoom: 19,
+      opacity: 0.6,
+      attribution: "Kadastro žemėlapis",
+    }).addTo(map);
 
-    // Click handler for parcel identification
     map.on("click", async (e: L.LeafletMouseEvent) => {
-      await identifyParcel(map, e.latlng);
+      await identifyParcel(e.latlng, map);
     });
 
     mapRef.current = map;
@@ -69,53 +59,60 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
     };
   }, []);
 
-  // Handle search queries
   useEffect(() => {
     if (!searchQuery || !mapRef.current) return;
     searchCadastralNumber(searchQuery);
   }, [searchQuery]);
 
-  const identifyParcel = async (map: L.Map, latlng: L.LatLng) => {
+  const callEdgeFunction = async (body: any) => {
+    const { data, error } = await supabase.functions.invoke("cadastral-search", {
+      body,
+    });
+
+    if (error) {
+      console.error("Edge function error:", error);
+      return null;
+    }
+    return data;
+  };
+
+  const identifyParcel = async (latlng: L.LatLng, map: L.Map) => {
     setIsLoading(true);
     try {
-      const bounds = map.getBounds();
-      const size = map.getSize();
-      const point = map.latLngToContainerPoint(latlng);
-
-      const params = new URLSearchParams({
-        f: "json",
-        geometry: JSON.stringify({ x: latlng.lng, y: latlng.lat, spatialReference: { wkid: 4326 } }),
-        geometryType: "esriGeometryPoint",
-        sr: "4326",
-        layers: "all",
-        tolerance: "5",
-        mapExtent: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
-        imageDisplay: `${size.x},${size.y},96`,
-        returnGeometry: "true",
+      const data = await callEdgeFunction({
+        action: "identify",
+        lat: latlng.lat,
+        lng: latlng.lng,
       });
 
-      const response = await fetch(`${KADASTRAS_BASE}/identify?${params}`);
-      const data = await response.json();
-
-      if (data.results && data.results.length > 0) {
-        const result = data.results[0];
-        const attrs = result.attributes;
+      if (data?.features && data.features.length > 0) {
+        const feature = data.features[0];
+        const props = feature.properties || {};
 
         const parcel: ParcelData = {
-          cadastralNumber: attrs.KADASTRO_NR || attrs.UNIKALUS_NR || attrs.LABEL || "Nežinomas",
-          area: attrs.PLOTAS || attrs.SHAPE_Area,
-          purpose: attrs.PASKIRTIS || attrs.PASKIRTIES_PAVADINIMAS,
-          address: attrs.ADRESAS || attrs.VIETOVES_PAVADINIMAS,
+          cadastralNumber:
+            props.nationalCadastralReference ||
+            props.NTR_ID?.toString() ||
+            "Nežinomas",
+          area: props.areaValue || props.PLOTAS_J,
+          purpose: props.currentUse || props.PASKIRTIS,
+          address: props.label,
           lat: latlng.lat,
           lng: latlng.lng,
         };
 
-        // Highlight parcel geometry
-        if (result.geometry) {
-          highlightGeometry(result.geometry);
+        if (feature.geometry) {
+          highlightGeoJSON(feature);
         }
 
         onParcelSelect(parcel);
+      } else {
+        onParcelSelect({
+          cadastralNumber: "Nežinomas",
+          address: "Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.",
+          lat: latlng.lat,
+          lng: latlng.lng,
+        });
       }
     } catch (error) {
       console.error("Identify error:", error);
@@ -124,43 +121,33 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
     }
   };
 
-  const searchCadastralNumber = async (cadastralNr: string) => {
+  const searchCadastralNumber = async (query: string) => {
     setIsLoading(true);
     try {
-      // Try to find parcel using the query/find endpoint
-      const params = new URLSearchParams({
-        f: "json",
-        searchText: cadastralNr,
-        contains: "true",
-        returnGeometry: "true",
-        layers: "0",
-        sr: "4326",
+      const data = await callEdgeFunction({
+        action: "search",
+        cadastralNumber: query.trim(),
       });
 
-      const response = await fetch(`${KADASTRAS_BASE}/find?${params}`);
-      const data = await response.json();
-
-      if (data.results && data.results.length > 0) {
-        const result = data.results[0];
-        const attrs = result.attributes;
+      if (data?.features && data.features.length > 0) {
+        const feature = data.features[0];
+        const props = feature.properties || {};
 
         const parcel: ParcelData = {
-          cadastralNumber: attrs.KADASTRO_NR || attrs.UNIKALUS_NR || cadastralNr,
-          area: attrs.PLOTAS || attrs.SHAPE_Area,
-          purpose: attrs.PASKIRTIS || attrs.PASKIRTIES_PAVADINIMAS,
-          address: attrs.ADRESAS || attrs.VIETOVES_PAVADINIMAS,
+          cadastralNumber:
+            props.nationalCadastralReference ||
+            props.NTR_ID?.toString() ||
+            query.trim(),
+          area: props.areaValue || props.PLOTAS_J,
+          purpose: props.currentUse || props.PASKIRTIS,
+          address: props.label,
         };
 
-        // Zoom to geometry
-        if (result.geometry && mapRef.current) {
-          highlightGeometry(result.geometry);
-
-          if (result.geometry.rings) {
-            const geoJson = arcgisToGeoJSON(result.geometry);
-            const layer = L.geoJSON(geoJson as any);
+        if (feature.geometry && mapRef.current) {
+          const layer = highlightGeoJSON(feature);
+          if (layer) {
             const bounds = layer.getBounds();
-            mapRef.current.fitBounds(bounds, { padding: [60, 60] });
-            
+            mapRef.current.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
             const center = bounds.getCenter();
             parcel.lat = center.lat;
             parcel.lng = center.lng;
@@ -169,16 +156,17 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
 
         onParcelSelect(parcel);
       } else {
-        // If no results found via find, create a basic entry
         onParcelSelect({
-          cadastralNumber: cadastralNr,
-          address: "Sklypas nerastas. Pabandykite spustelėti žemėlapyje.",
+          cadastralNumber: query.trim(),
+          address:
+            data?.error ||
+            "Sklypas su tokiu kadastriniu numeriu nerastas. Patikrinkite numerį.",
         });
       }
     } catch (error) {
       console.error("Search error:", error);
       onParcelSelect({
-        cadastralNumber: cadastralNr,
+        cadastralNumber: query,
         address: "Paieškos klaida. Pabandykite vėliau.",
       });
     } finally {
@@ -187,17 +175,15 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
     }
   };
 
-  const highlightGeometry = (geometry: any) => {
-    if (!mapRef.current) return;
+  const highlightGeoJSON = (feature: any): L.GeoJSON | null => {
+    if (!mapRef.current || !feature.geometry) return null;
 
-    // Remove previous highlight
     if (highlightLayerRef.current) {
       mapRef.current.removeLayer(highlightLayerRef.current);
     }
 
-    if (geometry.rings) {
-      const geoJson = arcgisToGeoJSON(geometry);
-      highlightLayerRef.current = L.geoJSON(geoJson as any, {
+    try {
+      highlightLayerRef.current = L.geoJSON(feature, {
         style: {
           color: "hsl(160, 84%, 39%)",
           weight: 3,
@@ -205,6 +191,11 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
           fillOpacity: 0.15,
         },
       }).addTo(mapRef.current);
+
+      return highlightLayerRef.current;
+    } catch (e) {
+      console.error("GeoJSON highlight error:", e);
+      return null;
     }
   };
 
@@ -222,22 +213,5 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
     </div>
   );
 };
-
-// Simple ArcGIS geometry to GeoJSON converter
-function arcgisToGeoJSON(geometry: any) {
-  if (geometry.rings) {
-    return {
-      type: "Feature",
-      geometry: {
-        type: "Polygon",
-        coordinates: geometry.rings.map((ring: number[][]) =>
-          ring.map((coord) => [coord[0], coord[1]])
-        ),
-      },
-      properties: {},
-    };
-  }
-  return null;
-}
 
 export default MapView;
