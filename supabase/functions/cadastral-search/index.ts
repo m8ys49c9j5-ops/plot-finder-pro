@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -177,131 +176,151 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Instead of downloading the whole file and parsing JSON (causes OOM on 78MB+),
-    // we use a streaming text search approach.
-    // We download the file as a stream and search for the cadastral number in the raw text.
-    
-    console.log(`Downloading ${filePath} as stream...`);
-    const { data, error } = await supabase.storage.from("bucket-1").download(filePath);
+    // Use direct HTTP fetch with streaming to avoid loading 78MB+ into memory
+    const storageUrl = `${supabaseUrl}/storage/v1/object/bucket-1/${filePath}`;
+    console.log("Fetching via streaming:", storageUrl);
 
-    if (error) {
-      console.error("Storage download error:", JSON.stringify(error));
-      return jsonResponse({ features: [], error: `Storage error: ${error.message}` });
+    const response = await fetch(storageUrl, {
+      headers: {
+        "Authorization": `Bearer ${serviceKey}`,
+        "apikey": serviceKey,
+      },
+    });
+
+    if (!response.ok) {
+      console.error("Storage fetch error:", response.status, response.statusText);
+      return jsonResponse({ features: [], error: `Storage error: ${response.status}` });
     }
-    if (!data) {
-      return jsonResponse({ features: [], error: "File not found" });
+    if (!response.body) {
+      return jsonResponse({ features: [], error: "No response body" });
     }
 
-    console.log("Blob size:", data.size, "bytes");
-
-    // Strategy: search for the cadastral number in the raw text,
-    // then extract just the surrounding Feature object.
-    // We search for both unikalus_nr (number) and kadastro_nr (string with slashes)
-    const text = await data.text();
-    console.log("File loaded as text, length:", text.length);
+    console.log("Response status:", response.status, "Content-Length:", response.headers.get("content-length"));
 
     // Build search patterns based on input
-    // Input could be: "6267/0004:0211" or "626700040211" or "6267-0004-0211"
     const searchPatterns: string[] = [];
-
-    // Pattern 1: the raw cleaned input
     searchPatterns.push(`"${cleaned}"`);
-
-    // Pattern 2: as kadastro_nr format "XXXX/XXXX:XXXX" 
     if (digitsOnly.length >= 12) {
       const kadFormat = `${digitsOnly.substring(0,4)}/${digitsOnly.substring(4,8)}:${digitsOnly.substring(8)}`;
       searchPatterns.push(`"${kadFormat}"`);
     }
-
-    // Pattern 3: as unikalus_nr (just digits, as number - no quotes)
-    searchPatterns.push(`: ${digitsOnly}`);
-    searchPatterns.push(`:${digitsOnly}`);
-
-    // Pattern 4: with quotes (string unikalus_nr)
-    searchPatterns.push(`"${digitsOnly}"`);
-
+    searchPatterns.push(`"unikalus_nr": ${digitsOnly},`);
+    searchPatterns.push(`"unikalus_nr":${digitsOnly},`);
     console.log("Search patterns:", searchPatterns);
 
-    let featureStart = -1;
+    // Stream through the file with a sliding buffer
+    // Keep a buffer large enough to contain a Feature + overlap for boundary matching
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    const MAX_BUFFER = 200000; // 200KB buffer — enough for any single feature
+    let found = false;
+    let totalRead = 0;
 
-    for (const pattern of searchPatterns) {
-      const idx = text.indexOf(pattern);
-      if (idx !== -1) {
-        console.log(`Pattern "${pattern}" found at index ${idx}`);
-        // Walk backwards to find the start of this Feature object: { "type": "Feature"
-        featureStart = text.lastIndexOf('{ "type": "Feature"', idx);
-        if (featureStart === -1) {
-          featureStart = text.lastIndexOf('{"type":"Feature"', idx);
-        }
-        if (featureStart === -1) {
-          featureStart = text.lastIndexOf('{"type": "Feature"', idx);
-        }
-        if (featureStart !== -1) {
-          console.log("Feature start found at index:", featureStart);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+      totalRead += value.byteLength;
+
+      // Check if any search pattern is in the buffer
+      let matchIdx = -1;
+      let matchedPattern = "";
+      for (const pattern of searchPatterns) {
+        const idx = buffer.indexOf(pattern);
+        if (idx !== -1) {
+          matchIdx = idx;
+          matchedPattern = pattern;
           break;
         }
       }
+
+      if (matchIdx !== -1) {
+        console.log(`Pattern "${matchedPattern}" found after reading ${totalRead} bytes`);
+
+        // We found a match. Now we need to extract the full Feature object.
+        // Walk backwards to find { "type": "Feature"
+        let featureStart = buffer.lastIndexOf('{ "type": "Feature"', matchIdx);
+        if (featureStart === -1) featureStart = buffer.lastIndexOf('{"type":"Feature"', matchIdx);
+        if (featureStart === -1) featureStart = buffer.lastIndexOf('{"type": "Feature"', matchIdx);
+
+        if (featureStart === -1) {
+          console.error("Could not find Feature start before match");
+          break;
+        }
+
+        // Read more chunks if needed to get the complete feature (geometry can be large)
+        // Keep reading until we can extract the complete feature
+        let attempts = 0;
+        while (attempts < 50) {
+          // Try to extract feature by counting braces
+          let braceCount = 0;
+          let featureEnd = -1;
+          for (let i = featureStart; i < buffer.length; i++) {
+            if (buffer[i] === '{') braceCount++;
+            if (buffer[i] === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                featureEnd = i + 1;
+                break;
+              }
+            }
+          }
+
+          if (featureEnd !== -1) {
+            // Successfully extracted the complete feature
+            const featureStr = buffer.substring(featureStart, featureEnd);
+            console.log("Extracted feature JSON length:", featureStr.length);
+
+            // Cancel the stream — we don't need more data
+            reader.cancel();
+
+            try {
+              const feature = JSON.parse(featureStr);
+              const props = feature.properties || {};
+              console.log("=== PARSED FEATURE ===");
+              console.log("kadastro_nr:", props.kadastro_nr);
+              console.log("skl_plotas:", props.skl_plotas);
+              console.log("Has geometry:", !!feature.geometry);
+
+              props.nationalCadastralReference = props.kadastro_nr || props.unikalus_nr || cleaned;
+
+              if (feature.geometry && feature.geometry.coordinates) {
+                feature.geometry = convertLKS94toWGS84(feature.geometry);
+                console.log("Geometry converted to WGS84");
+              }
+
+              return jsonResponse({ features: [feature] });
+            } catch (parseErr) {
+              console.error("Feature JSON parse error:", parseErr);
+              break;
+            }
+          }
+
+          // Need more data for complete feature
+          const { done: d2, value: v2 } = await reader.read();
+          if (d2) break;
+          buffer += decoder.decode(v2, { stream: true });
+          attempts++;
+        }
+
+        found = true;
+        break;
+      }
+
+      // Trim buffer to avoid memory growth — keep last 10KB for boundary overlap
+      if (buffer.length > MAX_BUFFER) {
+        buffer = buffer.substring(buffer.length - 10000);
+      }
     }
 
-    if (featureStart === -1) {
-      console.log("=== NO MATCH found in file ===");
-      // Log first feature's properties for debugging
-      const firstFeatureIdx = text.indexOf('"properties"');
-      if (firstFeatureIdx !== -1) {
-        console.log("First feature properties preview:", text.substring(firstFeatureIdx, firstFeatureIdx + 300));
-      }
-    } else {
-      // Extract the Feature JSON by counting braces
-      let braceCount = 0;
-      let featureEnd = -1;
-      for (let i = featureStart; i < text.length && i < featureStart + 50000; i++) {
-        if (text[i] === '{') braceCount++;
-        if (text[i] === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            featureEnd = i + 1;
-            break;
-          }
-        }
-      }
-
-      if (featureEnd !== -1) {
-        const featureStr = text.substring(featureStart, featureEnd);
-        console.log("Extracted feature JSON length:", featureStr.length);
-        console.log("Feature preview:", featureStr.substring(0, 500));
-
-        try {
-          const feature = JSON.parse(featureStr);
-          const props = feature.properties || {};
-          console.log("=== PARSED FEATURE ===");
-          console.log("Properties:", JSON.stringify(props).substring(0, 500));
-          console.log("Has geometry:", !!feature.geometry);
-          if (feature.geometry) {
-            console.log("Geometry type:", feature.geometry.type);
-            console.log("CRS note: coordinates are in EPSG:3346 (LKS94), need conversion to WGS84");
-          }
-
-          // Set nationalCadastralReference for frontend
-          props.nationalCadastralReference = props.kadastro_nr || props.unikalus_nr || cleaned;
-
-          // Convert EPSG:3346 (LKS94) coordinates to EPSG:4326 (WGS84) for Leaflet
-          if (feature.geometry && feature.geometry.coordinates) {
-            feature.geometry = convertLKS94toWGS84(feature.geometry);
-            console.log("Geometry converted to WGS84");
-            console.log("Converted coords preview:", JSON.stringify(feature.geometry.coordinates).substring(0, 200));
-          }
-
-          console.log("=== RETURNING RESULT ===");
-          return jsonResponse({ features: [feature] });
-        } catch (parseErr) {
-          console.error("Feature JSON parse error:", parseErr);
-          console.log("Problematic JSON:", featureStr.substring(0, 200), "...", featureStr.substring(featureStr.length - 200));
-        }
-      } else {
-        console.error("Could not find feature end (brace mismatch)");
-      }
+    if (!found) {
+      // Make sure stream is fully consumed/cancelled
+      try { reader.cancel(); } catch (_) {}
+      console.log("=== NO MATCH found in streamed file ===");
     }
   } catch (e) {
     console.error("Storage search critical error:", e instanceof Error ? e.message : String(e));
