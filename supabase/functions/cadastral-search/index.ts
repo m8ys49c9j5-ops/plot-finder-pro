@@ -75,7 +75,11 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
         const plotasMatch = text.match(/PLOTAS_J*(\d+)/);
         if (ntrMatch) {
           return jsonResponse({
-            features:,
+            features:[
+              {
+                type: "Feature",
+                properties: {
+                  NTR_ID: ntrMatch,
                   PLOTAS_J: plotasMatch ? parseInt(plotasMatch) : undefined,
                 },
                 geometry: null,
@@ -133,7 +137,6 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
   let filesToSearch: { folder: string; file: string }[] =[];
 
-  // Detect if it's a kadastro_nr or unikalus_nr
   if (cleaned.includes('/') || cleaned.includes(':')) {
     const savCode = digitsOnly.substring(0, 2);
     if (fileMap) filesToSearch.push(fileMap);
@@ -163,7 +166,6 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-  // 1. Try searching in Supabase JSON files first
   for (const fileInfo of filesToSearch) {
     console.log(`Searching in ${fileInfo.file}...`);
     const feature = await searchInFile(fileInfo, searchPatterns, supabaseUrl, serviceKey);
@@ -179,7 +181,6 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     }
   }
 
-  // 2. Fallback to INSPIRE WFS (Highly accurate for all of Lithuania)
   try {
     console.log("Trying WFS fallback...");
     const wfsUrl = `https://www.inspire-geoportal.lt/geoserver/cp/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=cp:CadastralParcel&count=1&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=nationalCadastralReference%20LIKE%20'%25${encodeURIComponent(cleaned)}%25'`;
@@ -198,7 +199,6 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     console.error("WFS fallback error:", e);
   }
 
-  // 3. Fallback to ArcGIS Geocoding (ONLY if input contains letters, meaning it's an address)
   if (//.test(cleaned)) {
     try {
       console.log("Trying ArcGIS Geocoder for address...");
@@ -236,7 +236,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   return jsonResponse({ features:[], error: "Sklypas nerastas" });
 }
 
-// EXTREMELY OPTIMIZED STREAM PARSER
+// HIGHLY OPTIMIZED O(N) STREAM PARSER
 async function searchInFile(fileInfo: { folder: string; file: string }, searchPatterns: string[], supabaseUrl: string, serviceKey: string) {
   const filePath = `${fileInfo.folder}/${fileInfo.file}`;
   const storageUrl = `${supabaseUrl}/storage/v1/object/bucket-1/${filePath}`;
@@ -251,88 +251,78 @@ async function searchInFile(fileInfo: { folder: string; file: string }, searchPa
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     
-    let featureBuffer = "";
-    let searchWindowOverlap = "";
-    const MAX_BUFFER = 8000000; // 8MB buffer
-    let isExtracting = false;
+    let buffer = "";
+    const MAX_BUFFER = 3000000; // 3MB buffer
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      featureBuffer += chunk;
-      
-      // 1. SEARCH MODE: Only look for the pattern if we haven't found it yet
-      if (!isExtracting) {
-        const searchWindow = searchWindowOverlap + chunk;
-        for (const pattern of searchPatterns) {
-          if (searchWindow.includes(pattern)) {
-            isExtracting = true;
-            break;
-          }
-        }
-        // Keep last 100 chars for the next window to catch patterns split across chunks
-        searchWindowOverlap = chunk.length > 100 ? chunk.slice(-100) : (searchWindowOverlap + chunk).slice(-100);
+      buffer += decoder.decode(value, { stream: true });
+
+      let matchIdx = -1;
+      for (const pattern of searchPatterns) {
+        matchIdx = buffer.indexOf(pattern);
+        if (matchIdx !== -1) break;
       }
 
-      // 2. EXTRACTION MODE: We found the pattern, now safely extract the JSON object
-      if (isExtracting) {
-        let startIdx = featureBuffer.lastIndexOf('{ "type": "Feature"');
-        if (startIdx === -1) startIdx = featureBuffer.lastIndexOf('{"type":"Feature"');
-        if (startIdx === -1) startIdx = featureBuffer.lastIndexOf('{"type": "Feature"');
+      if (matchIdx !== -1) {
+        let startIdx = buffer.lastIndexOf('{ "type": "Feature"', matchIdx);
+        if (startIdx === -1) startIdx = buffer.lastIndexOf('{"type":"Feature"', matchIdx);
+        if (startIdx === -1) startIdx = buffer.lastIndexOf('{"type": "Feature"', matchIdx);
 
         if (startIdx !== -1) {
+          let featureStr = buffer.substring(startIdx);
           let braceCount = 0;
-          let endIdx = -1;
           let inString = false;
           let escape = false;
+          let parseIdx = 0; // CRITICAL FIX: We remember where we left off!
+          let featureFound = false;
 
-          // Saugus iteravimas naudojant charAt(i) apsaugo nuo begalinio ciklo
-          for (let i = startIdx; i < featureBuffer.length; i++) {
-            const char = featureBuffer.charAt(i);
-            if (escape) { escape = false; continue; }
-            if (char === '\\') { escape = true; continue; }
-            if (char === '"') { inString = !inString; continue; }
-            
-            if (!inString) {
-              if (char === '{') braceCount++;
-              else if (char === '}') {
-                braceCount--;
-                if (braceCount === 0) {
-                  endIdx = i + 1;
-                  break;
+          while (true) {
+            // We only loop through the NEW characters added to featureStr
+            for (; parseIdx < featureStr.length; parseIdx++) {
+              const char = featureStr;
+              if (escape) { escape = false; continue; }
+              if (char === '\\') { escape = true; continue; }
+              if (char === '"') { inString = !inString; continue; }
+              
+              if (!inString) {
+                if (char === '{') braceCount++;
+                else if (char === '}') {
+                  braceCount--;
+                  if (braceCount === 0) {
+                    featureFound = true;
+                    break;
+                  }
                 }
               }
             }
-          }
 
-          if (endIdx !== -1) {
-            const featureStr = featureBuffer.substring(startIdx, endIdx);
-            reader.cancel(); // Stop downloading
-            try {
-              return JSON.parse(featureStr);
-            } catch (e) {
-              console.error("Failed to parse extracted feature:", e);
-              return null;
+            if (featureFound) {
+              const completeFeature = featureStr.substring(0, parseIdx + 1);
+              reader.cancel();
+              try {
+                return JSON.parse(completeFeature);
+              } catch (e) {
+                console.error("Failed to parse extracted feature:", e);
+                return null;
+              }
             }
+
+            // If we need more data, we fetch it, but parseIdx stays where it is!
+            const { done: nextDone, value: nextValue } = await reader.read();
+            if (nextDone) break;
+            featureStr += decoder.decode(nextValue, { stream: true });
           }
-          // Jei endIdx === -1, reiškiasi sklypo duomenys dar nebaigti siųsti.
-          // Ciklas tiesiog tęsis ir pridės kitą chunk'ą prie featureBuffer.
+          
+          if (featureFound) break;
         }
       }
 
-      // Memory management: Trim buffer if it gets too large
-      if (featureBuffer.length > MAX_BUFFER) {
-        let lastStartIdx = featureBuffer.lastIndexOf('{ "type": "Feature"');
-        if (lastStartIdx === -1) lastStartIdx = featureBuffer.lastIndexOf('{"type":"Feature"');
-        if (lastStartIdx === -1) lastStartIdx = featureBuffer.lastIndexOf('{"type": "Feature"');
-
-        if (lastStartIdx !== -1 && lastStartIdx > featureBuffer.length - 4000000) {
-          featureBuffer = featureBuffer.substring(lastStartIdx);
-        } else {
-          featureBuffer = featureBuffer.substring(featureBuffer.length - 2000000);
-        }
+      // Trim buffer to 1.5MB to keep memory low and indexOf fast
+      if (buffer.length > MAX_BUFFER) {
+        buffer = buffer.substring(buffer.length - 1500000);
       }
     }
   } catch (e) {
