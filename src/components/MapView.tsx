@@ -136,11 +136,14 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
         const parcel: ParcelData = {
           cadastralNumber:
             props.nationalCadastralReference ||
+            props.kadastro_nr ||
             props.NTR_ID?.toString() ||
             query.trim(),
-          area: props.areaValue || props.PLOTAS_J,
-          purpose: props.currentUse || props.PASKIRTIS,
-          address: props.label,
+          area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
+          purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
+          address: props.seniunijos_pavad
+            ? `${props.sav_pavadinimas || ""}, ${props.seniunijos_pavad}`
+            : props.label,
         };
 
         if (feature.geometry && mapRef.current) {
