@@ -143,33 +143,46 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   console.log("Searching for:", cleaned);
 
   try {
-    const supabase = createClient(
-      // Ensure these environment variables are set in your Supabase project
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    console.log("Checking bucket-1 for gis_pub_parcels_62.json...");
+    console.log(`Downloading bucket-1/gis_pub_parcels_62.json...`);
     const { data, error } = await supabase.storage.from("bucket-1").download("gis_pub_parcels_62.json");
 
     if (error) {
       console.error("Storage download error:", error);
     } else if (data) {
       const text = await data.text();
-      const geojson = JSON.parse(text);
+      const json = JSON.parse(text);
 
-      // Find feature where unikalus_nr matches the search query
-      const feature = geojson.features.find((f: any) => String(f.properties?.unikalus_nr) === cleaned);
+      // Handle both GeoJSON "features" array or flat JSON array
+      const features = json.features || (Array.isArray(json) ? json : []);
+
+      if (features.length > 0) {
+        // Log the keys of the first item to debug property names (check Supabase logs)
+        console.log("File loaded. First item keys:", Object.keys(features[0].properties || {}));
+      }
+
+      // Helper to strip dashes/spaces for comparison (e.g. "4400-0001" == "44000001")
+      const normalize = (val: any) => String(val || "").replace(/\D/g, "");
+      const searchTarget = normalize(cleaned);
+
+      const feature = features.find((f: any) => normalize(f.properties?.unikalus_nr) === searchTarget);
 
       if (feature) {
-        console.log("Found in storage:", feature.properties.unikalus_nr);
-        // Map the property so the frontend recognizes it
+        console.log("Found in storage:", feature.properties?.unikalus_nr);
         feature.properties.nationalCadastralReference = feature.properties.unikalus_nr;
+        // Ensure lat/lng are set for the map to zoom correctly if geometry is missing/complex
+        if (!feature.geometry && feature.properties.center_lat) {
+          feature.properties.lat = feature.properties.center_lat;
+          feature.properties.lng = feature.properties.center_lon;
+        }
         return jsonResponse({ features: [feature] });
+      } else {
+        console.log(`No match found for ${searchTarget} in ${features.length} records.`);
       }
     }
   } catch (e) {
-    console.error("Storage search error:", e);
+    console.error("Storage search critical error:", e);
   }
 
   // Try the Registrų centras NTR public search
