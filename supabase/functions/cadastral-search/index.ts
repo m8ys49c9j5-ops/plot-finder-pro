@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,13 +37,13 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
   // Use WMS GetFeatureInfo to identify parcels at a clicked point
   // We need to calculate a bounding box and pixel position
   const size = 256;
-  const resolution = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+  const resolution = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
   const halfExtent = (resolution * size) / 2;
 
   // Calculate bbox in EPSG:4326
   const degPerMeter = 1 / 111320;
   const halfDegLat = halfExtent * degPerMeter;
-  const halfDegLng = halfExtent * degPerMeter / Math.cos(lat * Math.PI / 180);
+  const halfDegLng = (halfExtent * degPerMeter) / Math.cos((lat * Math.PI) / 180);
 
   const bbox = `${lng - halfDegLng},${lat - halfDegLat},${lng + halfDegLng},${lat + halfDegLat}`;
 
@@ -84,14 +85,16 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
         const plotasMatch = text.match(/PLOTAS_J[:\s]*(\d+)/);
         if (ntrMatch) {
           return jsonResponse({
-            features: [{
-              type: "Feature",
-              properties: {
-                NTR_ID: ntrMatch[1],
-                PLOTAS_J: plotasMatch ? parseInt(plotasMatch[1]) : undefined,
+            features: [
+              {
+                type: "Feature",
+                properties: {
+                  NTR_ID: ntrMatch[1],
+                  PLOTAS_J: plotasMatch ? parseInt(plotasMatch[1]) : undefined,
+                },
+                geometry: null,
               },
-              geometry: null,
-            }],
+            ],
           });
         }
       }
@@ -116,11 +119,13 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
           const ntrMatch2 = text2.match(/NTR_ID[:\s]*(\d+)/);
           if (ntrMatch2) {
             return jsonResponse({
-              features: [{
-                type: "Feature",
-                properties: { NTR_ID: ntrMatch2[1] },
-                geometry: null,
-              }],
+              features: [
+                {
+                  type: "Feature",
+                  properties: { NTR_ID: ntrMatch2[1] },
+                  geometry: null,
+                },
+              ],
             });
           }
         }
@@ -137,6 +142,36 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   const cleaned = cadastralNumber.trim();
   console.log("Searching for:", cleaned);
 
+  try {
+    const supabase = createClient(
+      // Ensure these environment variables are set in your Supabase project
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    console.log("Checking bucket-1 for gis_pub_parcels_62.json...");
+    const { data, error } = await supabase.storage.from("bucket-1").download("gis_pub_parcels_62.json");
+
+    if (error) {
+      console.error("Storage download error:", error);
+    } else if (data) {
+      const text = await data.text();
+      const geojson = JSON.parse(text);
+
+      // Find feature where unikalus_nr matches the search query
+      const feature = geojson.features.find((f: any) => String(f.properties?.unikalus_nr) === cleaned);
+
+      if (feature) {
+        console.log("Found in storage:", feature.properties.unikalus_nr);
+        // Map the property so the frontend recognizes it
+        feature.properties.nationalCadastralReference = feature.properties.unikalus_nr;
+        return jsonResponse({ features: [feature] });
+      }
+    }
+  } catch (e) {
+    console.error("Storage search error:", e);
+  }
+
   // Try the Registrų centras NTR public search
   // The NTR web search uses this endpoint
   try {
@@ -144,7 +179,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     console.log("Trying RC search:", searchUrl);
     const rcResponse = await fetch(searchUrl, {
       headers: {
-        "Accept": "application/json, text/html",
+        Accept: "application/json, text/html",
         "User-Agent": "Mozilla/5.0",
       },
     });
@@ -187,16 +222,18 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
         // Return geocode location even without parcel data
         return jsonResponse({
-          features: [{
-            type: "Feature",
-            properties: {
-              nationalCadastralReference: cleaned,
-              address: candidate.address,
-              lat,
-              lng,
+          features: [
+            {
+              type: "Feature",
+              properties: {
+                nationalCadastralReference: cleaned,
+                address: candidate.address,
+                lat,
+                lng,
+              },
+              geometry: null,
             },
-            geometry: null,
-          }],
+          ],
           geocoded: true,
         });
       }
