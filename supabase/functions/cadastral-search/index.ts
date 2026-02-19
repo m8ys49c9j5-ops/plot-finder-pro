@@ -34,12 +34,10 @@ serve(async (req) => {
 
 async function identifyByCoords(lat: number, lng: number, zoom: number) {
   // Use WMS GetFeatureInfo to identify parcels at a clicked point
-  // We need to calculate a bounding box and pixel position
   const size = 256;
   const resolution = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
   const halfExtent = (resolution * size) / 2;
 
-  // Calculate bbox in EPSG:4326
   const degPerMeter = 1 / 111320;
   const halfDegLat = halfExtent * degPerMeter;
   const halfDegLng = (halfExtent * degPerMeter) / Math.cos((lat * Math.PI) / 180);
@@ -64,32 +62,22 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
     BBOX: bbox,
   });
 
-  console.log("WMS GetFeatureInfo URL:", `${WMS_URL}?${params}`);
-
   try {
     const response = await fetch(`${WMS_URL}?${params}`);
-    console.log("WMS GetFeatureInfo status:", response.status);
-    const text = await response.text();
-    console.log("WMS GetFeatureInfo response (first 500):", text.substring(0, 500));
-
     if (response.ok) {
+      const text = await response.text();
       try {
         const data = JSON.parse(text);
         if (data.features && data.features.length > 0) {
           return jsonResponse(data);
         }
       } catch {
-        // Try to parse as HTML/text
-        const ntrMatch = text.match(/NTR_ID[:\s]*(\d+)/);
-        const plotasMatch = text.match(/PLOTAS_J[:\s]*(\d+)/);
+        const ntrMatch = text.match(/NTR_ID*(\d+)/);
+        const plotasMatch = text.match(/PLOTAS_J*(\d+)/);
         if (ntrMatch) {
           return jsonResponse({
-            features: [
-              {
-                type: "Feature",
-                properties: {
-                  NTR_ID: ntrMatch[1],
-                  PLOTAS_J: plotasMatch ? parseInt(plotasMatch[1]) : undefined,
+            features:,
+                  PLOTAS_J: plotasMatch ? parseInt(plotasMatch) : undefined,
                 },
                 geometry: null,
               },
@@ -99,8 +87,7 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
       }
     }
 
-    // Try with different layer IDs for different zoom levels
-    for (const layerId of ["27", "33", "15"]) {
+    for (const layerId of) {
       const params2 = new URLSearchParams(params);
       params2.set("QUERY_LAYERS", layerId);
       params2.set("LAYERS", layerId);
@@ -108,20 +95,16 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
       const response2 = await fetch(`${WMS_URL}?${params2}`);
       if (response2.ok) {
         const text2 = await response2.text();
-        console.log(`Layer ${layerId} response:`, text2.substring(0, 300));
         try {
           const data2 = JSON.parse(text2);
           if (data2.features && data2.features.length > 0) {
             return jsonResponse(data2);
           }
         } catch {
-          const ntrMatch2 = text2.match(/NTR_ID[:\s]*(\d+)/);
+          const ntrMatch2 = text2.match(/NTR_ID*(\d+)/);
           if (ntrMatch2) {
             return jsonResponse({
-              features: [
-                {
-                  type: "Feature",
-                  properties: { NTR_ID: ntrMatch2[1] },
+              features: },
                   geometry: null,
                 },
               ],
@@ -134,260 +117,110 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
     console.error("WMS GetFeatureInfo error:", e);
   }
 
-  return jsonResponse({ features: [] });
+  return jsonResponse({ features:[] });
 }
 
 async function searchByCadastralNumber(cadastralNumber: string) {
   const cleaned = cadastralNumber.trim();
   console.log("=== CADASTRAL SEARCH START ===");
   console.log("Raw input:", cadastralNumber);
-  console.log("Cleaned input:", cleaned);
+  
+  const digitsOnly = cleaned.replace(/\D/g, "");
 
-  // Normalize for matching: strip spaces, dashes, slashes, dots, colons
-  const normalize = (val: string): string => val.replace(/[\s\-\/\.\:]/g, "").toLowerCase();
-  const searchTarget = normalize(cleaned);
-  console.log("Normalized search target:", searchTarget);
-
-  // Determine which file to search based on cadastral number prefix
-  // The files are organized by savivaldybė code (first 2 digits of kadastro_nr)
-  // gis_pub_parcels_62.json = Molėtų r. sav. (code 62)
-  // gis_pub_parcels_13.json = Vilniaus m. sav. (code 13)
   const fileMap: Record<string, { folder: string; file: string }> = {
     "62": { folder: "Moletai", file: "gis_pub_parcels_62.json" },
     "13": { folder: "Vilnius", file: "gis_pub_parcels_13.json" },
   };
 
-  // Extract the sav_kodas from the cadastral number
-  // kadastro_nr format: "6267/0004:0211" -> first 2 digits = "62"
-  // unikalus_nr format: 626700040211 -> first 2 digits = "62"
-  const digitsOnly = cleaned.replace(/\D/g, "");
-  const savCode = digitsOnly.substring(0, 2);
-  console.log("Detected savivaldybė code:", savCode);
+  let filesToSearch: { folder: string; file: string }[] =[];
 
-  const fileInfo = fileMap[savCode];
-  if (!fileInfo) {
-    console.log("No file mapping for sav code:", savCode, "— available:", Object.keys(fileMap));
-    return jsonResponse({ features: [], error: `Nėra duomenų savivaldybei su kodu ${savCode}. Turimi: ${Object.keys(fileMap).join(", ")}` });
+  // Detect if it's a kadastro_nr or unikalus_nr
+  if (cleaned.includes('/') || cleaned.includes(':')) {
+    // It's a kadastro_nr (e.g. 6267/0004:0211), first 2 digits are sav_kodas
+    const savCode = digitsOnly.substring(0, 2);
+    if (fileMap) filesToSearch.push(fileMap);
+  } else if (digitsOnly.length === 12) {
+    // It's a unikalus_nr (e.g. 440001634144). We don't know the municipality.
+    // Search all available files.
+    console.log("Detected 12-digit unikalus_nr. Searching all files.");
+    filesToSearch = Object.values(fileMap);
+  } else {
+    // Fallback
+    const savCode = digitsOnly.substring(0, 2);
+    if (fileMap) filesToSearch.push(fileMap);
   }
 
-  const filePath = `${fileInfo.folder}/${fileInfo.file}`;
-  console.log("Target file:", filePath);
-
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    // Use direct HTTP fetch with streaming to avoid loading 78MB+ into memory
-    const storageUrl = `${supabaseUrl}/storage/v1/object/bucket-1/${filePath}`;
-    console.log("Fetching via streaming:", storageUrl);
-
-    const response = await fetch(storageUrl, {
-      headers: {
-        "Authorization": `Bearer ${serviceKey}`,
-        "apikey": serviceKey,
-      },
-    });
-
-    if (!response.ok) {
-      console.error("Storage fetch error:", response.status, response.statusText);
-      return jsonResponse({ features: [], error: `Storage error: ${response.status}` });
-    }
-    if (!response.body) {
-      return jsonResponse({ features: [], error: "No response body" });
-    }
-
-    console.log("Response status:", response.status, "Content-Length:", response.headers.get("content-length"));
-
-    // Build search patterns based on input
-    const searchPatterns: string[] = [];
-    searchPatterns.push(`"${cleaned}"`);
-    if (digitsOnly.length >= 12) {
-      const kadFormat = `${digitsOnly.substring(0,4)}/${digitsOnly.substring(4,8)}:${digitsOnly.substring(8)}`;
-      searchPatterns.push(`"${kadFormat}"`);
-    }
-    searchPatterns.push(`"unikalus_nr": ${digitsOnly},`);
-    searchPatterns.push(`"unikalus_nr":${digitsOnly},`);
-    console.log("Search patterns:", searchPatterns);
-
-    // Stream through the file with a sliding buffer
-    // Keep a buffer large enough to contain a Feature + overlap for boundary matching
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    const MAX_BUFFER = 200000; // 200KB buffer — enough for any single feature
-    let found = false;
-    let totalRead = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
-      totalRead += value.byteLength;
-
-      // Check if any search pattern is in the buffer
-      let matchIdx = -1;
-      let matchedPattern = "";
-      for (const pattern of searchPatterns) {
-        const idx = buffer.indexOf(pattern);
-        if (idx !== -1) {
-          matchIdx = idx;
-          matchedPattern = pattern;
-          break;
-        }
-      }
-
-      if (matchIdx !== -1) {
-        console.log(`Pattern "${matchedPattern}" found after reading ${totalRead} bytes`);
-
-        // We found a match. Now we need to extract the full Feature object.
-        // Walk backwards to find { "type": "Feature"
-        let featureStart = buffer.lastIndexOf('{ "type": "Feature"', matchIdx);
-        if (featureStart === -1) featureStart = buffer.lastIndexOf('{"type":"Feature"', matchIdx);
-        if (featureStart === -1) featureStart = buffer.lastIndexOf('{"type": "Feature"', matchIdx);
-
-        if (featureStart === -1) {
-          console.error("Could not find Feature start before match");
-          break;
-        }
-
-        // Read more chunks if needed to get the complete feature (geometry can be large)
-        // Keep reading until we can extract the complete feature
-        let attempts = 0;
-        while (attempts < 50) {
-          // Try to extract feature by counting braces
-          let braceCount = 0;
-          let featureEnd = -1;
-          for (let i = featureStart; i < buffer.length; i++) {
-            if (buffer[i] === '{') braceCount++;
-            if (buffer[i] === '}') {
-              braceCount--;
-              if (braceCount === 0) {
-                featureEnd = i + 1;
-                break;
-              }
-            }
-          }
-
-          if (featureEnd !== -1) {
-            // Successfully extracted the complete feature
-            const featureStr = buffer.substring(featureStart, featureEnd);
-            console.log("Extracted feature JSON length:", featureStr.length);
-
-            // Cancel the stream — we don't need more data
-            reader.cancel();
-
-            try {
-              const feature = JSON.parse(featureStr);
-              const props = feature.properties || {};
-              console.log("=== PARSED FEATURE ===");
-              console.log("kadastro_nr:", props.kadastro_nr);
-              console.log("skl_plotas:", props.skl_plotas);
-              console.log("Has geometry:", !!feature.geometry);
-
-              props.nationalCadastralReference = props.kadastro_nr || props.unikalus_nr || cleaned;
-
-              if (feature.geometry && feature.geometry.coordinates) {
-                feature.geometry = convertLKS94toWGS84(feature.geometry);
-                console.log("Geometry converted to WGS84");
-              }
-
-              return jsonResponse({ features: [feature] });
-            } catch (parseErr) {
-              console.error("Feature JSON parse error:", parseErr);
-              break;
-            }
-          }
-
-          // Need more data for complete feature
-          const { done: d2, value: v2 } = await reader.read();
-          if (d2) break;
-          buffer += decoder.decode(v2, { stream: true });
-          attempts++;
-        }
-
-        found = true;
-        break;
-      }
-
-      // Trim buffer to avoid memory growth — keep last 10KB for boundary overlap
-      if (buffer.length > MAX_BUFFER) {
-        buffer = buffer.substring(buffer.length - 10000);
-      }
-    }
-
-    if (!found) {
-      // Make sure stream is fully consumed/cancelled
-      try { reader.cancel(); } catch (_) {}
-      console.log("=== NO MATCH found in streamed file ===");
-    }
-  } catch (e) {
-    console.error("Storage search critical error:", e instanceof Error ? e.message : String(e));
+  if (filesToSearch.length === 0) {
+    filesToSearch = Object.values(fileMap);
   }
 
-  // Try the Registrų centras NTR public search
-  // The NTR web search uses this endpoint
+  // Build search patterns
+  const searchPatterns: string[] =[];
+  searchPatterns.push(`"${cleaned}"`);
+  if (digitsOnly.length >= 12) {
+    const kadFormat = `${digitsOnly.substring(0,4)}/${digitsOnly.substring(4,8)}:${digitsOnly.substring(8)}`;
+    searchPatterns.push(`"${kadFormat}"`);
+    searchPatterns.push(`"unikalus_nr": ${digitsOnly}`);
+    searchPatterns.push(`"unikalus_nr":${digitsOnly}`);
+    searchPatterns.push(`"unikalus_nr": "${digitsOnly}"`);
+    searchPatterns.push(`"unikalus_nr":"${digitsOnly}"`);
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  // Iterate through the determined files
+  for (const fileInfo of filesToSearch) {
+    console.log(`Searching in ${fileInfo.file}...`);
+    const feature = await searchInFile(fileInfo, searchPatterns, supabaseUrl, serviceKey);
+    
+    if (feature) {
+      const props = feature.properties || {};
+      // Force the UI to use the formatted kadastro_nr if it exists in the JSON
+      props.nationalCadastralReference = props.kadastro_nr || props.unikalus_nr?.toString() || cleaned;
+
+      if (feature.geometry && feature.geometry.coordinates) {
+        feature.geometry = convertLKS94toWGS84(feature.geometry);
+      }
+      return jsonResponse({ features: });
+    }
+  }
+
+  // Fallback to RC search
   try {
     const searchUrl = `https://www.registrucentras.lt/ntr/paieskos_rez.php?kadNr=${encodeURIComponent(cleaned)}&format=json`;
-    console.log("Trying RC search:", searchUrl);
     const rcResponse = await fetch(searchUrl, {
-      headers: {
-        Accept: "application/json, text/html",
-        "User-Agent": "Mozilla/5.0",
-      },
+      headers: { Accept: "application/json, text/html", "User-Agent": "Mozilla/5.0" },
     });
-    console.log("RC search status:", rcResponse.status);
-    if (rcResponse.ok) {
-      const rcText = await rcResponse.text();
-      console.log("RC search response (first 500):", rcText.substring(0, 500));
-    }
+    if (rcResponse.ok) await rcResponse.text();
   } catch (e) {
     console.log("RC search error:", e);
   }
 
-  // Try geocoding via ArcGIS Online
+  // Fallback to ArcGIS Geocoding
   try {
     const geocodeUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${encodeURIComponent(cleaned)}&f=json&countryCode=LT&maxLocations=1&outFields=*`;
-    console.log("Trying ArcGIS geocode...");
     const geoResponse = await fetch(geocodeUrl);
-    console.log("ArcGIS geocode status:", geoResponse.status);
 
     if (geoResponse.ok) {
       const geoData = await geoResponse.json();
-      console.log("ArcGIS geocode candidates:", geoData.candidates?.length);
-
       if (geoData.candidates && geoData.candidates.length > 0) {
-        const candidate = geoData.candidates[0];
+        const candidate = geoData.candidates;
         const lat = candidate.location.y;
         const lng = candidate.location.x;
 
-        // Now use WMS GetFeatureInfo at this location to get parcel data
         const identifyResult = await identifyByCoords(lat, lng, 18);
         const identifyData = await identifyResult.json();
 
         if (identifyData.features && identifyData.features.length > 0) {
-          // Add location info from geocoding
-          identifyData.features[0].properties.address = candidate.address;
-          identifyData.features[0].properties.lat = lat;
-          identifyData.features[0].properties.lng = lng;
+          identifyData.features.properties.address = candidate.address;
+          identifyData.features.properties.lat = lat;
+          identifyData.features.properties.lng = lng;
           return jsonResponse(identifyData);
         }
 
-        // Return geocode location even without parcel data
         return jsonResponse({
-          features: [
-            {
-              type: "Feature",
-              properties: {
-                nationalCadastralReference: cleaned,
-                address: candidate.address,
-                lat,
-                lng,
-              },
-              geometry: null,
-            },
-          ],
+          features:,
           geocoded: true,
         });
       }
@@ -396,16 +229,110 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     console.error("ArcGIS geocode error:", e);
   }
 
-  return jsonResponse({ features: [], error: "Parcel not found" });
+  return jsonResponse({ features:[], error: "Sklypas nerastas" });
 }
 
-// Convert LKS94 (EPSG:3346) coordinates to WGS84 (EPSG:4326)
-// Using simplified affine approximation for Lithuania
+// Robust stream parser to extract a single GeoJSON feature without crashing
+async function searchInFile(fileInfo: { folder: string; file: string }, searchPatterns: string[], supabaseUrl: string, serviceKey: string) {
+  const filePath = `${fileInfo.folder}/${fileInfo.file}`;
+  const storageUrl = `${supabaseUrl}/storage/v1/object/bucket-1/${filePath}`;
+
+  try {
+    const response = await fetch(storageUrl, {
+      headers: { "Authorization": `Bearer ${serviceKey}`, "apikey": serviceKey },
+    });
+
+    if (!response.ok || !response.body) return null;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      let matchIdx = -1;
+      for (const pattern of searchPatterns) {
+        const idx = buffer.indexOf(pattern);
+        if (idx !== -1) {
+          matchIdx = idx;
+          break;
+        }
+      }
+
+      if (matchIdx !== -1) {
+        // Find the start of the feature object
+        let startIdx = buffer.lastIndexOf('{ "type": "Feature"', matchIdx);
+        if (startIdx === -1) startIdx = buffer.lastIndexOf('{"type":"Feature"', matchIdx);
+        if (startIdx === -1) startIdx = buffer.lastIndexOf('{"type": "Feature"', matchIdx);
+
+        if (startIdx !== -1) {
+          // Safely parse forward to find the matching closing brace
+          let braceCount = 0;
+          let endIdx = -1;
+          let inString = false;
+          let escape = false;
+
+          for (let i = startIdx; i < buffer.length; i++) {
+            const char = buffer;
+            if (escape) { escape = false; continue; }
+            if (char === '\\') { escape = true; continue; }
+            if (char === '"') { inString = !inString; continue; }
+            
+            if (!inString) {
+              if (char === '{') braceCount++;
+              else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  endIdx = i + 1;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (endIdx !== -1) {
+            const featureStr = buffer.substring(startIdx, endIdx);
+            reader.cancel(); // Stop downloading, we found it
+            try {
+              return JSON.parse(featureStr);
+            } catch (e) {
+              console.error("Failed to parse extracted feature:", e);
+              return null;
+            }
+          } else {
+            // We found the start but not the end. The feature is cut off by the chunk.
+            // Continue reading chunks WITHOUT trimming the buffer yet.
+            continue;
+          }
+        }
+      }
+
+      // Safe buffer trimming to prevent memory leaks (keep max ~2MB)
+      if (buffer.length > 2000000) {
+        let lastStartIdx = buffer.lastIndexOf('{ "type": "Feature"');
+        if (lastStartIdx === -1) lastStartIdx = buffer.lastIndexOf('{"type":"Feature"');
+        if (lastStartIdx === -1) lastStartIdx = buffer.lastIndexOf('{"type": "Feature"');
+
+        // Only trim up to the LAST feature start to ensure we never cut a feature in half
+        if (lastStartIdx !== -1 && lastStartIdx > buffer.length - 1000000) {
+          buffer = buffer.substring(lastStartIdx);
+        } else {
+          buffer = buffer.substring(buffer.length - 1000000);
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`Error reading file ${filePath}:`, e);
+  }
+  return null;
+}
+
 function convertLKS94toWGS84(geometry: any): any {
-  const convertCoord = (x: number, y: number): [number, number] => {
-    // LKS94 to WGS84 approximate conversion for Lithuania
-    // Based on the TM projection parameters for EPSG:3346
-    // Central meridian: 24°, scale factor: 0.9998, false easting: 500000, false northing: 0
+  const convertCoord = (x: number, y: number): => {
     const a = 6378137.0;
     const f = 1 / 298.257223563;
     const e2 = 2 * f - f * f;
@@ -443,13 +370,12 @@ function convertLKS94toWGS84(geometry: any): any {
       + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * (e2 / (1 - e2)) + 24 * T1 * T1) * D * D * D * D * D / 120
     ) / cosPhi1;
 
-    return [lon * 180 / Math.PI, lat * 180 / Math.PI];
+    return;
   };
 
   const convertCoords = (coords: any, depth: number): any => {
     if (depth === 0) {
-      // Single coordinate pair [x, y]
-      return convertCoord(coords[0], coords[1]);
+      return convertCoord(coords, coords);
     }
     return coords.map((c: any) => convertCoords(c, depth - 1));
   };
@@ -458,18 +384,4 @@ function convertLKS94toWGS84(geometry: any): any {
   let depth = 0;
   if (geomType === "Point") depth = 0;
   else if (geomType === "LineString" || geomType === "MultiPoint") depth = 1;
-  else if (geomType === "Polygon" || geomType === "MultiLineString") depth = 2;
-  else if (geomType === "MultiPolygon") depth = 3;
-
-  return {
-    type: geomType,
-    coordinates: convertCoords(geometry.coordinates, depth),
-  };
-}
-
-function jsonResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+  else if (geomType === "Polygon" || geomType === "MultiLineString") depth =
