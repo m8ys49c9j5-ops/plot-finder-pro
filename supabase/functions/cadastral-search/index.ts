@@ -253,81 +253,76 @@ async function searchInFile(fileInfo: { folder: string; file: string }, searchPa
     
     let featureBuffer = "";
     let searchWindowOverlap = "";
-    const MAX_BUFFER = 8000000; // 8MB buffer to safely hold massive polygons
+    const MAX_BUFFER = 8000000; // 8MB buffer
+    let isExtracting = false;
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
+      featureBuffer += chunk;
       
-      // CPU OPTIMIZATION: Only search for the pattern in the new chunk + a tiny overlap
-      const searchWindow = searchWindowOverlap + chunk;
-      let matchFound = false;
-
-      for (const pattern of searchPatterns) {
-        if (searchWindow.indexOf(pattern) !== -1) {
-          matchFound = true;
-          break;
+      // 1. SEARCH MODE: Only look for the pattern if we haven't found it yet
+      if (!isExtracting) {
+        const searchWindow = searchWindowOverlap + chunk;
+        for (const pattern of searchPatterns) {
+          if (searchWindow.includes(pattern)) {
+            isExtracting = true;
+            break;
+          }
         }
+        // Keep last 100 chars for the next window to catch patterns split across chunks
+        searchWindowOverlap = chunk.length > 100 ? chunk.slice(-100) : (searchWindowOverlap + chunk).slice(-100);
       }
 
-      featureBuffer += chunk;
-      // Keep last 100 chars for the next window to catch patterns split across chunks
-      searchWindowOverlap = chunk.length > 100 ? chunk.slice(-100) : (searchWindowOverlap + chunk).slice(-100);
-
-      if (matchFound) {
-        // We found the pattern! Now find the start of the feature in our main buffer
+      // 2. EXTRACTION MODE: We found the pattern, now safely extract the JSON object
+      if (isExtracting) {
         let startIdx = featureBuffer.lastIndexOf('{ "type": "Feature"');
         if (startIdx === -1) startIdx = featureBuffer.lastIndexOf('{"type":"Feature"');
         if (startIdx === -1) startIdx = featureBuffer.lastIndexOf('{"type": "Feature"');
 
         if (startIdx !== -1) {
-          // EXTRACTION MODE: Read forward to find the matching closing brace
-          while (true) {
-            let braceCount = 0;
-            let endIdx = -1;
-            let inString = false;
-            let escape = false;
+          let braceCount = 0;
+          let endIdx = -1;
+          let inString = false;
+          let escape = false;
 
-            for (let i = startIdx; i < featureBuffer.length; i++) {
-              const char = featureBuffer;
-              if (escape) { escape = false; continue; }
-              if (char === '\\') { escape = true; continue; }
-              if (char === '"') { inString = !inString; continue; }
-              
-              if (!inString) {
-                if (char === '{') braceCount++;
-                else if (char === '}') {
-                  braceCount--;
-                  if (braceCount === 0) {
-                    endIdx = i + 1;
-                    break;
-                  }
+          // Saugus iteravimas naudojant charAt(i) apsaugo nuo begalinio ciklo
+          for (let i = startIdx; i < featureBuffer.length; i++) {
+            const char = featureBuffer.charAt(i);
+            if (escape) { escape = false; continue; }
+            if (char === '\\') { escape = true; continue; }
+            if (char === '"') { inString = !inString; continue; }
+            
+            if (!inString) {
+              if (char === '{') braceCount++;
+              else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  endIdx = i + 1;
+                  break;
                 }
               }
             }
-
-            if (endIdx !== -1) {
-              const featureStr = featureBuffer.substring(startIdx, endIdx);
-              reader.cancel(); // Stop downloading
-              try {
-                return JSON.parse(featureStr);
-              } catch (e) {
-                console.error("Failed to parse extracted feature:", e);
-                return null;
-              }
-            }
-
-            // If we reach here, the feature is cut off. Read the next chunk to complete it.
-            const { done: nextDone, value: nextValue } = await reader.read();
-            if (nextDone) break;
-            featureBuffer += decoder.decode(nextValue, { stream: true });
           }
+
+          if (endIdx !== -1) {
+            const featureStr = featureBuffer.substring(startIdx, endIdx);
+            reader.cancel(); // Stop downloading
+            try {
+              return JSON.parse(featureStr);
+            } catch (e) {
+              console.error("Failed to parse extracted feature:", e);
+              return null;
+            }
+          }
+          // Jei endIdx === -1, reiškiasi sklypo duomenys dar nebaigti siųsti.
+          // Ciklas tiesiog tęsis ir pridės kitą chunk'ą prie featureBuffer.
         }
       }
 
-      // Memory management: Trim buffer if it gets too large (only happens if pattern not found yet)
+      // Memory management: Trim buffer if it gets too large
       if (featureBuffer.length > MAX_BUFFER) {
         let lastStartIdx = featureBuffer.lastIndexOf('{ "type": "Feature"');
         if (lastStartIdx === -1) lastStartIdx = featureBuffer.lastIndexOf('{"type":"Feature"');
@@ -347,7 +342,7 @@ async function searchInFile(fileInfo: { folder: string; file: string }, searchPa
 }
 
 function convertLKS94toWGS84(geometry: any): any {
-  const convertCoord = (x: number, y: number): => {
+  const convertCoord = (x: number, y: number) => {
     const a = 6378137.0;
     const f = 1 / 298.257223563;
     const e2 = 2 * f - f * f;
