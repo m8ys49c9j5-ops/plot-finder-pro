@@ -78,12 +78,12 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     
     if (wfsRes.ok) {
       const wfsData = await wfsRes.json();
-      if (wfsData.features && wfsData.features.length > 0) {
-        const feature = wfsData.features;
-        const props = feature.properties || {};
-        props.nationalCadastralReference = props.nationalCadastralReference || cleaned;
-        return jsonResponse({ features: });
-      }
+        if (wfsData.features && wfsData.features.length > 0) {
+          const feature = wfsData.features[0];
+          const props = feature.properties || {};
+          props.nationalCadastralReference = props.nationalCadastralReference || cleaned;
+          return jsonResponse({ features: [feature] });
+        }
     }
   } catch (e) {
     console.error("WFS error:", e);
