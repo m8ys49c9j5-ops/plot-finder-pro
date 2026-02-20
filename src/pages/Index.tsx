@@ -29,7 +29,7 @@ const Index = () => {
   const handleSync = useCallback(async () => {
     setIsSyncing(true);
     let offset = 0;
-    const limit = 2000;
+    const limit = 1000;
     let totalSynced = 0;
 
     try {
