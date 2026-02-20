@@ -14,7 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      parcels: {
+        Row: {
+          feature: Json | null
+          id: string
+          kadastro_nr: string | null
+          sav_kodas: string | null
+          unikalus_nr: string | null
+        }
+        Insert: {
+          feature?: Json | null
+          id?: string
+          kadastro_nr?: string | null
+          sav_kodas?: string | null
+          unikalus_nr?: string | null
+        }
+        Update: {
+          feature?: Json | null
+          id?: string
+          kadastro_nr?: string | null
+          sav_kodas?: string | null
+          unikalus_nr?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
