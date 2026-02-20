@@ -16,7 +16,7 @@ serve(async (req) => {
     // Support pagination via query params: ?offset=0&limit=2000
     const url = new URL(req.url);
     const offset = parseInt(url.searchParams.get("offset") ?? "0");
-    const limit = parseInt(url.searchParams.get("limit") ?? "2000");
+    const limit = parseInt(url.searchParams.get("limit") ?? "1000");
 
     const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL");
     const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY");
