@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import SearchBar from "@/components/SearchBar";
 import MapView from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import { Layers, RefreshCw } from "lucide-react";
+import { Layers, RefreshCw, Database } from "lucide-react";
 
 
 const Index = () => {
@@ -11,6 +11,8 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
@@ -71,6 +73,61 @@ const Index = () => {
     }
   }, []);
 
+  const handleImportFromBucket = useCallback(async () => {
+    setIsImporting(true);
+    const files = [
+      "Vilnius/gis_pub_parcels_13.json",
+      "Moletai/gis_pub_parcels_62.json",
+    ];
+    let grandTotal = 0;
+
+    try {
+      for (const file of files) {
+        const folder = file.split("/")[0];
+        let offset = 0;
+        // Parse and upsert 5000 features per call to stay within edge fn timeout
+        const limit = 5000;
+
+        while (true) {
+          setImportStatus(`${folder}: ${grandTotal} importuota...`);
+
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-bucket-parcels?file=${encodeURIComponent(file)}&offset=${offset}&limit=${limit}`,
+            {
+              method: "GET",
+              headers: {
+                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+            }
+          );
+
+          const result = await res.json();
+          if (!res.ok || result.error) {
+            setImportStatus(`Klaida (${folder}): ${result.error}`);
+            setIsImporting(false);
+            return;
+          }
+
+          grandTotal += result.upserted ?? 0;
+          const pct = result.total
+            ? Math.round(((result.nextOffset ?? offset + limit) / result.total) * 100)
+            : "?";
+          setImportStatus(`${folder}: ${pct}% (${grandTotal} iš viso)`);
+
+          if (result.done) break;
+          offset = result.nextOffset;
+        }
+      }
+
+      setImportStatus(`✓ Importuota ${grandTotal} sklypų į DB`);
+    } catch (e: any) {
+      setImportStatus(`Klaida: ${e.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  }, []);
+
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
       {/* Full-screen map */}
@@ -110,6 +167,14 @@ const Index = () => {
         >
           <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
           {syncStatus ?? "Sinchronizuoti DB"}
+        </button>
+        <button
+          onClick={handleImportFromBucket}
+          disabled={isImporting}
+          className="glass-panel rounded-lg px-2 py-1 text-[10px] text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-60"
+        >
+          <Database className={`h-3 w-3 ${isImporting ? "animate-pulse" : ""}`} />
+          {importStatus ?? "Importuoti iš saugyklos"}
         </button>
       </div>
 
