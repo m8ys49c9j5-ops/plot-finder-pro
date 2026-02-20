@@ -2,12 +2,15 @@ import { useState, useCallback } from "react";
 import SearchBar from "@/components/SearchBar";
 import MapView from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import { Layers } from "lucide-react";
+import { Layers, RefreshCw } from "lucide-react";
+
 
 const Index = () => {
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
@@ -21,6 +24,51 @@ const Index = () => {
 
   const handleParcelSelect = useCallback((parcel: ParcelData) => {
     setSelectedParcel(parcel);
+  }, []);
+
+  const handleSync = useCallback(async () => {
+    setIsSyncing(true);
+    let offset = 0;
+    const limit = 2000;
+    let totalSynced = 0;
+
+    try {
+      while (true) {
+        setSyncStatus(`Sinchronizuojama... (${totalSynced} įrašų)`);
+
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-parcels?offset=${offset}&limit=${limit}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: "{}",
+          }
+        );
+
+        const result = await res.json();
+        if (!res.ok || result.error) {
+          setSyncStatus(`Klaida: ${result.error}`);
+          break;
+        }
+
+        totalSynced += result.synced ?? 0;
+
+        if (result.done) {
+          setSyncStatus(`✓ Sinchronizuota ${totalSynced} įrašų`);
+          break;
+        }
+
+        offset = result.nextOffset;
+      }
+    } catch (e: any) {
+      setSyncStatus(`Klaida: ${e.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
   }, []);
 
   return (
@@ -50,11 +98,19 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Attribution corner */}
-      <div className="absolute bottom-2 left-2 z-[800]">
+      {/* Attribution + Sync button corner */}
+      <div className="absolute bottom-2 left-2 z-[800] flex flex-col gap-1">
         <div className="glass-panel rounded-lg px-2 py-1 text-[10px] text-muted-foreground">
           Duomenys: Geoportal.lt · RC Kadastras
         </div>
+        <button
+          onClick={handleSync}
+          disabled={isSyncing}
+          className="glass-panel rounded-lg px-2 py-1 text-[10px] text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-60"
+        >
+          <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
+          {syncStatus ?? "Sinchronizuoti DB"}
+        </button>
       </div>
 
       {/* Parcel sidebar */}
