@@ -36,7 +36,6 @@ serve(async (req) => {
 
 async function searchByCadastralNumber(cadastralNumber: string) {
   const cleaned = cadastralNumber.trim();
-  // Python's to_digits() equivalent: keep only digit characters
   const digitsOnly = cleaned.replace(/\D/g, "");
 
   console.log(`Searching for: "${cleaned}" | digits: "${digitsOnly}"`);
@@ -46,7 +45,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
-  // --- 1. Exact match by kadastro_nr or unikalus_nr (digits) ---
+  // --- 1. Exact match by kadastro_nr or unikalus_nr ---
   const { data: exactData, error: exactError } = await supabase
     .from("parcels")
     .select("feature, kadastro_nr, unikalus_nr")
@@ -60,21 +59,17 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     return buildFeatureResponse(exactData[0].feature, cleaned);
   }
 
-  // --- 2. Fuzzy digit-only match via feature JSONB ---
-  // Match Python logic: compare digits of kadastro_nr / unikalus_nr in stored feature
+  // --- 2. Fuzzy digit-only match ---
   if (digitsOnly.length >= 6) {
     const { data: jsonbData, error: jsonbError } = await supabase
       .from("parcels")
       .select("feature, kadastro_nr, unikalus_nr")
-      .or(
-        `kadastro_nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`
-      )
+      .or(`kadastro_nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`)
       .limit(5);
 
     if (jsonbError) console.error("DB fuzzy match error:", jsonbError);
 
     if (jsonbData && jsonbData.length > 0) {
-      // Replicate Python's to_digits comparison precisely
       const match = jsonbData.find((row) => {
         const kadDigits = (row.kadastro_nr ?? "").replace(/\D/g, "");
         const uniDigits = (row.unikalus_nr ?? "").replace(/\D/g, "");
@@ -88,19 +83,18 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     }
   }
 
-  // --- 3. skl_r polygon field match (as in Python: user_input in raw_polygon) ---
+  // --- 3. Partial kadastro_nr match ---
   if (cleaned.length >= 4) {
-    const { data: sklData, error: sklError } = await supabase
+    const { data: partialData, error: partialError } = await supabase
       .from("parcels")
       .select("feature")
-      .filter("feature->properties->skl_r", "ilike", `%${cleaned}%`)
+      .like("kadastro_nr", `%${cleaned}%`)
       .limit(1);
 
-    if (sklError) console.error("DB skl_r match error:", sklError);
-
-    if (sklData && sklData.length > 0) {
-      console.log("Found via skl_r field match");
-      return buildFeatureResponse(sklData[0].feature, cleaned);
+    if (partialError) console.error("DB partial match error:", partialError.message);
+    else if (partialData && partialData.length > 0) {
+      console.log("Found via partial kadastro_nr match");
+      return buildFeatureResponse(partialData[0].feature, cleaned);
     }
   }
 
@@ -116,7 +110,6 @@ async function searchByCadastralNumber(cadastralNumber: string) {
         const feature = wfsData.features[0];
         const props = feature.properties || {};
         props.nationalCadastralReference = props.nationalCadastralReference || cleaned;
-        // WFS already in WGS84 (EPSG:4326 requested)
         return jsonResponse({ features: [feature] });
       }
     }
@@ -134,7 +127,6 @@ function buildFeatureResponse(feature: any, searchInput: string) {
 
   const props = feature.properties || {};
 
-  // Replicate Python centroid calculation from LKS94 geometry
   if (feature.geometry?.coordinates) {
     const centroidLKS94 = computeCentroid(feature.geometry);
     if (centroidLKS94) {
@@ -146,8 +138,6 @@ function buildFeatureResponse(feature: any, searchInput: string) {
       props.google_maps_link = `https://maps.google.com/?q=${lat},${lon}`;
       console.log(`Centroid WGS84: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
     }
-
-    // Convert geometry to WGS84 for Leaflet
     feature.geometry = convertGeometryLKS94toWGS84(feature.geometry);
   }
 
@@ -157,12 +147,8 @@ function buildFeatureResponse(feature: any, searchInput: string) {
   return jsonResponse({ features: [feature] });
 }
 
-// ---------- Coordinate conversion (LKS94 / EPSG:3346 → WGS84) ----------
+// ---------- Coordinate conversion (LKS94 → WGS84) ----------
 
-/**
- * Convert a single LKS94 (x=Easting, y=Northing) point to [lon, lat] WGS84.
- * Mirrors Python's pyproj Transformer.from_crs("EPSG:3346","EPSG:4326", always_xy=True).transform(x,y)
- */
 function lks94ToWGS84(x: number, y: number): [number, number] {
   const a = 6378137.0;
   const f = 1 / 298.257223563;
@@ -215,9 +201,7 @@ function convertGeometryLKS94toWGS84(geometry: any): any {
     const [lon, lat] = lks94ToWGS84(coord[0], coord[1]);
     return [lon, lat];
   };
-
   const convertRing = (ring: number[][]): number[][] => ring.map(convertPair);
-
   switch (geometry.type) {
     case "Point":
       return { type: "Point", coordinates: convertPair(geometry.coordinates) };
@@ -228,21 +212,15 @@ function convertGeometryLKS94toWGS84(geometry: any): any {
     case "MultiPolygon":
       return {
         type: "MultiPolygon",
-        coordinates: geometry.coordinates.map((poly: number[][][]) =>
-          poly.map(convertRing)
-        ),
+        coordinates: geometry.coordinates.map((poly: number[][][]) => poly.map(convertRing)),
       };
     default:
       return geometry;
   }
 }
 
-// ---------- Centroid (mirrors Python shapely geom.centroid) ----------
+// ---------- Centroid ----------
 
-/**
- * Approximate centroid of a Polygon or MultiPolygon in LKS94 coordinates.
- * Uses simple ring centroid (average of vertices, weighted by ring area for accuracy).
- */
 function computeCentroid(geometry: any): [number, number] | null {
   const ringCentroid = (ring: number[][]): { cx: number; cy: number; area: number } => {
     let area = 0, cx = 0, cy = 0;
@@ -256,27 +234,21 @@ function computeCentroid(geometry: any): [number, number] | null {
     }
     area /= 2;
     if (Math.abs(area) < 1e-10) {
-      // Degenerate ring: use simple average
-      const avgX = ring.reduce((s, c) => s + c[0], 0) / ring.length;
-      const avgY = ring.reduce((s, c) => s + c[1], 0) / ring.length;
-      return { cx: avgX, cy: avgY, area: 0 };
+      return {
+        cx: ring.reduce((s, c) => s + c[0], 0) / ring.length,
+        cy: ring.reduce((s, c) => s + c[1], 0) / ring.length,
+        area: 0,
+      };
     }
-    cx /= 6 * area;
-    cy /= 6 * area;
-    return { cx, cy, area: Math.abs(area) };
+    return { cx: cx / (6 * area), cy: cy / (6 * area), area: Math.abs(area) };
   };
 
   let rings: number[][][] = [];
-
-  if (geometry.type === "Polygon") {
-    rings = [geometry.coordinates[0]]; // outer ring only
-  } else if (geometry.type === "MultiPolygon") {
+  if (geometry.type === "Polygon") rings = [geometry.coordinates[0]];
+  else if (geometry.type === "MultiPolygon")
     rings = geometry.coordinates.map((poly: number[][][]) => poly[0]);
-  } else {
-    return null;
-  }
+  else return null;
 
-  // Weighted average of ring centroids by area
   let totalArea = 0, sumX = 0, sumY = 0;
   for (const ring of rings) {
     const { cx, cy, area } = ringCentroid(ring);
@@ -284,12 +256,11 @@ function computeCentroid(geometry: any): [number, number] | null {
     sumY += cy * area;
     totalArea += area;
   }
-
   if (totalArea === 0) return null;
   return [sumX / totalArea, sumY / totalArea];
 }
 
-// ---------- WMS identify by click ----------
+// ---------- WMS identify ----------
 
 async function identifyByCoords(lat: number, lng: number, zoom: number) {
   const size = 256;
