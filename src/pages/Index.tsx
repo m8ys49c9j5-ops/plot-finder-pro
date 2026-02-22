@@ -29,15 +29,14 @@ const Index = () => {
   const handleSync = useCallback(async () => {
     setIsSyncing(true);
     let offset = 0;
-    const limit = 1000;
     let totalSynced = 0;
 
     try {
       while (true) {
-        setSyncStatus(`Sinchronizuojama... (${totalSynced} įrašų)`);
+        setSyncStatus(`Sinchronizuojama... (${totalSynced} įrašų, nuo ${offset})`);
 
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-parcels?offset=${offset}&limit=${limit}`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-parcels?offset=${offset}`,
           {
             method: "POST",
             headers: {
