@@ -7,16 +7,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const MAX_RUNTIME_MS = 25000; // stay well under edge function timeout
+const FETCH_LIMIT = 5000;     // rows per external fetch
+const UPSERT_BATCH = 1000;    // rows per upsert call
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Support pagination via query params: ?offset=0&limit=2000
     const url = new URL(req.url);
-    const offset = parseInt(url.searchParams.get("offset") ?? "0");
-    const limit = parseInt(url.searchParams.get("limit") ?? "1000");
+    let offset = parseInt(url.searchParams.get("offset") ?? "0");
 
     const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL");
     const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY");
@@ -30,65 +32,71 @@ serve(async (req) => {
       );
     }
 
-    // Clients
     const externalClient = createClient(externalUrl, externalKey);
     const localClient = createClient(localUrl!, localKey!);
 
-    // Fetch a page of parcels from external project
-    console.log(`Fetching rows ${offset} to ${offset + limit - 1} from external...`);
-    
-    const { data, error } = await externalClient
-      .from("parcels")
-      .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
-      .range(offset, offset + limit - 1);
+    const startTime = Date.now();
+    let totalSynced = 0;
+    let done = false;
 
-    if (error) {
-      return new Response(
-        JSON.stringify({ error: `External fetch error: ${error.message}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Process multiple batches within a single invocation
+    while (Date.now() - startTime < MAX_RUNTIME_MS) {
+      console.log(`Fetching rows ${offset} to ${offset + FETCH_LIMIT - 1}...`);
 
-    if (!data || data.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, synced: 0, done: true, message: "No more rows to sync" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`Fetched ${data.length} rows, upserting...`);
-
-    // Upsert into local project in batches of 500
-    const batchSize = 500;
-    let upserted = 0;
-
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-      const { error: upsertError } = await localClient
+      const { data, error } = await externalClient
         .from("parcels")
-        .upsert(batch, { onConflict: "id" });
+        .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
+        .range(offset, offset + FETCH_LIMIT - 1);
 
-      if (upsertError) {
+      if (error) {
         return new Response(
-          JSON.stringify({ error: `Upsert error: ${upsertError.message}`, synced: upserted }),
+          JSON.stringify({ error: `External fetch error: ${error.message}`, synced: totalSynced, nextOffset: offset }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      upserted += batch.length;
+
+      if (!data || data.length === 0) {
+        done = true;
+        break;
+      }
+
+      // Upsert in batches
+      for (let i = 0; i < data.length; i += UPSERT_BATCH) {
+        const batch = data.slice(i, i + UPSERT_BATCH);
+        const { error: upsertError } = await localClient
+          .from("parcels")
+          .upsert(batch, { onConflict: "id" });
+
+        if (upsertError) {
+          return new Response(
+            JSON.stringify({ error: `Upsert error: ${upsertError.message}`, synced: totalSynced, nextOffset: offset }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        totalSynced += batch.length;
+      }
+
+      offset += data.length;
+
+      if (data.length < FETCH_LIMIT) {
+        done = true;
+        break;
+      }
+
+      console.log(`Synced ${totalSynced} total, elapsed ${Date.now() - startTime}ms`);
     }
 
-    const done = data.length < limit;
-    const nextOffset = offset + data.length;
-
-    console.log(`Upserted ${upserted} rows. Next offset: ${nextOffset}. Done: ${done}`);
+    console.log(`Done: ${done}, synced ${totalSynced}, next offset: ${offset}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        synced: upserted, 
-        done, 
-        nextOffset,
-        message: `Synced rows ${offset}–${nextOffset - 1}` 
+      JSON.stringify({
+        success: true,
+        synced: totalSynced,
+        done,
+        nextOffset: offset,
+        message: done
+          ? `✓ Visa sinchronizacija baigta (${totalSynced} šioje iteracijoje)`
+          : `Sinchronizuota ${totalSynced} įrašų, tęsiama nuo ${offset}`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
