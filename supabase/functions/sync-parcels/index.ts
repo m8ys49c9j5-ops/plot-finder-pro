@@ -7,9 +7,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const MAX_RUNTIME_MS = 25000; // stay well under edge function timeout
-const FETCH_LIMIT = 1000;     // PostgREST max per query
-const UPSERT_BATCH = 500;     // rows per upsert call
+const MAX_RUNTIME_MS = 25000;
+const FETCH_LIMIT = 1000;
+const UPSERT_BATCH = 500;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -18,7 +18,8 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    let offset = parseInt(url.searchParams.get("offset") ?? "0");
+    // Use cursor-based pagination: last_id is the last processed id
+    let lastId = url.searchParams.get("last_id") ?? "";
 
     const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL");
     const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY");
@@ -39,18 +40,24 @@ serve(async (req) => {
     let totalSynced = 0;
     let done = false;
 
-    // Process multiple batches within a single invocation
     while (Date.now() - startTime < MAX_RUNTIME_MS) {
-      console.log(`Fetching rows ${offset} to ${offset + FETCH_LIMIT - 1}...`);
+      console.log(`Fetching batch after id: ${lastId || "(start)"}...`);
 
-      const { data, error } = await externalClient
+      let query = externalClient
         .from("parcels")
         .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
-        .range(offset, offset + FETCH_LIMIT - 1);
+        .order("id", { ascending: true })
+        .limit(FETCH_LIMIT);
+
+      if (lastId) {
+        query = query.gt("id", lastId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         return new Response(
-          JSON.stringify({ error: `External fetch error: ${error.message}`, synced: totalSynced, nextOffset: offset }),
+          JSON.stringify({ error: `External fetch error: ${error.message}`, synced: totalSynced, lastId }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -69,14 +76,14 @@ serve(async (req) => {
 
         if (upsertError) {
           return new Response(
-            JSON.stringify({ error: `Upsert error: ${upsertError.message}`, synced: totalSynced, nextOffset: offset }),
+            JSON.stringify({ error: `Upsert error: ${upsertError.message}`, synced: totalSynced, lastId }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
         totalSynced += batch.length;
       }
 
-      offset += data.length;
+      lastId = data[data.length - 1].id;
 
       if (data.length < FETCH_LIMIT) {
         done = true;
@@ -86,17 +93,17 @@ serve(async (req) => {
       console.log(`Synced ${totalSynced} total, elapsed ${Date.now() - startTime}ms`);
     }
 
-    console.log(`Done: ${done}, synced ${totalSynced}, next offset: ${offset}`);
+    console.log(`Done: ${done}, synced ${totalSynced}, lastId: ${lastId}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         synced: totalSynced,
         done,
-        nextOffset: offset,
+        lastId,
         message: done
           ? `✓ Visa sinchronizacija baigta (${totalSynced} šioje iteracijoje)`
-          : `Sinchronizuota ${totalSynced} įrašų, tęsiama nuo ${offset}`,
+          : `Sinchronizuota ${totalSynced} įrašų, tęsiama...`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

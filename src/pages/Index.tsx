@@ -28,15 +28,16 @@ const Index = () => {
 
   const handleSync = useCallback(async () => {
     setIsSyncing(true);
-    let offset = 0;
+    let lastId = "";
     let totalSynced = 0;
 
     try {
       while (true) {
-        setSyncStatus(`Sinchronizuojama... (${totalSynced} įrašų, nuo ${offset})`);
+        setSyncStatus(`Sinchronizuojama... (${totalSynced} įrašų)`);
 
+        const params = lastId ? `?last_id=${lastId}` : "";
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-parcels?offset=${offset}`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-parcels${params}`,
           {
             method: "POST",
             headers: {
@@ -61,7 +62,7 @@ const Index = () => {
           break;
         }
 
-        offset = result.nextOffset;
+        lastId = result.lastId;
       }
     } catch (e: any) {
       setSyncStatus(`Klaida: ${e.message}`);
