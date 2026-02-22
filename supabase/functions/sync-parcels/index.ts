@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const MAX_RUNTIME_MS = 25000; // stay well under edge function timeout
-const FETCH_LIMIT = 5000;     // rows per external fetch
-const UPSERT_BATCH = 1000;    // rows per upsert call
+const FETCH_LIMIT = 1000;     // PostgREST max per query
+const UPSERT_BATCH = 500;     // rows per upsert call
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
