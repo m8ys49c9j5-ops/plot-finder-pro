@@ -10,6 +10,7 @@ export interface ParcelData {
   lat?: number;
   lng?: number;
   coordinates?: number[][][] | number[][][][]; // GeoJSON polygon/multipolygon coords
+  formavimoData?: string;
 }
 
 interface ParcelSidebarProps {
@@ -210,6 +211,13 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                   icon={<Target className="h-4 w-4" />}
                   label="Koordinatės"
                   value={`${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`}
+                />
+              )}
+              {parcel.formavimoData && (
+                <InfoRow
+                  icon={<FileText className="h-4 w-4" />}
+                  label="Formavimo data"
+                  value={parcel.formavimoData}
                 />
               )}
             </div>
