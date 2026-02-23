@@ -101,6 +101,7 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
           lat: latlng.lat,
           lng: latlng.lng,
           coordinates: feature.geometry?.coordinates,
+          formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
 
         if (feature.geometry) {
@@ -148,6 +149,7 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
             ? `${props.sav_pavadinimas || ""}, ${props.seniunijos_pavad}`
             : props.label,
           coordinates: feature.geometry?.coordinates,
+          formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
 
         if (feature.geometry && mapRef.current) {
