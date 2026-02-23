@@ -17,7 +17,7 @@ interface MapViewProps {
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
-const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
+
 const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
 
 const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete }, ref) => {
@@ -27,7 +27,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const [isLoading, setIsLoading] = useState(false);
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
-  const orthoTileRef = useRef<L.TileLayer | null>(null);
+  const orthoLayerRef = useRef<L.TileLayer.WMS | null>(null);
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
@@ -35,18 +35,23 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       if (type === "ortho") {
         if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
         if (baseTileRef.current) mapRef.current.removeLayer(baseTileRef.current);
-        if (!orthoTileRef.current) {
-          orthoTileRef.current = L.tileLayer(`${ORTHO_BASE}/tile/{z}/{y}/{x}`, {
-            maxZoom: 19,
-            attribution: "Ortofoto © NŽT",
-          });
+        if (!orthoLayerRef.current) {
+          orthoLayerRef.current = L.tileLayer.wms(
+            "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer/WMSServer",
+            {
+              layers: "7",
+              format: "image/png",
+              transparent: true,
+              maxZoom: 19,
+              attribution: "Ortofoto © NŽT",
+            }
+          );
         }
-        orthoTileRef.current.addTo(mapRef.current).bringToBack();
+        orthoLayerRef.current.addTo(mapRef.current).bringToBack();
       } else {
-        if (orthoTileRef.current) mapRef.current.removeLayer(orthoTileRef.current);
+        if (orthoLayerRef.current) mapRef.current.removeLayer(orthoLayerRef.current);
         if (baseTileRef.current) baseTileRef.current.addTo(mapRef.current).bringToBack();
         if (geoportalTileRef.current) geoportalTileRef.current.addTo(mapRef.current);
-        // reorder: base -> geoportal -> kadastras
         if (baseTileRef.current) baseTileRef.current.bringToBack();
       }
     },
@@ -78,6 +83,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       maxZoom: 19,
       opacity: 0.6,
       attribution: "Kadastro žemėlapis",
+      crossOrigin: false,
     }).addTo(map);
 
     map.on("click", async (e: L.LeafletMouseEvent) => {
