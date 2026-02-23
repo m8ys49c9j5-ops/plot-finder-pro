@@ -263,7 +263,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                 <InfoRow
                   icon={<FileText className="h-4 w-4" />}
                   label="Paskirtis"
-                  value={`${parcel.purpose} – ${PURPOSE_MAP[parcel.purpose] || "Nežinoma"}`}
+                  value={`${PURPOSE_MAP[parcel.purpose] || "Nežinoma"}`}
                 />
               )}
               {parcel.lat &&
