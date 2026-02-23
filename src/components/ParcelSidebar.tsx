@@ -289,7 +289,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                 <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
               )}
               {parcel.formavimoData && (
-                <InfoRow icon={<FileText className="h-4 w-4" />} label="Formavimo data" value={parcel.formavimoData} />
+                <InfoRow icon={<FileText className="h-4 w-4" />} label="Duomenų data" value={parcel.formavimoData} />
               )}
             </div>
           </div>
