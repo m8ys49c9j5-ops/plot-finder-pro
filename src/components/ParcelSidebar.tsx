@@ -49,31 +49,19 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
             </div>
 
             <div className="space-y-3">
-              <InfoRow
-                icon={<Target className="h-4 w-4" />}
-                label="Kadastrinis Nr."
-                value={parcel.cadastralNumber}
-              />
+              <InfoRow icon={<Target className="h-4 w-4" />} label="Kadastrinis Nr." value={parcel.cadastralNumber} />
               {parcel.area && (
                 <InfoRow
                   icon={<Ruler className="h-4 w-4" />}
-                  label="Plotas"
+                  label="Juridinis sklypo plotas"
                   value={`${parcel.area.toLocaleString("lt-LT")} m²`}
                 />
               )}
               {parcel.purpose && (
-                <InfoRow
-                  icon={<FileText className="h-4 w-4" />}
-                  label="Paskirtis"
-                  value={parcel.purpose}
-                />
+                <InfoRow icon={<FileText className="h-4 w-4" />} label="Paskirtis" value={parcel.purpose} />
               )}
               {parcel.address && (
-                <InfoRow
-                  icon={<MapPin className="h-4 w-4" />}
-                  label="Adresas"
-                  value={parcel.address}
-                />
+                <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
               )}
               {parcel.lat && parcel.lng && (
                 <InfoRow
@@ -99,7 +87,8 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
 
             <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Gaukite aktualią ir išsamią sklypo informaciją: savininko apribojimai, specialiosios naudojimo sąlygos, naujausi pokyčiai ir kt.
+                Gaukite aktualią ir išsamią sklypo informaciją: savininko apribojimai, specialiosios naudojimo sąlygos,
+                naujausi pokyčiai ir kt.
               </p>
 
               <ul className="space-y-2">
@@ -121,9 +110,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                 Atrakinti už 2,99 €
               </button>
 
-              <p className="text-xs text-muted-foreground text-center">
-                Saugus mokėjimas per Stripe
-              </p>
+              <p className="text-xs text-muted-foreground text-center">Saugus mokėjimas per Stripe</p>
             </div>
           </div>
         </div>
@@ -132,15 +119,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
   );
 };
 
-const InfoRow = ({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) => (
+const InfoRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
   <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
     <div className="text-primary mt-0.5">{icon}</div>
     <div className="min-w-0">
