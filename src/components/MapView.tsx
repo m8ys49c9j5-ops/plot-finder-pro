@@ -20,6 +20,31 @@ const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapSe
 
 const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
 
+const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+// Custom TileLayer that uses ArcGIS MapServer export endpoint via proxy
+const OrthoTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: any) {
+    const tileSize = 256;
+    const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+    const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+    const map = (this as any)._map;
+    const nw = map.unproject(nwPoint, coords.z);
+    const se = map.unproject(sePoint, coords.z);
+
+    // Convert to Web Mercator (EPSG:3857)
+    const nwMerc = L.CRS.EPSG3857.project(nw);
+    const seMerc = L.CRS.EPSG3857.project(se);
+
+    const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
+    const exportUrl = `${ORTHO_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=jpg&f=image`;
+
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
+  },
+});
+
 const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete }, ref) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,7 +52,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const [isLoading, setIsLoading] = useState(false);
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
-  const orthoLayerRef = useRef<L.TileLayer.WMS | null>(null);
+  const orthoLayerRef = useRef<L.TileLayer | null>(null);
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
@@ -36,16 +61,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
         if (baseTileRef.current) mapRef.current.removeLayer(baseTileRef.current);
         if (!orthoLayerRef.current) {
-          orthoLayerRef.current = L.tileLayer.wms(
-            "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer",
-            {
-              layers: '0',
-              format: 'image/jpeg',
-              transparent: false,
-              maxZoom: 19,
-              attribution: "Ortofoto © NŽT",
-            }
-          );
+          orthoLayerRef.current = new (OrthoTileLayer as any)("", {
+            maxZoom: 19,
+            attribution: "Ortofoto © NŽT",
+          });
         }
         orthoLayerRef.current.addTo(mapRef.current).bringToBack();
       } else {
@@ -79,10 +98,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
     }).addTo(map);
 
-    L.tileLayer.wms(`${KADASTRAS_BASE}`, {
-      layers: '0',
-      format: 'image/png',
-      transparent: true,
+    L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
       opacity: 0.6,
       attribution: "Kadastro žemėlapis",
