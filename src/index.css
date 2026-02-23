@@ -133,3 +133,27 @@
     background-clip: text;
   }
 }
+
+.leaflet-control-zoom {
+  @apply !border-none !shadow-lg;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  @apply !bg-[hsl(var(--glass))] !text-foreground !border-[hsl(var(--glass-border))] !rounded-xl !mb-1 !flex !items-center !justify-center;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  width: 40px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+}
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  @apply !bg-muted/60;
+}
+
+.leaflet-top.leaflet-left .leaflet-control-zoom {
+  margin-top: 72px !important;
+  margin-left: 16px !important;
+}

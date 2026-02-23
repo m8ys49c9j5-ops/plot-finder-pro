@@ -85,7 +85,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       zoomControl: false,
     });
 
-    L.control.zoom({ position: "bottomright" }).addTo(map);
+    L.control.zoom({ position: "topleft" }).addTo(map);
 
     baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
