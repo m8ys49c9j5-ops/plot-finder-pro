@@ -82,7 +82,6 @@ export interface ParcelData {
 interface ParcelSidebarProps {
   parcel: ParcelData | null;
   onClose: () => void;
-  searchInput?: string;
 }
 
 // Land use purpose code to Lithuanian description mapping
@@ -201,7 +200,7 @@ const computeGeodesicArea = (coords: number[][][]): number => {
   return totalArea * R * R;
 };
 
-const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
+const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
   const calculatedArea = useMemo(() => {
     if (!parcel?.coordinates) return null;
     // Handle both Polygon and MultiPolygon
@@ -222,7 +221,7 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sklypas</p>
             <h2 className="text-lg font-display font-bold text-foreground mt-1">
-              {searchInput || parcel.unikalusNr || parcel.cadastralNumber}
+              {parcel.unikalusNr || parcel.cadastralNumber}
             </h2>
           </div>
           <button
@@ -245,15 +244,12 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
             </div>
 
             <div className="space-y-3">
-              {parcel.unikalusNr && (
-                <InfoRow icon={<FileText className="h-4 w-4" />} label="Unikalus Nr." value={parcel.unikalusNr} />
-              )}
               <InfoRow icon={<Target className="h-4 w-4" />} label="Kadastrinis Nr." value={parcel.cadastralNumber} />
               {parcel.area && (
                 <InfoRow
                   icon={<Ruler className="h-4 w-4" />}
                   label="Juridinis sklypo plotas"
-                  value={`${parcel.area.toLocaleString("lt-LT")} m²`}
+                  value={`${parcel.area.toLocaleString("lt-LT")} ha.`}
                 />
               )}
               {calculatedArea !== null && (
