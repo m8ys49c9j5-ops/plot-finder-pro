@@ -3,13 +3,44 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// --- CONFIGURATION ---
 const MAX_RUNTIME_MS = 25000;
-const FETCH_LIMIT = 1000;
-const UPSERT_BATCH = 500;
+const TIME_BUFFER_MS = 4000; // Leave a 4-second buffer to prevent hard timeouts mid-loop
+const FETCH_LIMIT = 3000; // Increased to fetch more rows per loop
+const UPSERT_BATCH = 1000; // Process larger batch chunks concurrently
+const MAX_RETRIES = 3; // Added retries for high-volume resilience
+
+// --- WARM START: Initialize clients globally ---
+// Moving this outside the handler reuses network connections across warm function invocations
+const externalUrl = Deno.env.get("EXTERNALSUPABASEURL") || "";
+const externalKey = Deno.env.get("EXTERNALSERVICEROLEKEY") || "";
+const localUrl = Deno.env.get("SUPABASEURL") || "";
+const localKey = Deno.env.get("SUPABASESERVICEROLEKEY") || "";
+
+let externalClient: any;
+let localClient: any;
+
+if (externalUrl && externalKey && localUrl && localKey) {
+  externalClient = createClient(externalUrl, externalKey);
+  localClient = createClient(localUrl, localKey);
+}
+
+// --- RESILIENCE: Retry helper for database operations ---
+async function withRetry(operation: () => Promise<any>, retries = MAX_RETRIES) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const { data, error } = await operation();
+    if (!error) return { data, error };
+
+    console.warn(`Attempt ${attempt} failed: ${error.message}`);
+    if (attempt === retries) return { data: null, error };
+
+    // Exponential backoff wait (500ms, 1000ms...) before retrying
+    await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -17,35 +48,28 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    // Use cursor-based pagination: last_id is the last processed id
-    let lastId = url.searchParams.get("last_id") ?? "";
-
-    const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL");
-    const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY");
-    const localUrl = Deno.env.get("SUPABASE_URL");
-    const localKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!externalUrl || !externalKey) {
-      return new Response(
-        JSON.stringify({ error: "External Supabase credentials not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!externalClient || !localClient) {
+      return new Response(JSON.stringify({ error: "Supabase credentials not fully configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const externalClient = createClient(externalUrl, externalKey);
-    const localClient = createClient(localUrl!, localKey!);
+    const url = new URL(req.url);
+    // Use cursor-based pagination: lastid is the last processed id
+    let lastId = url.searchParams.get("lastid") ?? "";
 
     const startTime = Date.now();
     let totalSynced = 0;
     let done = false;
 
-    while (Date.now() - startTime < MAX_RUNTIME_MS) {
+    // Use a time buffer so we don't start a long database operation with only 1s left
+    while (Date.now() - startTime < MAX_RUNTIME_MS - TIME_BUFFER_MS) {
       console.log(`Fetching batch after id: ${lastId || "(start)"}...`);
 
       let query = externalClient
         .from("parcels")
-        .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
+        .select("id, kadastronr, unikalusnr, savkodas, feature")
         .order("id", { ascending: true })
         .limit(FETCH_LIMIT);
 
@@ -53,12 +77,12 @@ serve(async (req) => {
         query = query.gt("id", lastId);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await withRetry(() => query);
 
       if (error) {
         return new Response(
           JSON.stringify({ error: `External fetch error: ${error.message}`, synced: totalSynced, lastId }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
@@ -67,22 +91,28 @@ serve(async (req) => {
         break;
       }
 
-      // Upsert in batches
+      // --- CONCURRENCY: Upsert in parallel chunks ---
+      const upsertPromises = [];
       for (let i = 0; i < data.length; i += UPSERT_BATCH) {
         const batch = data.slice(i, i + UPSERT_BATCH);
-        const { error: upsertError } = await localClient
-          .from("parcels")
-          .upsert(batch, { onConflict: "id" });
 
-        if (upsertError) {
-          return new Response(
-            JSON.stringify({ error: `Upsert error: ${upsertError.message}`, synced: totalSynced, lastId }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        totalSynced += batch.length;
+        // Push the pending database requests into an array instead of awaiting them one-by-one
+        upsertPromises.push(withRetry(() => localClient.from("parcels").upsert(batch, { onConflict: "id" })));
       }
 
+      // Execute all batched upserts simultaneously
+      const results = await Promise.all(upsertPromises);
+
+      // Check if any of the concurrent chunks failed
+      const failedResult = results.find((res: any) => res.error);
+      if (failedResult) {
+        return new Response(
+          JSON.stringify({ error: `Upsert error: ${failedResult.error.message}`, synced: totalSynced, lastId }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      totalSynced += data.length;
       lastId = data[data.length - 1].id;
 
       if (data.length < FETCH_LIMIT) {
@@ -105,13 +135,13 @@ serve(async (req) => {
           ? `✓ Visa sinchronizacija baigta (${totalSynced} šioje iteracijoje)`
           : `Sinchronizuota ${totalSynced} įrašų, tęsiama...`,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
