@@ -96,8 +96,14 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
             "Nežinomas",
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.areaValue || props.PLOTAS_J,
-          purpose: props.currentUse || props.PASKIRTIS,
-          address: props.label,
+          purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
+          address:
+            props.label ||
+            props.adresas ||
+            props.ADRESAS ||
+            (props.sav_pavadinimas || props.seniunijos_pavad
+              ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
+              : undefined),
           lat: latlng.lat,
           lng: latlng.lng,
           coordinates: feature.geometry?.coordinates,
@@ -145,9 +151,13 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
-          address: props.seniunijos_pavad
-            ? `${props.sav_pavadinimas || ""}, ${props.seniunijos_pavad}`
-            : props.label,
+          address:
+            props.label ||
+            props.adresas ||
+            props.ADRESAS ||
+            (props.sav_pavadinimas || props.seniunijos_pavad
+              ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
+              : undefined),
           coordinates: feature.geometry?.coordinates,
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
