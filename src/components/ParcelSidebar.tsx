@@ -82,6 +82,7 @@ export interface ParcelData {
 interface ParcelSidebarProps {
   parcel: ParcelData | null;
   onClose: () => void;
+  searchInput?: string;
 }
 
 // Land use purpose code to Lithuanian description mapping
@@ -200,7 +201,7 @@ const computeGeodesicArea = (coords: number[][][]): number => {
   return totalArea * R * R;
 };
 
-const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
+const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
   const calculatedArea = useMemo(() => {
     if (!parcel?.coordinates) return null;
     // Handle both Polygon and MultiPolygon
@@ -221,7 +222,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sklypas</p>
             <h2 className="text-lg font-display font-bold text-foreground mt-1">
-              {parcel.unikalusNr || parcel.cadastralNumber}
+              {searchInput || parcel.unikalusNr || parcel.cadastralNumber}
             </h2>
           </div>
           <button
