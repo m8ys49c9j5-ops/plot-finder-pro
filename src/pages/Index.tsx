@@ -8,6 +8,7 @@ import { Layers, RefreshCw, Map, Satellite } from "lucide-react";
 const Index = () => {
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -23,6 +24,7 @@ const Index = () => {
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
     setSearchQuery(query);
+    setLastSearchInput(query);
   }, []);
 
   const handleSearchComplete = useCallback(() => {
@@ -141,7 +143,7 @@ const Index = () => {
       </div>
 
       {/* Parcel sidebar */}
-      <ParcelSidebar parcel={selectedParcel} onClose={() => setSelectedParcel(null)} />
+      <ParcelSidebar parcel={selectedParcel} onClose={() => setSelectedParcel(null)} searchInput={lastSearchInput} />
 
       {/* Overlay backdrop when sidebar is open */}
       {selectedParcel && (
