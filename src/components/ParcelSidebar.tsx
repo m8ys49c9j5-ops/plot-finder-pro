@@ -253,9 +253,6 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                   value={`${parcel.purpose} – ${PURPOSE_MAP[parcel.purpose] || "Nežinoma"}`}
                 />
               )}
-              {parcel.address && (
-                <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
-              )}
               {parcel.lat && parcel.lng && (() => {
                 const lks = wgs84ToLks94(parcel.lat, parcel.lng);
                 return (
@@ -273,6 +270,9 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                   </>
                 );
               })()}
+              {parcel.address && (
+                <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
+              )}
               {parcel.formavimoData && (
                 <InfoRow
                   icon={<FileText className="h-4 w-4" />}
