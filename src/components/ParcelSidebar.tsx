@@ -244,6 +244,9 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
             </div>
 
             <div className="space-y-3">
+              {parcel.unikalusNr && (
+                <InfoRow icon={<FileText className="h-4 w-4" />} label="Unikalus Nr." value={parcel.unikalusNr} />
+              )}
               <InfoRow icon={<Target className="h-4 w-4" />} label="Kadastrinis Nr." value={parcel.cadastralNumber} />
               {parcel.area && (
                 <InfoRow
