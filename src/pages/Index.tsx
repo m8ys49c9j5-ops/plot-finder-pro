@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import SearchBar from "@/components/SearchBar";
-import MapView from "@/components/MapView";
+import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import { Layers, RefreshCw } from "lucide-react";
+import { Layers, RefreshCw, Map, Satellite } from "lucide-react";
 
 
 const Index = () => {
@@ -11,6 +11,14 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
+  const mapViewRef = useRef<MapViewHandle>(null);
+
+  const toggleLayer = useCallback(() => {
+    const next: MapLayerType = activeLayer === "standard" ? "ortho" : "standard";
+    setActiveLayer(next);
+    mapViewRef.current?.setLayerType(next);
+  }, [activeLayer]);
 
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
@@ -75,10 +83,29 @@ const Index = () => {
     <div className="h-screen w-screen relative overflow-hidden bg-background">
       {/* Full-screen map */}
       <MapView
+        ref={mapViewRef}
         onParcelSelect={handleParcelSelect}
         searchQuery={searchQuery}
         onSearchComplete={handleSearchComplete}
       />
+
+      {/* Map layer toggle - top left */}
+      <div className="absolute top-4 left-4 z-[900]">
+        <button
+          onClick={toggleLayer}
+          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
+          title={activeLayer === "standard" ? "Rodyti ortofoto" : "Rodyti žemėlapį"}
+        >
+          {activeLayer === "standard" ? (
+            <Satellite className="h-5 w-5 text-foreground" />
+          ) : (
+            <Map className="h-5 w-5 text-foreground" />
+          )}
+          <span className="text-xs font-medium text-foreground hidden sm:inline">
+            {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
+          </span>
+        </button>
+      </div>
 
       {/* Top overlay - Logo + Search */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">

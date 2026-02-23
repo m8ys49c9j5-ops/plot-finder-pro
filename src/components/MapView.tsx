@@ -1,8 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import type { ParcelData } from "./ParcelSidebar";
+
+export type MapLayerType = "standard" | "ortho";
+
+export interface MapViewHandle {
+  setLayerType: (type: MapLayerType) => void;
+}
 
 interface MapViewProps {
   onParcelSelect: (parcel: ParcelData) => void;
@@ -11,13 +17,40 @@ interface MapViewProps {
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
+const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
 const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
 
-const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete }, ref) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const baseTileRef = useRef<L.TileLayer | null>(null);
+  const geoportalTileRef = useRef<L.TileLayer | null>(null);
+  const orthoTileRef = useRef<L.TileLayer | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    setLayerType: (type: MapLayerType) => {
+      if (!mapRef.current) return;
+      if (type === "ortho") {
+        if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
+        if (baseTileRef.current) mapRef.current.removeLayer(baseTileRef.current);
+        if (!orthoTileRef.current) {
+          orthoTileRef.current = L.tileLayer(`${ORTHO_BASE}/tile/{z}/{y}/{x}`, {
+            maxZoom: 19,
+            attribution: "Ortofoto © NŽT",
+          });
+        }
+        orthoTileRef.current.addTo(mapRef.current).bringToBack();
+      } else {
+        if (orthoTileRef.current) mapRef.current.removeLayer(orthoTileRef.current);
+        if (baseTileRef.current) baseTileRef.current.addTo(mapRef.current).bringToBack();
+        if (geoportalTileRef.current) geoportalTileRef.current.addTo(mapRef.current);
+        // reorder: base -> geoportal -> kadastras
+        if (baseTileRef.current) baseTileRef.current.bringToBack();
+      }
+    },
+  }));
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -30,12 +63,12 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
 
-    L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
+    geoportalTileRef.current = L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
       opacity: 0.7,
       attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
@@ -237,6 +270,6 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
       )}
     </div>
   );
-};
+});
 
 export default MapView;
