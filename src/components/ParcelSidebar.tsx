@@ -1,4 +1,5 @@
-import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight } from "lucide-react";
+import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight, Triangle } from "lucide-react";
+import { useMemo } from "react";
 
 export interface ParcelData {
   cadastralNumber: string;
@@ -8,6 +9,7 @@ export interface ParcelData {
   address?: string;
   lat?: number;
   lng?: number;
+  coordinates?: number[][][] | number[][][][]; // GeoJSON polygon/multipolygon coords
 }
 
 interface ParcelSidebarProps {
@@ -15,7 +17,41 @@ interface ParcelSidebarProps {
   onClose: () => void;
 }
 
+// Compute geodesic area from WGS84 polygon coordinates using the spherical excess formula
+const computeGeodesicArea = (coords: number[][][]): number => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  let totalArea = 0;
+
+  for (const ring of coords) {
+    const n = ring.length;
+    if (n < 3) continue;
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const [lng1, lat1] = ring[i];
+      const [lng2, lat2] = ring[(i + 1) % n];
+      sum += toRad(lng2 - lng1) * (2 + Math.sin(toRad(lat1)) + Math.sin(toRad(lat2)));
+    }
+    totalArea += Math.abs(sum) / 2;
+  }
+
+  const R = 6371000; // Earth radius in meters
+  return totalArea * R * R;
+};
+
 const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
+  const calculatedArea = useMemo(() => {
+    if (!parcel?.coordinates) return null;
+    // Handle both Polygon and MultiPolygon
+    const isMulti = Array.isArray(parcel.coordinates[0]?.[0]?.[0]);
+    if (isMulti) {
+      return (parcel.coordinates as number[][][][]).reduce(
+        (sum, poly) => sum + computeGeodesicArea(poly),
+        0
+      );
+    }
+    return computeGeodesicArea(parcel.coordinates as number[][][]);
+  }, [parcel?.coordinates]);
+
   if (!parcel) return null;
 
   return (
@@ -55,6 +91,13 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                   icon={<Ruler className="h-4 w-4" />}
                   label="Juridinis sklypo plotas"
                   value={`${parcel.area.toLocaleString("lt-LT")} m²`}
+                />
+              )}
+              {calculatedArea !== null && (
+                <InfoRow
+                  icon={<Triangle className="h-4 w-4" />}
+                  label="Plotas pagal koordinates"
+                  value={`${Math.round(calculatedArea).toLocaleString("lt-LT")} m²`}
                 />
               )}
               {parcel.purpose && (
