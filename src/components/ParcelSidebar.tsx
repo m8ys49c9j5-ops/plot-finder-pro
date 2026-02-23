@@ -1,4 +1,16 @@
-import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight, Triangle, Globe, MapPinned } from "lucide-react";
+import {
+  X,
+  MapPin,
+  Ruler,
+  Target,
+  FileText,
+  Lock,
+  CreditCard,
+  ChevronRight,
+  Triangle,
+  Globe,
+  MapPinned,
+} from "lucide-react";
 import { useMemo } from "react";
 
 // WGS84 to LKS94 (EPSG:3346) approximate conversion using Transverse Mercator projection
@@ -27,16 +39,16 @@ const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
   const A = Math.cos(phi) * (lambda - lambda0);
   const M =
     a *
-    ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi -
-      (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi) +
-      (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi) -
-      (35 * e6 / 3072) * Math.sin(6 * phi));
+    ((1 - e2 / 4 - (3 * e4) / 64 - (5 * e6) / 256) * phi -
+      ((3 * e2) / 8 + (3 * e4) / 32 + (45 * e6) / 1024) * Math.sin(2 * phi) +
+      ((15 * e4) / 256 + (45 * e6) / 1024) * Math.sin(4 * phi) -
+      ((35 * e6) / 3072) * Math.sin(6 * phi));
   const M0 =
     a *
-    ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi0 -
-      (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi0) +
-      (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi0) -
-      (35 * e6 / 3072) * Math.sin(6 * phi0));
+    ((1 - e2 / 4 - (3 * e4) / 64 - (5 * e6) / 256) * phi0 -
+      ((3 * e2) / 8 + (3 * e4) / 32 + (45 * e6) / 1024) * Math.sin(2 * phi0) +
+      ((15 * e4) / 256 + (45 * e6) / 1024) * Math.sin(4 * phi0) -
+      ((35 * e6) / 3072) * Math.sin(6 * phi0));
 
   const x =
     falseE +
@@ -46,7 +58,11 @@ const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
     k0 *
       (M -
         M0 +
-        N * Math.tan(phi) * (A ** 2 / 2 + ((5 - T + 9 * C + 4 * C ** 2) * A ** 4) / 24 + ((61 - 58 * T + T ** 2 + 600 * C - 330 * (e2 / (1 - e2))) * A ** 6) / 720));
+        N *
+          Math.tan(phi) *
+          (A ** 2 / 2 +
+            ((5 - T + 9 * C + 4 * C ** 2) * A ** 4) / 24 +
+            ((61 - 58 * T + T ** 2 + 600 * C - 330 * (e2 / (1 - e2))) * A ** 6) / 720));
 
   return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
 };
@@ -190,10 +206,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
     // Handle both Polygon and MultiPolygon
     const isMulti = Array.isArray(parcel.coordinates[0]?.[0]?.[0]);
     if (isMulti) {
-      return (parcel.coordinates as number[][][][]).reduce(
-        (sum, poly) => sum + computeGeodesicArea(poly),
-        0
-      );
+      return (parcel.coordinates as number[][][][]).reduce((sum, poly) => sum + computeGeodesicArea(poly), 0);
     }
     return computeGeodesicArea(parcel.coordinates as number[][][]);
   }, [parcel?.coordinates]);
@@ -253,32 +266,30 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                   value={`${parcel.purpose} – ${PURPOSE_MAP[parcel.purpose] || "Nežinoma"}`}
                 />
               )}
-              {parcel.lat && parcel.lng && (() => {
-                const lks = wgs84ToLks94(parcel.lat, parcel.lng);
-                return (
-                  <>
-                    <InfoRow
-                      icon={<Globe className="h-4 w-4" />}
-                      label="Koordinatės (WGS84)"
-                      value={`${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`}
-                    />
-                    <InfoRow
-                      icon={<MapPinned className="h-4 w-4" />}
-                      label="Koordinatės (LKS94)"
-                      value={`X: ${lks.x.toLocaleString("lt-LT")}  Y: ${lks.y.toLocaleString("lt-LT")}`}
-                    />
-                  </>
-                );
-              })()}
+              {parcel.lat &&
+                parcel.lng &&
+                (() => {
+                  const lks = wgs84ToLks94(parcel.lat, parcel.lng);
+                  return (
+                    <>
+                      <InfoRow
+                        icon={<Globe className="h-4 w-4" />}
+                        label="Koordinatės (WGS84)"
+                        value={`${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`}
+                      />
+                      <InfoRow
+                        icon={<MapPinned className="h-4 w-4" />}
+                        label="Koordinatės (LKS94)"
+                        value={`${lks.x.toLocaleString("lt-LT")}, ${lks.y.toLocaleString("lt-LT")}`}
+                      />
+                    </>
+                  );
+                })()}
               {parcel.address && (
                 <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
               )}
               {parcel.formavimoData && (
-                <InfoRow
-                  icon={<FileText className="h-4 w-4" />}
-                  label="Formavimo data"
-                  value={parcel.formavimoData}
-                />
+                <InfoRow icon={<FileText className="h-4 w-4" />} label="Formavimo data" value={parcel.formavimoData} />
               )}
             </div>
           </div>
