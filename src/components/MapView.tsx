@@ -27,7 +27,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const [isLoading, setIsLoading] = useState(false);
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
-  const orthoLayerRef = useRef<L.TileLayer.WMS | null>(null);
+  const orthoLayerRef = useRef<L.TileLayer | null>(null);
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
@@ -36,12 +36,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
         if (baseTileRef.current) mapRef.current.removeLayer(baseTileRef.current);
         if (!orthoLayerRef.current) {
-          orthoLayerRef.current = L.tileLayer.wms(
-            "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer/WMSServer",
+          orthoLayerRef.current = L.tileLayer(
+            "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer/tile/{z}/{y}/{x}",
             {
-              layers: "7",
-              format: "image/png",
-              transparent: true,
               maxZoom: 19,
               attribution: "Ortofoto © NŽT",
             }
