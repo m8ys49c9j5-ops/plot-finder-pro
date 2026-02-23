@@ -166,7 +166,13 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
           const layer = highlightGeoJSON(feature);
           if (layer) {
             const bounds = layer.getBounds();
-            mapRef.current.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
+            // Offset padding to center parcel in visible map area (accounting for 400px sidebar on the right)
+            const sidebarWidth = window.innerWidth >= 640 ? 400 : 0;
+            mapRef.current.fitBounds(bounds, {
+              paddingTopLeft: [80, 80],
+              paddingBottomRight: [80 + sidebarWidth, 80],
+              maxZoom: 17,
+            });
             const center = bounds.getCenter();
             parcel.lat = center.lat;
             parcel.lng = center.lng;
