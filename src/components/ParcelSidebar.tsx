@@ -1,5 +1,55 @@
-import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight, Triangle } from "lucide-react";
+import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight, Triangle, Globe, MapPinned } from "lucide-react";
 import { useMemo } from "react";
+
+// WGS84 to LKS94 (EPSG:3346) approximate conversion using Transverse Mercator projection
+const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
+  const a = 6378137.0;
+  const f = 1 / 298.257222101;
+  const lat0 = 0;
+  const lng0 = 24.0;
+  const k0 = 0.9998;
+  const falseE = 500000;
+  const falseN = 0;
+
+  const e2 = 2 * f - f * f;
+  const e4 = e2 * e2;
+  const e6 = e4 * e2;
+
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const phi = toRad(lat);
+  const lambda = toRad(lng);
+  const phi0 = toRad(lat0);
+  const lambda0 = toRad(lng0);
+
+  const N = a / Math.sqrt(1 - e2 * Math.sin(phi) ** 2);
+  const T = Math.tan(phi) ** 2;
+  const C = (e2 / (1 - e2)) * Math.cos(phi) ** 2;
+  const A = Math.cos(phi) * (lambda - lambda0);
+  const M =
+    a *
+    ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi -
+      (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi) +
+      (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi) -
+      (35 * e6 / 3072) * Math.sin(6 * phi));
+  const M0 =
+    a *
+    ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi0 -
+      (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi0) +
+      (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi0) -
+      (35 * e6 / 3072) * Math.sin(6 * phi0));
+
+  const x =
+    falseE +
+    k0 * N * (A + ((1 - T + C) * A ** 3) / 6 + ((5 - 18 * T + T ** 2 + 72 * C - 58 * (e2 / (1 - e2))) * A ** 5) / 120);
+  const y =
+    falseN +
+    k0 *
+      (M -
+        M0 +
+        N * Math.tan(phi) * (A ** 2 / 2 + ((5 - T + 9 * C + 4 * C ** 2) * A ** 4) / 24 + ((61 - 58 * T + T ** 2 + 600 * C - 330 * (e2 / (1 - e2))) * A ** 6) / 720));
+
+  return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
+};
 
 export interface ParcelData {
   cadastralNumber: string;
@@ -206,13 +256,23 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
               {parcel.address && (
                 <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
               )}
-              {parcel.lat && parcel.lng && (
-                <InfoRow
-                  icon={<Target className="h-4 w-4" />}
-                  label="Koordinatės"
-                  value={`${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`}
-                />
-              )}
+              {parcel.lat && parcel.lng && (() => {
+                const lks = wgs84ToLks94(parcel.lat, parcel.lng);
+                return (
+                  <>
+                    <InfoRow
+                      icon={<Globe className="h-4 w-4" />}
+                      label="Koordinatės (WGS84)"
+                      value={`${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`}
+                    />
+                    <InfoRow
+                      icon={<MapPinned className="h-4 w-4" />}
+                      label="Koordinatės (LKS94)"
+                      value={`X: ${lks.x.toLocaleString("lt-LT")}  Y: ${lks.y.toLocaleString("lt-LT")}`}
+                    />
+                  </>
+                );
+              })()}
               {parcel.formavimoData && (
                 <InfoRow
                   icon={<FileText className="h-4 w-4" />}
