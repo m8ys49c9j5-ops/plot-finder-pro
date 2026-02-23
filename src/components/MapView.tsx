@@ -100,6 +100,7 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
           address: props.label,
           lat: latlng.lat,
           lng: latlng.lng,
+          coordinates: feature.geometry?.coordinates,
         };
 
         if (feature.geometry) {
@@ -146,6 +147,7 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
           address: props.seniunijos_pavad
             ? `${props.sav_pavadinimas || ""}, ${props.seniunijos_pavad}`
             : props.label,
+          coordinates: feature.geometry?.coordinates,
         };
 
         if (feature.geometry && mapRef.current) {
