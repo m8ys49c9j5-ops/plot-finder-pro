@@ -94,6 +94,7 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
             props.nationalCadastralReference ||
             props.NTR_ID?.toString() ||
             "Nežinomas",
+          unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS,
           address: props.label,
@@ -139,6 +140,7 @@ const MapView = ({ onParcelSelect, searchQuery, onSearchComplete }: MapViewProps
             props.kadastro_nr ||
             props.NTR_ID?.toString() ||
             query.trim(),
+          unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
           address: props.seniunijos_pavad

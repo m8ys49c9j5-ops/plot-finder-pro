@@ -2,6 +2,7 @@ import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight } fr
 
 export interface ParcelData {
   cadastralNumber: string;
+  unikalusNr?: string;
   area?: number;
   purpose?: string;
   address?: string;
@@ -25,7 +26,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sklypas</p>
             <h2 className="text-lg font-display font-bold text-foreground mt-1">
-              {parcel.cadastralNumber}
+              {parcel.unikalusNr || parcel.cadastralNumber}
             </h2>
           </div>
           <button
