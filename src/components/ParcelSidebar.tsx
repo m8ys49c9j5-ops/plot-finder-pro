@@ -280,7 +280,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                       <InfoRow
                         icon={<MapPinned className="h-4 w-4" />}
                         label="Koordinatės (LKS94)"
-                        value={`${lks.x.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}, ${lks.y.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`}
+                        value={`${lks.x.toFixed(2)}, ${lks.y.toFixed(2)}`}
                       />
                     </>
                   );
