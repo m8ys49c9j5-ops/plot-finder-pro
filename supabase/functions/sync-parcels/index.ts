@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    let lastId = url.searchParams.get("lastid") ?? "";
+    let lastId = url.searchParams.get("last_id") ?? url.searchParams.get("lastid") ?? "";
 
     const externalUrl = Deno.env.get("EXTERNALSUPABASEURL");
     const externalKey = Deno.env.get("EXTERNALSERVICEROLEKEY");
