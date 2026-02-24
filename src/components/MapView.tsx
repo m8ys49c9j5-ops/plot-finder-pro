@@ -65,7 +65,7 @@ const OrthoTileLayer = L.TileLayer.extend({
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:16,22,28,34");
   },
 });
 
