@@ -6,41 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// --- CONFIGURATION ---
-const MAX_RUNTIME_MS = 25000;
-const TIME_BUFFER_MS = 4000; // Leave a 4-second buffer to prevent hard timeouts mid-loop
-const FETCH_LIMIT = 3000; // Increased to fetch more rows per loop
-const UPSERT_BATCH = 1000; // Process larger batch chunks concurrently
-const MAX_RETRIES = 3; // Added retries for high-volume resilience
-
-// --- WARM START: Initialize clients globally ---
-// Moving this outside the handler reuses network connections across warm function invocations
-const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || "";
-const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY") || "";
-const localUrl = Deno.env.get("SUPABASE_URL") || "";
-const localKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-let externalClient: any;
-let localClient: any;
-
-if (externalUrl && externalKey && localUrl && localKey) {
-  externalClient = createClient(externalUrl, externalKey);
-  localClient = createClient(localUrl, localKey);
-}
-
-// --- RESILIENCE: Retry helper for database operations ---
-async function withRetry(operation: () => Promise<any>, retries = MAX_RETRIES) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    const { data, error } = await operation();
-    if (!error) return { data, error };
-
-    console.warn(`Attempt ${attempt} failed: ${error.message}`);
-    if (attempt === retries) return { data: null, error };
-
-    // Exponential backoff wait (500ms, 1000ms...) before retrying
-    await new Promise((resolve) => setTimeout(resolve, attempt * 500));
-  }
-}
+// Saugus limitas, kad funkcija spėtų užsibaigti prieš 30s Edge Function "Timeout"
+const MAXRUNTIMEMS = 20000;
+const FETCHLIMIT = 1000; // Maksimalus Supabase PostgREST grąžinamas kiekis
+const UPSERTBATCH = 500;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -48,42 +17,52 @@ serve(async (req) => {
   }
 
   try {
-    if (!externalClient || !localClient) {
-      return new Response(JSON.stringify({ error: "Supabase credentials not fully configured" }), {
+    const url = new URL(req.url);
+    let lastId = url.searchParams.get("lastid") ?? "";
+
+    const externalUrl = Deno.env.get("EXTERNALSUPABASEURL");
+    const externalKey = Deno.env.get("EXTERNALSERVICEROLEKEY");
+    // Pridėtas standartinis Supabase pavadinimų fallback'as
+    const localUrl = Deno.env.get("SUPABASEURL") || Deno.env.get("SUPABASE_URL");
+    const localKey = Deno.env.get("SUPABASESERVICEROLEKEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!externalUrl || !externalKey || !localUrl || !localKey) {
+      return new Response(JSON.stringify({ error: "Supabase credentials not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const url = new URL(req.url);
-    // Use cursor-based pagination: lastid is the last processed id
-    let lastId = url.searchParams.get("lastid") ?? "";
+    // OPTIMIZACIJA 1: Išjungiame auth sesijų saugojimą greitesniam kliento darbui
+    const clientOptions = { auth: { persistSession: false, autoRefreshToken: false } };
+    const externalClient = createClient(externalUrl, externalKey, clientOptions);
+    const localClient = createClient(localUrl, localKey, clientOptions);
 
     const startTime = Date.now();
     let totalSynced = 0;
     let done = false;
 
-    // Use a time buffer so we don't start a long database operation with only 1s left
-    while (Date.now() - startTime < MAX_RUNTIME_MS - TIME_BUFFER_MS) {
-      console.log(`Fetching batch after id: ${lastId || "(start)"}...`);
-
+    // Pagalbinė funkcija išorinės DB užklausoms
+    const fetchBatch = (cursorId: string) => {
       let query = externalClient
         .from("parcels")
-        .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
+        .select("id, kadastronr, unikalusnr, savkodas, feature")
         .order("id", { ascending: true })
-        .limit(FETCH_LIMIT);
+        .limit(FETCHLIMIT);
 
-      if (lastId) {
-        query = query.gt("id", lastId);
-      }
+      if (cursorId) query = query.gt("id", cursorId);
+      return query;
+    };
 
-      const { data, error } = await withRetry(() => query);
+    // OPTIMIZACIJA 2: Iš anksto inicijuojame patį pirmąjį siuntimą
+    let nextFetchPromise = fetchBatch(lastId);
+
+    while (Date.now() - startTime < MAXRUNTIMEMS) {
+      // 1. Sulaukiame duomenų (gali būti, kad jie jau buvo parsiųsti praėjusio ciklo metu fone)
+      const { data, error } = await nextFetchPromise;
 
       if (error) {
-        return new Response(
-          JSON.stringify({ error: `External fetch error: ${error.message}`, synced: totalSynced, lastId }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        throw new Error(`External fetch error: ${error.message}, synced: ${totalSynced}`);
       }
 
       if (!data || data.length === 0) {
@@ -91,39 +70,39 @@ serve(async (req) => {
         break;
       }
 
-      // --- CONCURRENCY: Upsert in parallel chunks ---
-      const upsertPromises = [];
-      for (let i = 0; i < data.length; i += UPSERT_BATCH) {
-        const batch = data.slice(i, i + UPSERT_BATCH);
+      const currentLastId = data[data.length - 1].id;
+      const hasMore = data.length === FETCHLIMIT;
 
-        // Push the pending database requests into an array instead of awaiting them one-by-one
-        upsertPromises.push(withRetry(() => localClient.from("parcels").upsert(batch, { onConflict: "id" })));
+      // OPTIMIZACIJA 3: PIPELINING. Nelaukdami kol baigsis įrašymas, IŠKARTO pradedame siųsti
+      // užklausą kitam duomenų blokui foniniame režime.
+      if (hasMore) {
+        nextFetchPromise = fetchBatch(currentLastId);
+      } else {
+        done = true;
       }
 
-      // Execute all batched upserts simultaneously
-      const results = await Promise.all(upsertPromises);
+      // OPTIMIZACIJA 4: Esamą duomenų bloką padaliname ir įrašinėjame (upsert) LYGIAGREČIAI
+      const upsertPromises = [];
+      for (let i = 0; i < data.length; i += UPSERTBATCH) {
+        const batch = data.slice(i, i + UPSERTBATCH);
+        upsertPromises.push(localClient.from("parcels").upsert(batch, { onConflict: "id" }));
+      }
 
-      // Check if any of the concurrent chunks failed
-      const failedResult = results.find((res: any) => res.error);
-      if (failedResult) {
-        return new Response(
-          JSON.stringify({ error: `Upsert error: ${failedResult.error.message}`, synced: totalSynced, lastId }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+      // Laukiame kol visi upsert blokai bus sėkmingai išsaugoti bazėje
+      const results = await Promise.all(upsertPromises);
+      const upsertError = results.find((r) => r.error)?.error;
+
+      if (upsertError) {
+        throw new Error(`Upsert error: ${upsertError.message}, synced: ${totalSynced}`);
       }
 
       totalSynced += data.length;
-      lastId = data[data.length - 1].id;
-
-      if (data.length < FETCH_LIMIT) {
-        done = true;
-        break;
-      }
+      lastId = currentLastId;
 
       console.log(`Synced ${totalSynced} total, elapsed ${Date.now() - startTime}ms`);
-    }
 
-    console.log(`Done: ${done}, synced ${totalSynced}, lastId: ${lastId}`);
+      if (done) break;
+    }
 
     return new Response(
       JSON.stringify({
