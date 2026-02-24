@@ -69,7 +69,7 @@ serve(async (req) => {
 
       let query = externalClient
         .from("parcels")
-        .select("id, kadastronr, unikalusnr, savkodas, feature")
+        .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
         .order("id", { ascending: true })
         .limit(FETCH_LIMIT);
 
