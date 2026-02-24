@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Grąžinome 20 sekundžių limitą, kad serveris nenumestų ryšio ir spėtų atsakyti Lovable
+const MAXRUNTIMEMS = 20000;
 const FETCHLIMIT = 1000;
 const UPSERTBATCH = 500;
 
@@ -30,7 +32,6 @@ serve(async (req) => {
       });
     }
 
-    // Išjungiame sesijų saugojimą didesniam greičiui
     const clientOptions = { auth: { persistSession: false, autoRefreshToken: false } };
     const externalClient = createClient(externalUrl, externalKey, clientOptions);
     const localClient = createClient(localUrl, localKey, clientOptions);
@@ -39,11 +40,8 @@ serve(async (req) => {
     let totalSynced = 0;
     let done = false;
 
-    console.log(`Pradedama sinchronizacija nuo id: ${lastId || "(pradžia)"}...`);
-
-    // Ciklas veiks be laiko limito, kol bus perkelti visi įrašai
-    while (!done) {
-      // 1. Parsiunčiame duomenis
+    // Ciklas suksis tol, kol praeis 20 sekundžių
+    while (Date.now() - startTime < MAXRUNTIMEMS) {
       let query = externalClient
         .from("parcels")
         .select("id, kadastronr, unikalusnr, savkodas, feature")
@@ -58,7 +56,7 @@ serve(async (req) => {
 
       if (error) {
         return new Response(
-          JSON.stringify({ error: `Klaida gaunant duomenis: ${error.message}`, totalSynced, lastId }),
+          JSON.stringify({ error: `Klaida gaunant: ${error.message}`, synced: totalSynced, lastId }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -68,50 +66,44 @@ serve(async (req) => {
         break;
       }
 
-      // 2. Paruošiame įrašymo blokus (padalintus po 500)
+      // Įrašome duomenis lygiagrečiai, greitesniam veikimui
       const upsertPromises = [];
       for (let i = 0; i < data.length; i += UPSERTBATCH) {
         const batch = data.slice(i, i + UPSERTBATCH);
         upsertPromises.push(localClient.from("parcels").upsert(batch, { onConflict: "id" }));
       }
 
-      // 3. Išsiunčiame ir laukiame visų įrašymų vienu metu (greičiau nei po vieną)
       const results = await Promise.all(upsertPromises);
       const upsertError = results.find((r) => r.error)?.error;
 
       if (upsertError) {
-        return new Response(JSON.stringify({ error: `Klaida įrašant: ${upsertError.message}`, totalSynced, lastId }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: `Klaida įrašant: ${upsertError.message}`, synced: totalSynced, lastId }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
       totalSynced += data.length;
       lastId = data[data.length - 1].id;
 
-      console.log(`Sinchronizuota: ${totalSynced}, Paskutinis ID: ${lastId}`);
-
-      // Jei gavome mažiau nei prašėme, vadinasi, pasiekėme pabaigą
       if (data.length < FETCHLIMIT) {
         done = true;
         break;
       }
     }
 
-    console.log(`Baigta. Viso perkelta: ${totalSynced}, trukmė: ${Date.now() - startTime}ms`);
-
+    // Grąžiname atsakymą į Lovable. Jei done === false, Lovable automatiškai iškvies vėl.
     return new Response(
       JSON.stringify({
         success: true,
         synced: totalSynced,
         done,
         lastId,
-        message: `✓ Visa sinchronizacija baigta (${totalSynced} įrašų)`,
+        message: done ? `✓ Visa sinchronizacija baigta!` : `Sinchronizuota ${totalSynced} įrašų, tęsiama...`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("Netikėta klaida:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Nežinoma klaida" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
