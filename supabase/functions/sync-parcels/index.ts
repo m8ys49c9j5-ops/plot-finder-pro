@@ -3,26 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const FETCHLIMIT = 1000;
 const UPSERTBATCH = 500;
-
-// Pagalbinė funkcija, kuri automatiškai kartoja veiksmą, jei įvyksta tinklo klaida
-async function withRetry<T>(operation: () => Promise<T>, retries = 3): Promise<T> {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await operation();
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      console.warn(`⚠️ Tinklo triktis, bandome dar kartą... (${i + 1}/${retries})`);
-      await new Promise((res) => setTimeout(res, 1000));
-    }
-  }
-  throw new Error("Nepasiekta");
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -39,13 +24,13 @@ serve(async (req) => {
     const localKey = Deno.env.get("SUPABASESERVICEROLEKEY");
 
     if (!externalUrl || !externalKey || !localUrl || !localKey) {
-      return new Response(
-        JSON.stringify({ error: "Supabase credentials not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Supabase credentials not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Išjungiame sesijų saugojimą, kad taupytume atmintį
+    // Išjungiame sesijų saugojimą didesniam greičiui
     const clientOptions = { auth: { persistSession: false, autoRefreshToken: false } };
     const externalClient = createClient(externalUrl, externalKey, clientOptions);
     const localClient = createClient(localUrl, localKey, clientOptions);
@@ -54,78 +39,82 @@ serve(async (req) => {
     let totalSynced = 0;
     let done = false;
 
-    console.log(`🚀 Pradedama pilna sinchronizacija nuo paskutinio ID: ${lastId || "(pradžia)"}...`);
+    console.log(`Pradedama sinchronizacija nuo id: ${lastId || "(pradžia)"}...`);
 
-    const fetchBatch = async (cursorId: string) => {
+    // Ciklas veiks be laiko limito, kol bus perkelti visi įrašai
+    while (!done) {
+      // 1. Parsiunčiame duomenis
       let query = externalClient
         .from("parcels")
         .select("id, kadastronr, unikalusnr, savkodas, feature")
         .order("id", { ascending: true })
         .limit(FETCHLIMIT);
-      
-      if (cursorId) query = query.gt("id", cursorId);
-      
+
+      if (lastId) {
+        query = query.gt("id", lastId);
+      }
+
       const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return data;
-    };
 
-    // Pirmosios porcijos užklausimas
-    let nextFetchPromise = withRetry(() => fetchBatch(lastId));
-
-    // CIKLAS SUKSIS TOL, KOL BUS PERKELTI VISI 2.5 MLN. ĮRAŠŲ (done === true)
-    while (!done) {
-      const data = await nextFetchPromise;
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: `Klaida gaunant duomenis: ${error.message}`, totalSynced, lastId }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
       if (!data || data.length === 0) {
         done = true;
         break;
       }
 
-      const currentLastId = data[data.length - 1].id;
-      const hasMore = data.length === FETCHLIMIT;
-
-      // Iškart foniniu režimu pradedame siųsti kitą duomenų bloką
-      if (hasMore) {
-        nextFetchPromise = withRetry(() => fetchBatch(currentLastId));
-      } else {
-        done = true;
-      }
-
-      // Lygiagretus įrašymas blokais (Upsert)
+      // 2. Paruošiame įrašymo blokus (padalintus po 500)
       const upsertPromises = [];
       for (let i = 0; i < data.length; i += UPSERTBATCH) {
         const batch = data.slice(i, i + UPSERTBATCH);
-        upsertPromises.push(
-          withRetry(async () => {
-             const { error } = await localClient.from("parcels").upsert(batch, { onConflict: "id" });
-             if (error) throw new Error(error.message);
-             return true;
-          })
-        );
+        upsertPromises.push(localClient.from("parcels").upsert(batch, { onConflict: "id" }));
       }
 
-      // Laukiame, kol visi duomenys bus sėkmingai įrašyti
-      await Promise.all(upsertPromises);
+      // 3. Išsiunčiame ir laukiame visų įrašymų vienu metu (greičiau nei po vieną)
+      const results = await Promise.all(upsertPromises);
+      const upsertError = results.find((r) => r.error)?.error;
+
+      if (upsertError) {
+        return new Response(JSON.stringify({ error: `Klaida įrašant: ${upsertError.message}`, totalSynced, lastId }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       totalSynced += data.length;
-      lastId = currentLastId;
+      lastId = data[data.length - 1].id;
 
-      // Atspausdiname progresą kas 5000 įrašų
-      if (totalSynced % 5000 === 0) {
-        const elapsedSecs = ((Date.now() - startTime) / 1000).toFixed(0);
-        console.log(`🔄 Progresas: Sinchronizuota ${totalSynced} įrašų per ${elapsedSecs}s. Paskutinis ID: ${lastId}`);
+      console.log(`Sinchronizuota: ${totalSynced}, Paskutinis ID: ${lastId}`);
+
+      // Jei gavome mažiau nei prašėme, vadinasi, pasiekėme pabaigą
+      if (data.length < FETCHLIMIT) {
+        done = true;
+        break;
       }
     }
 
-    const totalTimeMins = ((Date.now() - startTime) / 60000).toFixed(2);
-    console.log(`✅ Pilna sinchronizacija baigta! Viso perkelta: ${totalSynced} per ${totalTimeMins} min.`);
+    console.log(`Baigta. Viso perkelta: ${totalSynced}, trukmė: ${Date.now() - startTime}ms`);
 
     return new Response(
       JSON.stringify({
         success: true,
         synced: totalSynced,
-        done: true,
+        done,
         lastId,
-        message: `✓ Visi duomenys s
-        
+        message: `✓ Visa sinchronizacija baigta (${totalSynced} įrašų)`,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("Netikėta klaida:", err);
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Nežinoma klaida" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
