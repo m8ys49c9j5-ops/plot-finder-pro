@@ -15,10 +15,10 @@ const MAX_RETRIES = 3; // Added retries for high-volume resilience
 
 // --- WARM START: Initialize clients globally ---
 // Moving this outside the handler reuses network connections across warm function invocations
-const externalUrl = Deno.env.get("EXTERNALSUPABASEURL") || "";
-const externalKey = Deno.env.get("EXTERNALSERVICEROLEKEY") || "";
-const localUrl = Deno.env.get("SUPABASEURL") || "";
-const localKey = Deno.env.get("SUPABASESERVICEROLEKEY") || "";
+const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || "";
+const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY") || "";
+const localUrl = Deno.env.get("SUPABASE_URL") || "";
+const localKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 let externalClient: any;
 let localClient: any;
