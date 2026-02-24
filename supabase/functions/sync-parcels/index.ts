@@ -20,10 +20,10 @@ serve(async (req) => {
     const url = new URL(req.url);
     let lastId = url.searchParams.get("last_id") ?? url.searchParams.get("lastid") ?? "";
 
-    const externalUrl = Deno.env.get("EXTERNALSUPABASEURL");
-    const externalKey = Deno.env.get("EXTERNALSERVICEROLEKEY");
-    const localUrl = Deno.env.get("SUPABASEURL");
-    const localKey = Deno.env.get("SUPABASESERVICEROLEKEY");
+    const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL");
+    const externalKey = Deno.env.get("EXTERNAL_SERVICE_ROLE_KEY");
+    const localUrl = Deno.env.get("SUPABASE_URL");
+    const localKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!externalUrl || !externalKey || !localUrl || !localKey) {
       return new Response(JSON.stringify({ error: "Supabase credentials not configured" }), {
@@ -44,7 +44,7 @@ serve(async (req) => {
     while (Date.now() - startTime < MAXRUNTIMEMS) {
       let query = externalClient
         .from("parcels")
-        .select("id, kadastronr, unikalusnr, savkodas, feature")
+        .select("id, kadastro_nr, unikalus_nr, sav_kodas, feature")
         .order("id", { ascending: true })
         .limit(FETCHLIMIT);
 
