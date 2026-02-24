@@ -30,7 +30,8 @@ const buildExportProxyUrl = (
   coords: L.Coords,
   map: L.Map,
   format: "jpg" | "png32",
-  transparent = false
+  transparent = false,
+  layers?: string
 ) => {
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
@@ -44,7 +45,10 @@ const buildExportProxyUrl = (
   const seMerc = L.CRS.EPSG3857.project(se);
 
   const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
-  const exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
+  let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
+  if (layers) {
+    exportUrl += `&layers=${encodeURIComponent(layers)}`;
+  }
 
   return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
 };
@@ -57,11 +61,11 @@ const OrthoTileLayer = L.TileLayer.extend({
   },
 });
 
-// Kadastro overlay as export tiles (more reliable than /tile on non-cached services)
+// Kadastro overlay - only sklypai boundary layers (IDs 15,21,27,33 at various scales)
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true);
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
   },
 });
 
@@ -133,9 +137,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
     }).addTo(map);
 
-    kadastroLayerRef.current = L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
+    kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
       maxZoom: 19,
-      opacity: 0.75,
+      opacity: 0.85,
       attribution: "Kadastro žemėlapis",
     }).addTo(map);
 
