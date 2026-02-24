@@ -82,6 +82,7 @@ export interface ParcelData {
 interface ParcelSidebarProps {
   parcel: ParcelData | null;
   onClose: () => void;
+  searchInput?: string;
 }
 
 // Land use purpose code to Lithuanian description mapping

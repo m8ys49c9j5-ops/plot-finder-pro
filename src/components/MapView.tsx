@@ -53,6 +53,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
   const orthoLayerRef = useRef<L.TileLayer | null>(null);
+  const kadastroLayerRef = useRef<L.TileLayer | null>(null);
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
@@ -72,6 +73,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         if (baseTileRef.current) baseTileRef.current.addTo(mapRef.current).bringToBack();
         if (geoportalTileRef.current) geoportalTileRef.current.addTo(mapRef.current);
         if (baseTileRef.current) baseTileRef.current.bringToBack();
+      }
+      // Always keep kadastro overlay on top
+      if (kadastroLayerRef.current) {
+        kadastroLayerRef.current.bringToFront();
       }
     },
   }));
@@ -98,7 +103,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
     }).addTo(map);
 
-    L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
+    kadastroLayerRef.current = L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
       opacity: 0.6,
       attribution: "Kadastro žemėlapis",
