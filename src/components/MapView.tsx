@@ -24,24 +24,44 @@ const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
+// Build ArcGIS MapServer export URL and route through map proxy
+const buildExportProxyUrl = (
+  baseUrl: string,
+  coords: L.Coords,
+  map: L.Map,
+  format: "jpg" | "png32",
+  transparent = false
+) => {
+  const tileSize = 256;
+  const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+  const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+
+  const nw = map.unproject(nwPoint, coords.z);
+  const se = map.unproject(sePoint, coords.z);
+
+  // Convert to Web Mercator (EPSG:3857)
+  const nwMerc = L.CRS.EPSG3857.project(nw);
+  const seMerc = L.CRS.EPSG3857.project(se);
+
+  const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
+  const exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
+
+  return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
+};
+
 // Custom TileLayer that uses ArcGIS MapServer export endpoint via proxy
 const OrthoTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: any) {
-    const tileSize = 256;
-    const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
-    const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
-    const map = (this as any)._map;
-    const nw = map.unproject(nwPoint, coords.z);
-    const se = map.unproject(sePoint, coords.z);
+  getTileUrl: function (coords: L.Coords) {
+    const map = (this as any)._map as L.Map;
+    return buildExportProxyUrl(ORTHO_BASE, coords, map, "jpg", false);
+  },
+});
 
-    // Convert to Web Mercator (EPSG:3857)
-    const nwMerc = L.CRS.EPSG3857.project(nw);
-    const seMerc = L.CRS.EPSG3857.project(se);
-
-    const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
-    const exportUrl = `${ORTHO_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=jpg&f=image`;
-
-    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
+// Kadastro overlay as export tiles (more reliable than /tile on non-cached services)
+const KadastroTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const map = (this as any)._map as L.Map;
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true);
   },
 });
 
@@ -60,18 +80,28 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       if (!mapRef.current) return;
       if (type === "ortho") {
         if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
-        if (baseTileRef.current) mapRef.current.removeLayer(baseTileRef.current);
+
+        // Keep a guaranteed visible base map underneath ortofoto
+        if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) {
+          baseTileRef.current.addTo(mapRef.current);
+        }
+        if (baseTileRef.current) baseTileRef.current.bringToBack();
+
         if (!orthoLayerRef.current) {
           orthoLayerRef.current = new (OrthoTileLayer as any)("", {
             maxZoom: 19,
             attribution: "Ortofoto © NŽT",
           });
         }
-        orthoLayerRef.current.addTo(mapRef.current).bringToBack();
+        orthoLayerRef.current.addTo(mapRef.current).bringToFront();
       } else {
         if (orthoLayerRef.current) mapRef.current.removeLayer(orthoLayerRef.current);
-        if (baseTileRef.current) baseTileRef.current.addTo(mapRef.current).bringToBack();
-        if (geoportalTileRef.current) geoportalTileRef.current.addTo(mapRef.current);
+        if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) {
+          baseTileRef.current.addTo(mapRef.current);
+        }
+        if (geoportalTileRef.current && !mapRef.current.hasLayer(geoportalTileRef.current)) {
+          geoportalTileRef.current.addTo(mapRef.current);
+        }
         if (baseTileRef.current) baseTileRef.current.bringToBack();
       }
       // Always keep kadastro overlay on top
@@ -103,9 +133,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
     }).addTo(map);
 
-    kadastroLayerRef.current = L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
+    kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
       maxZoom: 19,
-      opacity: 0.6,
+      opacity: 0.75,
       attribution: "Kadastro žemėlapis",
     }).addTo(map);
 
