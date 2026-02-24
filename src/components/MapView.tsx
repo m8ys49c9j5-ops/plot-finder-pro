@@ -133,7 +133,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
     }).addTo(map);
 
-    kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
+    kadastroLayerRef.current = L.tileLayer(`${KADASTRAS_BASE}/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
       opacity: 0.75,
       attribution: "Kadastro žemėlapis",
