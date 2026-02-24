@@ -3,13 +3,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-// Saugus limitas, kad funkcija spėtų užsibaigti prieš 30s Edge Function "Timeout"
-const MAXRUNTIMEMS = 20000;
-const FETCHLIMIT = 1000; // Maksimalus Supabase PostgREST grąžinamas kiekis
+const FETCHLIMIT = 1000;
 const UPSERTBATCH = 500;
+
+// Pagalbinė funkcija, kuri automatiškai kartoja veiksmą, jei įvyksta tinklo klaida
+async function withRetry<T>(operation: () => Promise<T>, retries = 3): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await operation();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.warn(`⚠️ Tinklo triktis, bandome dar kartą... (${i + 1}/${retries})`);
+      await new Promise((res) => setTimeout(res, 1000));
+    }
+  }
+  throw new Error("Nepasiekta");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -22,18 +35,17 @@ serve(async (req) => {
 
     const externalUrl = Deno.env.get("EXTERNALSUPABASEURL");
     const externalKey = Deno.env.get("EXTERNALSERVICEROLEKEY");
-    // Pridėtas standartinis Supabase pavadinimų fallback'as
-    const localUrl = Deno.env.get("SUPABASEURL") || Deno.env.get("SUPABASE_URL");
-    const localKey = Deno.env.get("SUPABASESERVICEROLEKEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const localUrl = Deno.env.get("SUPABASEURL");
+    const localKey = Deno.env.get("SUPABASESERVICEROLEKEY");
 
     if (!externalUrl || !externalKey || !localUrl || !localKey) {
-      return new Response(JSON.stringify({ error: "Supabase credentials not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Supabase credentials not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // OPTIMIZACIJA 1: Išjungiame auth sesijų saugojimą greitesniam kliento darbui
+    // Išjungiame sesijų saugojimą, kad taupytume atmintį
     const clientOptions = { auth: { persistSession: false, autoRefreshToken: false } };
     const externalClient = createClient(externalUrl, externalKey, clientOptions);
     const localClient = createClient(localUrl, localKey, clientOptions);
@@ -42,28 +54,28 @@ serve(async (req) => {
     let totalSynced = 0;
     let done = false;
 
-    // Pagalbinė funkcija išorinės DB užklausoms
-    const fetchBatch = (cursorId: string) => {
+    console.log(`🚀 Pradedama pilna sinchronizacija nuo paskutinio ID: ${lastId || "(pradžia)"}...`);
+
+    const fetchBatch = async (cursorId: string) => {
       let query = externalClient
         .from("parcels")
         .select("id, kadastronr, unikalusnr, savkodas, feature")
         .order("id", { ascending: true })
         .limit(FETCHLIMIT);
-
+      
       if (cursorId) query = query.gt("id", cursorId);
-      return query;
+      
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      return data;
     };
 
-    // OPTIMIZACIJA 2: Iš anksto inicijuojame patį pirmąjį siuntimą
-    let nextFetchPromise = fetchBatch(lastId);
+    // Pirmosios porcijos užklausimas
+    let nextFetchPromise = withRetry(() => fetchBatch(lastId));
 
-    while (Date.now() - startTime < MAXRUNTIMEMS) {
-      // 1. Sulaukiame duomenų (gali būti, kad jie jau buvo parsiųsti praėjusio ciklo metu fone)
-      const { data, error } = await nextFetchPromise;
-
-      if (error) {
-        throw new Error(`External fetch error: ${error.message}, synced: ${totalSynced}`);
-      }
+    // CIKLAS SUKSIS TOL, KOL BUS PERKELTI VISI 2.5 MLN. ĮRAŠŲ (done === true)
+    while (!done) {
+      const data = await nextFetchPromise;
 
       if (!data || data.length === 0) {
         done = true;
@@ -73,54 +85,47 @@ serve(async (req) => {
       const currentLastId = data[data.length - 1].id;
       const hasMore = data.length === FETCHLIMIT;
 
-      // OPTIMIZACIJA 3: PIPELINING. Nelaukdami kol baigsis įrašymas, IŠKARTO pradedame siųsti
-      // užklausą kitam duomenų blokui foniniame režime.
+      // Iškart foniniu režimu pradedame siųsti kitą duomenų bloką
       if (hasMore) {
-        nextFetchPromise = fetchBatch(currentLastId);
+        nextFetchPromise = withRetry(() => fetchBatch(currentLastId));
       } else {
         done = true;
       }
 
-      // OPTIMIZACIJA 4: Esamą duomenų bloką padaliname ir įrašinėjame (upsert) LYGIAGREČIAI
+      // Lygiagretus įrašymas blokais (Upsert)
       const upsertPromises = [];
       for (let i = 0; i < data.length; i += UPSERTBATCH) {
         const batch = data.slice(i, i + UPSERTBATCH);
-        upsertPromises.push(localClient.from("parcels").upsert(batch, { onConflict: "id" }));
+        upsertPromises.push(
+          withRetry(async () => {
+             const { error } = await localClient.from("parcels").upsert(batch, { onConflict: "id" });
+             if (error) throw new Error(error.message);
+             return true;
+          })
+        );
       }
 
-      // Laukiame kol visi upsert blokai bus sėkmingai išsaugoti bazėje
-      const results = await Promise.all(upsertPromises);
-      const upsertError = results.find((r) => r.error)?.error;
-
-      if (upsertError) {
-        throw new Error(`Upsert error: ${upsertError.message}, synced: ${totalSynced}`);
-      }
+      // Laukiame, kol visi duomenys bus sėkmingai įrašyti
+      await Promise.all(upsertPromises);
 
       totalSynced += data.length;
       lastId = currentLastId;
 
-      console.log(`Synced ${totalSynced} total, elapsed ${Date.now() - startTime}ms`);
-
-      if (done) break;
+      // Atspausdiname progresą kas 5000 įrašų
+      if (totalSynced % 5000 === 0) {
+        const elapsedSecs = ((Date.now() - startTime) / 1000).toFixed(0);
+        console.log(`🔄 Progresas: Sinchronizuota ${totalSynced} įrašų per ${elapsedSecs}s. Paskutinis ID: ${lastId}`);
+      }
     }
+
+    const totalTimeMins = ((Date.now() - startTime) / 60000).toFixed(2);
+    console.log(`✅ Pilna sinchronizacija baigta! Viso perkelta: ${totalSynced} per ${totalTimeMins} min.`);
 
     return new Response(
       JSON.stringify({
         success: true,
         synced: totalSynced,
-        done,
+        done: true,
         lastId,
-        message: done
-          ? `✓ Visa sinchronizacija baigta (${totalSynced} šioje iteracijoje)`
-          : `Sinchronizuota ${totalSynced} įrašų, tęsiama...`,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (err) {
-    console.error("Unexpected error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+        message: `✓ Visi duomenys s
+        
