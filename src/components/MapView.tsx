@@ -31,7 +31,7 @@ const buildExportProxyUrl = (
   map: L.Map,
   format: "jpg" | "png32",
   transparent = false,
-  layers?: string
+  layers?: string,
 ) => {
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
@@ -65,7 +65,7 @@ const OrthoTileLayer = L.TileLayer.extend({
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:21,27,33");
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:21,27");
   },
 });
 
@@ -186,10 +186,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         const props = feature.properties || {};
 
         const parcel: ParcelData = {
-          cadastralNumber:
-            props.nationalCadastralReference ||
-            props.NTR_ID?.toString() ||
-            "Nežinomas",
+          cadastralNumber: props.nationalCadastralReference || props.NTR_ID?.toString() || "Nežinomas",
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
@@ -240,10 +237,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
 
         const parcel: ParcelData = {
           cadastralNumber:
-            props.nationalCadastralReference ||
-            props.kadastro_nr ||
-            props.NTR_ID?.toString() ||
-            query.trim(),
+            props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim(),
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
@@ -279,9 +273,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       } else {
         onParcelSelect({
           cadastralNumber: query.trim(),
-          address:
-            data?.error ||
-            "Sklypas su tokiu kadastriniu numeriu nerastas. Patikrinkite numerį.",
+          address: data?.error || "Sklypas su tokiu kadastriniu numeriu nerastas. Patikrinkite numerį.",
         });
       }
     } catch (error) {
