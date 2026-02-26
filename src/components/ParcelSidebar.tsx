@@ -7,11 +7,9 @@ import {
   Lock,
   CreditCard,
   ChevronRight,
-  Triangle,
   Globe,
   MapPinned,
 } from "lucide-react";
-import { useMemo } from "react";
 
 // WGS84 to LKS94 (EPSG:3346) approximate conversion using Transverse Mercator projection
 const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
@@ -174,43 +172,13 @@ const PURPOSE_MAP: Record<string, string> = {
   "992": "Kita (vandens telkinys)",
   "993": "Kita (infrastruktūros teritorija)",
   "994": "Kita (visuomeninės paskirties teritorija)",
-  "995": "Kita ",
+  "995": "Kita (žemės)",
   "996": "Kita (bendro naudojimo teritorijos)",
   "997": "Kita (atskirų želdynų teritorija)",
   "999": "Tarpinė",
 };
 
-// Compute geodesic area from WGS84 polygon coordinates using the spherical excess formula
-const computeGeodesicArea = (coords: number[][][]): number => {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  let totalArea = 0;
-
-  for (const ring of coords) {
-    const n = ring.length;
-    if (n < 3) continue;
-    let sum = 0;
-    for (let i = 0; i < n; i++) {
-      const [lng1, lat1] = ring[i];
-      const [lng2, lat2] = ring[(i + 1) % n];
-      sum += toRad(lng2 - lng1) * (2 + Math.sin(toRad(lat1)) + Math.sin(toRad(lat2)));
-    }
-    totalArea += Math.abs(sum) / 2;
-  }
-
-  const R = 6371000; // Earth radius in meters
-  return totalArea * R * R;
-};
-
-const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
-  const calculatedArea = useMemo(() => {
-    if (!parcel?.coordinates) return null;
-    // Handle both Polygon and MultiPolygon
-    const isMulti = Array.isArray(parcel.coordinates[0]?.[0]?.[0]);
-    if (isMulti) {
-      return (parcel.coordinates as number[][][][]).reduce((sum, poly) => sum + computeGeodesicArea(poly), 0);
-    }
-    return computeGeodesicArea(parcel.coordinates as number[][][]);
-  }, [parcel?.coordinates]);
+const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
 
   if (!parcel) return null;
 
@@ -222,7 +190,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sklypas</p>
             <h2 className="text-lg font-display font-bold text-foreground mt-1">
-              {parcel.unikalusNr || parcel.cadastralNumber}
+              {searchInput || parcel.unikalusNr || parcel.cadastralNumber}
             </h2>
           </div>
           <button
@@ -245,19 +213,13 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
             </div>
 
             <div className="space-y-3">
+              <InfoRow icon={<Target className="h-4 w-4" />} label="Unikalus Nr." value={parcel.unikalusNr || "—"} />
               <InfoRow icon={<Target className="h-4 w-4" />} label="Kadastrinis Nr." value={parcel.cadastralNumber} />
               {parcel.area && (
                 <InfoRow
                   icon={<Ruler className="h-4 w-4" />}
                   label="Juridinis sklypo plotas"
                   value={`${parcel.area.toLocaleString("lt-LT")} ha.`}
-                />
-              )}
-              {calculatedArea !== null && (
-                <InfoRow
-                  icon={<Triangle className="h-4 w-4" />}
-                  label="Plotas pagal koordinates"
-                  value={`${Math.round(calculatedArea).toLocaleString("lt-LT")} m²`}
                 />
               )}
               {parcel.purpose && (
@@ -281,7 +243,7 @@ const ParcelSidebar = ({ parcel, onClose }: ParcelSidebarProps) => {
                       <InfoRow
                         icon={<MapPinned className="h-4 w-4" />}
                         label="Koordinatės (LKS94)"
-                        value={`${lks.x.toFixed(2)}, ${lks.y.toFixed(2)}`}
+                        value={`${Math.round(lks.x)}, ${Math.round(lks.y)}`}
                       />
                     </>
                   );
