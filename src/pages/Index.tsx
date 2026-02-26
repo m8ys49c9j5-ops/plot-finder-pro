@@ -1,13 +1,11 @@
 import { useState, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import { Layers, RefreshCw, Map, Satellite, FileText } from "lucide-react";
+import { Layers, RefreshCw, Map, Satellite } from "lucide-react";
 
 
 const Index = () => {
-  const navigate = useNavigate();
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [lastSearchInput, setLastSearchInput] = useState<string>("");
@@ -108,15 +106,6 @@ const Index = () => {
           <span className="text-xs font-medium text-foreground hidden sm:inline">
             {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
           </span>
-        </button>
-
-        <button
-          onClick={() => navigate("/auditas")}
-          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
-          title="Sklypo auditas"
-        >
-          <FileText className="h-5 w-5 text-foreground" />
-          <span className="text-xs font-medium text-foreground hidden sm:inline">Auditas</span>
         </button>
       </div>
 
