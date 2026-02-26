@@ -31,8 +31,7 @@ const buildExportProxyUrl = (
   map: L.Map,
   format: "jpg" | "png32",
   transparent = false,
-  layers?: string,
-  dynamicLayers?: object[]
+  layers?: string
 ) => {
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
@@ -47,9 +46,7 @@ const buildExportProxyUrl = (
 
   const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
   let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
-  if (dynamicLayers) {
-    exportUrl += `&dynamicLayers=${encodeURIComponent(JSON.stringify(dynamicLayers))}`;
-  } else if (layers) {
+  if (layers) {
     exportUrl += `&layers=${encodeURIComponent(layers)}`;
   }
 
@@ -64,27 +61,11 @@ const OrthoTileLayer = L.TileLayer.extend({
   },
 });
 
-// Boundary-only renderer (no labels) shared by all sklypai dynamic layers
-const SKLYPAI_RENDERER = {
-  type: "simple",
-  symbol: {
-    type: "esriSFS",
-    style: "esriSFSSolid",
-    color: [0, 0, 0, 0],
-    outline: { type: "esriSLS", style: "esriSLSSolid", color: [228, 26, 28, 255], width: 1.1 },
-  },
-};
-
-const KADASTRO_DYNAMIC_LAYERS = [15, 21, 27, 33].map((id) => ({
-  id,
-  source: { type: "mapLayer", mapLayerId: id },
-  drawingInfo: { renderer: SKLYPAI_RENDERER, labelingInfo: null },
-}));
-
+// Kadastro overlay - only sklypai boundary layers (IDs 15,21,27,33 at various scales)
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, undefined, KADASTRO_DYNAMIC_LAYERS);
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
   },
 });
 
