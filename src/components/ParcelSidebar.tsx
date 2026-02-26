@@ -1,15 +1,4 @@
-import {
-  X,
-  MapPin,
-  Ruler,
-  Target,
-  FileText,
-  Lock,
-  CreditCard,
-  ChevronRight,
-  Globe,
-  MapPinned,
-} from "lucide-react";
+import { X, MapPin, Ruler, Target, FileText, Lock, CreditCard, ChevronRight, Globe, MapPinned } from "lucide-react";
 
 // WGS84 to LKS94 (EPSG:3346) approximate conversion using Transverse Mercator projection
 const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
@@ -172,14 +161,13 @@ const PURPOSE_MAP: Record<string, string> = {
   "992": "Kita (vandens telkinys)",
   "993": "Kita (infrastruktūros teritorija)",
   "994": "Kita (visuomeninės paskirties teritorija)",
-  "995": "Kita (žemės)",
+  "995": "Kita",
   "996": "Kita (bendro naudojimo teritorijos)",
   "997": "Kita (atskirų želdynų teritorija)",
   "999": "Tarpinė",
 };
 
 const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
-
   if (!parcel) return null;
 
   return (
