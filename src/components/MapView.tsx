@@ -32,7 +32,6 @@ const buildExportProxyUrl = (
   format: "jpg" | "png32",
   transparent = false,
   layers?: string,
-  dynamicLayersOverride?: any[],
 ) => {
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
@@ -47,13 +46,8 @@ const buildExportProxyUrl = (
 
   const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
   let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
-
   if (layers) {
     exportUrl += `&layers=${encodeURIComponent(layers)}`;
-  }
-
-  if (dynamicLayersOverride) {
-    exportUrl += `&dynamicLayers=${encodeURIComponent(JSON.stringify(dynamicLayersOverride))}`;
   }
 
   return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
@@ -71,32 +65,7 @@ const OrthoTileLayer = L.TileLayer.extend({
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
-
-    // We explicitly recreate the red outline renderer so the server doesn't draw blanks,
-    // while simultaneously forcing labels to be hidden.
-    const noTextLayers = [15, 21, 27, 33].map((layerId) => ({
-      id: layerId,
-      source: { type: "mapLayer", mapLayerId: layerId },
-      drawingInfo: {
-        showLabels: false,
-        labelingInfo: [],
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "esriSFS",
-            style: "esriSFSNull", // Transparent fill inside the parcel
-            outline: {
-              type: "esriSLS",
-              style: "esriSLSSolid",
-              color: [255, 0, 0, 255], // Red color[R, G, B, Alpha]
-              width: 1.5, // Thickness of the red line
-            },
-          },
-        },
-      },
-    }));
-
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33", noTextLayers);
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
   },
 });
 
@@ -116,6 +85,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       if (type === "ortho") {
         if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
 
+        // Keep a guaranteed visible base map underneath ortofoto
         if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) {
           baseTileRef.current.addTo(mapRef.current);
         }
@@ -138,6 +108,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         }
         if (baseTileRef.current) baseTileRef.current.bringToBack();
       }
+      // Always keep kadastro overlay on top
       if (kadastroLayerRef.current) {
         kadastroLayerRef.current.bringToFront();
       }
@@ -285,6 +256,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           const layer = highlightGeoJSON(feature);
           if (layer) {
             const bounds = layer.getBounds();
+            // Offset padding to center parcel in visible map area (accounting for 400px sidebar on the right)
             const sidebarWidth = window.innerWidth >= 640 ? 400 : 0;
             mapRef.current.fitBounds(bounds, {
               paddingTopLeft: [80, 80],
