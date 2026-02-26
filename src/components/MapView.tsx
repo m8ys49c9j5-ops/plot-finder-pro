@@ -32,7 +32,6 @@ const buildExportProxyUrl = (
   format: "jpg" | "png32",
   transparent = false,
   layers?: string,
-  dynamicLayersOverride?: any[], // Added optional parameter for dynamic overrides
 ) => {
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
@@ -47,14 +46,8 @@ const buildExportProxyUrl = (
 
   const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
   let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
-
   if (layers) {
     exportUrl += `&layers=${encodeURIComponent(layers)}`;
-  }
-
-  // If dynamic overrides exist, append them to the export URL
-  if (dynamicLayersOverride) {
-    exportUrl += `&dynamicLayers=${encodeURIComponent(JSON.stringify(dynamicLayersOverride))}`;
   }
 
   return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
@@ -72,26 +65,7 @@ const OrthoTileLayer = L.TileLayer.extend({
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
-
-    // Define the override to strip text from the specific layers
-    // We map through the layers and set labelingInfo to an empty array
-    const noTextLayers = [15, 21, 27, 33].map((layerId) => ({
-      id: layerId,
-      source: { type: "mapLayer", mapLayerId: layerId },
-      drawingInfo: {
-        labelingInfo: [], // This disables the text labels
-      },
-    }));
-
-    return buildExportProxyUrl(
-      KADASTRAS_BASE,
-      coords,
-      map,
-      "png32",
-      true,
-      "show:15,21,27,33",
-      noTextLayers, // Pass the override to the URL builder
-    );
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
   },
 });
 
