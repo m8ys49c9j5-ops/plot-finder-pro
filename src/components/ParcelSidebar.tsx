@@ -223,16 +223,18 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
                   const lks = wgs84ToLks94(parcel.lat, parcel.lng);
                   return (
                     <>
-                      <InfoRow
-                        icon={<Globe className="h-4 w-4" />}
-                        label="Koordinatės (WGS84)"
-                        value={`${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`}
-                      />
-                      <InfoRow
-                        icon={<MapPinned className="h-4 w-4" />}
-                        label="Koordinatės (LKS94)"
-                        value={`${Math.round(lks.x)}, ${Math.round(lks.y)}`}
-                      />
+                      <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
+                        <div className="text-primary mt-0.5"><Globe className="h-4 w-4" /></div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Koordinatės</p>
+                          <p className="text-sm font-medium text-foreground">
+                            WGS84: {parcel.lat.toFixed(5)}, {parcel.lng.toFixed(5)}
+                          </p>
+                          <p className="text-sm font-medium text-foreground">
+                            LKS94: {Math.round(lks.x)}, {Math.round(lks.y)}
+                          </p>
+                        </div>
+                      </div>
                     </>
                   );
                 })()}
