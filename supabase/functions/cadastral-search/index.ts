@@ -58,7 +58,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     const { data: exactData, error: exactError } = await supabase
       .from("parcels")
       .select("feature, kadastro_nr, unikalus_nr")
-      .or(`kadro Nr.eq.${cleaned},unikalus_nr.eq.${digitsOnly}`)
+      .or(`kadastro_nr.eq.${cleaned},unikalus_nr.eq.${digitsOnly}`)
       .limit(1);
 
     if (exactError) console.error("DB exact match error:", exactError);
@@ -75,14 +75,14 @@ async function searchByCadastralNumber(cadastralNumber: string) {
       const { data: jsonbData, error: jsonbError } = await supabase
         .from("parcels")
         .select("feature, kadastro_nr, unikalus_nr")
-        .or(`kadro Nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`)
+        .or(`kadastro_nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`)
         .limit(5);
 
       if (jsonbError) console.error("DB fuzzy match error:", jsonbError);
 
       if (jsonbData && jsonbData.length > 0) {
         const match = jsonbData.find((row) => {
-          const kadDigits = (row.kadro Nr ?? "").replace(/\D/g, "");
+          const kadDigits = (row['kadastro_nr'] ?? "").replace(/\D/g, "");
           const uniDigits = (row.unikalus_nr ?? "").replace(/\D/g, "");
           return kadDigits === digitsOnly || uniDigits === digitsOnly;
         });
@@ -96,17 +96,17 @@ async function searchByCadastralNumber(cadastralNumber: string) {
       }
     }
 
-    // --- 3. Partial kadro Nr match ---
+    // --- 3. Partial kadastro_nr match ---
     if (cleaned.length >= 4) {
       const { data: partialData, error: partialError } = await supabase
         .from("parcels")
         .select("feature")
-        .like("kadro Nr", `%${cleaned}%`)
+        .like("kadastro_nr", `%${cleaned}%`)
         .limit(1);
 
       if (partialError) console.error("DB partial match error:", partialError.message);
       else if (partialData && partialData.length > 0) {
-        console.log("Found via partial kadro Nr match");
+        console.log("Found via partial kadastro_nr match");
         const response = buildFeatureResponse(partialData[0].feature, cleaned);
         cache.set(cleaned, response); // Cache the result
         return response;
@@ -162,7 +162,7 @@ function buildFeatureResponse(feature: any, searchInput: string) {
   }
 
   props.nationalCadastralReference =
-    props.kadro Nr || props.unikalus_nr?.toString() || searchInput;
+    props.kadastro_nr || props.unikalus_nr?.toString() || searchInput;
 
   return jsonResponse({ features: [feature] });
 }
