@@ -9,6 +9,9 @@ const corsHeaders = {
 
 const WMS_URL = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer/WMSServer";
 
+// Create a map to cache search results
+const cache = new Map<string, any>();
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,84 +43,101 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
   console.log(`Searching for: "${cleaned}" | digits: "${digitsOnly}"`);
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-
-  // --- 1. Exact match by kadastro_nr or unikalus_nr ---
-  const { data: exactData, error: exactError } = await supabase
-    .from("parcels")
-    .select("feature, kadastro_nr, unikalus_nr")
-    .or(`kadastro_nr.eq.${cleaned},unikalus_nr.eq.${digitsOnly}`)
-    .limit(1);
-
-  if (exactError) console.error("DB exact match error:", exactError);
-
-  if (exactData && exactData.length > 0) {
-    console.log("Found via exact DB match");
-    return buildFeatureResponse(exactData[0].feature, cleaned);
+  // Check cache first
+  if (cache.has(cleaned)) {
+    return jsonResponse(cache.get(cleaned));
   }
 
-  // --- 2. Fuzzy digit-only match ---
-  if (digitsOnly.length >= 6) {
-    const { data: jsonbData, error: jsonbError } = await supabase
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // --- 1. Exact match by kadastro_nr or unikalus_nr ---
+    const { data: exactData, error: exactError } = await supabase
       .from("parcels")
       .select("feature, kadastro_nr, unikalus_nr")
-      .or(`kadastro_nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`)
-      .limit(5);
-
-    if (jsonbError) console.error("DB fuzzy match error:", jsonbError);
-
-    if (jsonbData && jsonbData.length > 0) {
-      const match = jsonbData.find((row) => {
-        const kadDigits = (row.kadastro_nr ?? "").replace(/\D/g, "");
-        const uniDigits = (row.unikalus_nr ?? "").replace(/\D/g, "");
-        return kadDigits === digitsOnly || uniDigits === digitsOnly;
-      });
-
-      if (match) {
-        console.log("Found via fuzzy digit DB match");
-        return buildFeatureResponse(match.feature, cleaned);
-      }
-    }
-  }
-
-  // --- 3. Partial kadastro_nr match ---
-  if (cleaned.length >= 4) {
-    const { data: partialData, error: partialError } = await supabase
-      .from("parcels")
-      .select("feature")
-      .like("kadastro_nr", `%${cleaned}%`)
+      .or(`kadro Nr.eq.${cleaned},unikalus_nr.eq.${digitsOnly}`)
       .limit(1);
 
-    if (partialError) console.error("DB partial match error:", partialError.message);
-    else if (partialData && partialData.length > 0) {
-      console.log("Found via partial kadastro_nr match");
-      return buildFeatureResponse(partialData[0].feature, cleaned);
+    if (exactError) console.error("DB exact match error:", exactError);
+
+    if (exactData && exactData.length > 0) {
+      console.log("Found via exact DB match");
+      const response = buildFeatureResponse(exactData[0].feature, cleaned);
+      cache.set(cleaned, response); // Cache the result
+      return response;
     }
-  }
 
-  // --- 4. INSPIRE WFS fallback ---
-  try {
-    console.log("Trying INSPIRE WFS fallback...");
-    const wfsUrl = `https://www.inspire-geoportal.lt/geoserver/cp/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=cp:CadastralParcel&count=1&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=nationalCadastralReference%20LIKE%20'%25${encodeURIComponent(cleaned)}%25'`;
-    const wfsRes = await fetch(wfsUrl, { signal: AbortSignal.timeout(8000) });
+    // --- 2. Fuzzy digit-only match ---
+    if (digitsOnly.length >= 6) {
+      const { data: jsonbData, error: jsonbError } = await supabase
+        .from("parcels")
+        .select("feature, kadastro_nr, unikalus_nr")
+        .or(`kadro Nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`)
+        .limit(5);
 
-    if (wfsRes.ok) {
-      const wfsData = await wfsRes.json();
-      if (wfsData.features && wfsData.features.length > 0) {
-        const feature = wfsData.features[0];
-        const props = feature.properties || {};
-        props.nationalCadastralReference = props.nationalCadastralReference || cleaned;
-        return jsonResponse({ features: [feature] });
+      if (jsonbError) console.error("DB fuzzy match error:", jsonbError);
+
+      if (jsonbData && jsonbData.length > 0) {
+        const match = jsonbData.find((row) => {
+          const kadDigits = (row.kadro Nr ?? "").replace(/\D/g, "");
+          const uniDigits = (row.unikalus_nr ?? "").replace(/\D/g, "");
+          return kadDigits === digitsOnly || uniDigits === digitsOnly;
+        });
+
+        if (match) {
+          console.log("Found via fuzzy digit DB match");
+          const response = buildFeatureResponse(match.feature, cleaned);
+          cache.set(cleaned, response); // Cache the result
+          return response;
+        }
       }
     }
-  } catch (e) {
-    console.error("WFS error:", e);
-  }
 
-  return jsonResponse({ features: [], error: "Sklypas nerastas" });
+    // --- 3. Partial kadro Nr match ---
+    if (cleaned.length >= 4) {
+      const { data: partialData, error: partialError } = await supabase
+        .from("parcels")
+        .select("feature")
+        .like("kadro Nr", `%${cleaned}%`)
+        .limit(1);
+
+      if (partialError) console.error("DB partial match error:", partialError.message);
+      else if (partialData && partialData.length > 0) {
+        console.log("Found via partial kadro Nr match");
+        const response = buildFeatureResponse(partialData[0].feature, cleaned);
+        cache.set(cleaned, response); // Cache the result
+        return response;
+      }
+    }
+
+    // --- 4. INSPIRE WFS fallback ---
+    try {
+      console.log("Trying INSPIRE WFS fallback...");
+      const wfsUrl = `https://www.inspire-geoportal.lt/geoserver/cp/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=cp:CadastralParcel&count=1&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=nationalCadastralReference%20LIKE%20'%25${encodeURIComponent(cleaned)}%25'`;
+      const wfsRes = await fetch(wfsUrl, { signal: AbortSignal.timeout(8000) });
+
+      if (wfsRes.ok) {
+        const wfsData = await wfsRes.json();
+        if (wfsData.features && wfsData.features.length > 0) {
+          const feature = wfsData.features[0];
+          const props = feature.properties || {};
+          props.nationalCadastralReference = props.nationalCadastralReference || cleaned;
+          cache.set(cleaned, jsonResponse({ features: [feature] }));
+          return jsonResponse({ features: [feature] });
+        }
+      }
+    } catch (e) {
+      console.error("WFS error:", e);
+    }
+
+    return jsonResponse({ features: [], error: "Sklypas nerastas" });
+  } finally {
+    // Optionally, you can set an expiration time for the cache
+    setTimeout(() => cache.delete(cleaned), 3600000); // Cache expires after 1 hour
+  }
 }
 
 // ---------- Build response ----------
@@ -142,7 +162,7 @@ function buildFeatureResponse(feature: any, searchInput: string) {
   }
 
   props.nationalCadastralReference =
-    props.kadastro_nr || props.unikalus_nr?.toString() || searchInput;
+    props.kadro Nr || props.unikalus_nr?.toString() || searchInput;
 
   return jsonResponse({ features: [feature] });
 }
@@ -287,14 +307,14 @@ async function identifyByCoords(lat: number, lng: number, zoom: number) {
         if (data.features && data.features.length > 0) return jsonResponse(data);
       } catch {
         const ntrMatch = text.match(/NTR_ID[^\d]*(\d+)/);
-        const plotasMatch = text.match(/PLOTAS_J[^\d]*(\d+)/);
+        const plotasJMatch = text.match(/PLOTAS_J[^\d]*(\d+)/);
         if (ntrMatch) {
           return jsonResponse({
             features: [{
               type: "Feature",
               properties: {
                 NTR_ID: ntrMatch[1],
-                PLOTAS_J: plotasMatch ? parseInt(plotasMatch[1]) : undefined,
+                PLOTAS_J: plotasJMatch ? parseInt(plotasJMatch[1]) : undefined,
               },
               geometry: null,
             }],
