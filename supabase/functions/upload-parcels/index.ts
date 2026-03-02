@@ -32,9 +32,42 @@ serve(async (req) => {
 
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = records.slice(i, i + BATCH_SIZE);
-      const { error } = await supabase
-        .from("parcels")
-        .upsert(batch, { onConflict: "kadastro_nr", ignoreDuplicates: true });
+
+      const nonNullKadastro = Array.from(
+        new Set(batch.map((r) => r?.kadastro_nr).filter((v): v is string => typeof v === "string" && v.length > 0)),
+      );
+
+      let existingKadastro = new Set<string>();
+      if (nonNullKadastro.length > 0) {
+        const { data: existingRows, error: existingError } = await supabase
+          .from("parcels")
+          .select("kadastro_nr")
+          .in("kadastro_nr", nonNullKadastro);
+
+        if (existingError) {
+          return new Response(
+            JSON.stringify({ error: existingError.message, upserted: totalUpserted }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        existingKadastro = new Set(
+          (existingRows ?? [])
+            .map((row) => row.kadastro_nr)
+            .filter((v): v is string => typeof v === "string"),
+        );
+      }
+
+      const toInsert = batch.filter((row) => {
+        if (!row?.kadastro_nr) return true;
+        return !existingKadastro.has(row.kadastro_nr);
+      });
+
+      if (toInsert.length === 0) {
+        continue;
+      }
+
+      const { error } = await supabase.from("parcels").insert(toInsert);
 
       if (error) {
         return new Response(
@@ -42,7 +75,7 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      totalUpserted += batch.length;
+      totalUpserted += toInsert.length;
     }
 
     return new Response(
