@@ -34,7 +34,7 @@ serve(async (req) => {
       const batch = records.slice(i, i + BATCH_SIZE);
       const { error } = await supabase
         .from("parcels")
-        .upsert(batch, { onConflict: "id", ignoreDuplicates: true });
+        .upsert(batch, { onConflict: "kadastro_nr", ignoreDuplicates: true });
 
       if (error) {
         return new Response(
