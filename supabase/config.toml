@@ -9,8 +9,6 @@ verify_jwt = false
 [functions.map-proxy]
 verify_jwt = false
 
-[functions.sync-parcels]
-verify_jwt = false
 
 [functions.upload-parcels]
 verify_jwt = false
