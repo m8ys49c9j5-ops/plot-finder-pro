@@ -16,6 +16,10 @@ export type Database = {
     Tables: {
       parcels: {
         Row: {
+          bbox_max_x: number | null
+          bbox_max_y: number | null
+          bbox_min_x: number | null
+          bbox_min_y: number | null
           feature: Json | null
           id: string
           kadastro_nr: string | null
@@ -23,6 +27,10 @@ export type Database = {
           unikalus_nr: string | null
         }
         Insert: {
+          bbox_max_x?: number | null
+          bbox_max_y?: number | null
+          bbox_min_x?: number | null
+          bbox_min_y?: number | null
           feature?: Json | null
           id?: string
           kadastro_nr?: string | null
@@ -30,6 +38,10 @@ export type Database = {
           unikalus_nr?: string | null
         }
         Update: {
+          bbox_max_x?: number | null
+          bbox_max_y?: number | null
+          bbox_min_x?: number | null
+          bbox_min_y?: number | null
           feature?: Json | null
           id?: string
           kadastro_nr?: string | null
@@ -46,6 +58,10 @@ export type Database = {
       find_parcel_by_lks94_point: {
         Args: { p_x: number; p_y: number }
         Returns: {
+          bbox_max_x: number | null
+          bbox_max_y: number | null
+          bbox_min_x: number | null
+          bbox_min_y: number | null
           feature: Json | null
           id: string
           kadastro_nr: string | null
