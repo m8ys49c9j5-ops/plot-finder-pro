@@ -321,16 +321,9 @@ async function identifyByCoords(lat: number, lng: number, _zoom: number) {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
-  // Fast bbox lookup using indexed columns
+  // Fast bbox lookup using SQL function with indexed columns
   const { data: rows, error } = await supabase
-    .from("parcels")
-    .select("feature, kadastro_nr, unikalus_nr")
-    .lte("bbox_min_x", lksX)
-    .gte("bbox_max_x", lksX)
-    .lte("bbox_min_y", lksY)
-    .gte("bbox_max_y", lksY)
-    .not("bbox_min_x", "is", null)
-    .limit(5);
+    .rpc("find_parcel_by_bbox", { p_x: lksX, p_y: lksY });
 
   if (error) {
     console.error("Bbox query error:", error);

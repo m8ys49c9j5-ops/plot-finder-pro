@@ -55,6 +55,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_parcel_by_bbox: {
+        Args: { p_x: number; p_y: number }
+        Returns: {
+          feature: Json
+          kadastro_nr: string
+          unikalus_nr: string
+        }[]
+      }
       find_parcel_by_lks94_point: {
         Args: { p_x: number; p_y: number }
         Returns: {
