@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const WMS_URL = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer/WMSServer";
+
 
 // Create a map to cache search results
 const cache = new Map<string, any>();
@@ -280,46 +280,69 @@ function computeCentroid(geometry: any): [number, number] | null {
   return [sumX / totalArea, sumY / totalArea];
 }
 
+// ---------- WGS84 → LKS94 ----------
+
+function wgs84ToLKS94(lat: number, lon: number): [number, number] {
+  const a = 6378137.0;
+  const f = 1 / 298.257223563;
+  const e2 = 2 * f - f * f;
+  const k0 = 0.9998;
+  const lon0 = 24.0 * Math.PI / 180;
+  const fe = 500000;
+
+  const phi = lat * Math.PI / 180;
+  const lam = lon * Math.PI / 180;
+  const sinP = Math.sin(phi), cosP = Math.cos(phi), tanP = Math.tan(phi);
+  const N = a / Math.sqrt(1 - e2 * sinP * sinP);
+  const T = tanP * tanP;
+  const C = (e2 / (1 - e2)) * cosP * cosP;
+  const A = (lam - lon0) * cosP;
+  const M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256) * phi
+    - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 * e2 * e2 / 1024) * Math.sin(2 * phi)
+    + (15 * e2 * e2 / 256 + 45 * e2 * e2 * e2 / 1024) * Math.sin(4 * phi)
+    - (35 * e2 * e2 * e2 / 3072) * Math.sin(6 * phi));
+
+  const x = fe + k0 * N * (A + (1 - T + C) * A * A * A / 6
+    + (5 - 18 * T + T * T + 72 * C - 58 * (e2 / (1 - e2))) * A * A * A * A * A / 120);
+  const y = k0 * (M + N * tanP * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A * A * A * A / 24
+    + (61 - 58 * T + T * T + 600 * C - 330 * (e2 / (1 - e2))) * A * A * A * A * A * A / 720));
+
+  return [x, y];
+}
+
 // ---------- Identify by coordinates ----------
 
 async function identifyByCoords(lat: number, lng: number, _zoom: number) {
-  // Primary: INSPIRE WFS spatial query
-  try {
-    console.log(`Identify: WFS spatial query at ${lat}, ${lng}`);
-    const wfsUrl = `https://www.inspire-geoportal.lt/geoserver/cp/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=cp:CadastralParcel&count=1&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=INTERSECTS(geometry,POINT(${lng}%20${lat}))`;
-    const wfsRes = await fetch(wfsUrl, { signal: AbortSignal.timeout(10000) });
-    if (wfsRes.ok) {
-      const wfsData = await wfsRes.json();
-      if (wfsData.features && wfsData.features.length > 0) {
-        const props = wfsData.features[0].properties || {};
-        const kadastroNr = props.nationalCadastralReference || null;
-        console.log(`WFS found cadastral nr: ${kadastroNr}`);
+  const [lksX, lksY] = wgs84ToLKS94(lat, lng);
+  console.log(`Identify at WGS84(${lat}, ${lng}) → LKS94(${lksX.toFixed(1)}, ${lksY.toFixed(1)})`);
 
-        // Look up in our DB for full data (area, purpose, etc.)
-        if (kadastroNr) {
-          const supabase = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-          );
-          const { data: rows } = await supabase
-            .from("parcels")
-            .select("feature, kadastro_nr, unikalus_nr")
-            .or(`kadastro_nr.eq.${kadastroNr},unikalus_nr.eq.${kadastroNr}`)
-            .limit(1);
-          if (rows && rows.length > 0) {
-            console.log("Enriched with DB data");
-            return buildFeatureResponse(rows[0].feature, kadastroNr);
-          }
-        }
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
 
-        // Return WFS data directly
-        return jsonResponse(wfsData);
-      }
-    }
-  } catch (e) {
-    console.error("WFS spatial query error:", e);
+  // Fast bbox lookup using indexed columns
+  const { data: rows, error } = await supabase
+    .from("parcels")
+    .select("feature, kadastro_nr, unikalus_nr")
+    .lte("bbox_min_x", lksX)
+    .gte("bbox_max_x", lksX)
+    .lte("bbox_min_y", lksY)
+    .gte("bbox_max_y", lksY)
+    .not("bbox_min_x", "is", null)
+    .limit(5);
+
+  if (error) {
+    console.error("Bbox query error:", error);
+    return jsonResponse({ features: [], error: error.message }, 500);
   }
 
+  if (rows && rows.length > 0) {
+    console.log(`Found ${rows.length} candidate(s) via bbox`);
+    return buildFeatureResponse(rows[0].feature, rows[0].kadastro_nr || rows[0].unikalus_nr || "");
+  }
+
+  console.log("No parcel found at this location");
   return jsonResponse({ features: [] });
 }
 
