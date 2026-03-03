@@ -280,51 +280,46 @@ function computeCentroid(geometry: any): [number, number] | null {
   return [sumX / totalArea, sumY / totalArea];
 }
 
-// ---------- WMS identify ----------
+// ---------- Identify by coordinates ----------
 
-async function identifyByCoords(lat: number, lng: number, zoom: number) {
-  const size = 256;
-  const resolution = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
-  const halfExtent = (resolution * size) / 2;
-  const degPerMeter = 1 / 111320;
-  const halfDegLat = halfExtent * degPerMeter;
-  const halfDegLng = halfExtent * degPerMeter / Math.cos((lat * Math.PI) / 180);
-  const bbox = `${lng - halfDegLng},${lat - halfDegLat},${lng + halfDegLng},${lat + halfDegLat}`;
-
-  const params = new URLSearchParams({
-    SERVICE: "WMS", VERSION: "1.1.1", REQUEST: "GetFeatureInfo", FORMAT: "image/png",
-    TRANSPARENT: "true", QUERY_LAYERS: "21", LAYERS: "21", INFO_FORMAT: "application/json",
-    FEATURE_COUNT: "1", X: Math.floor(size / 2).toString(), Y: Math.floor(size / 2).toString(),
-    SRS: "EPSG:4326", WIDTH: size.toString(), HEIGHT: size.toString(), BBOX: bbox,
-  });
-
+async function identifyByCoords(lat: number, lng: number, _zoom: number) {
+  // Primary: INSPIRE WFS spatial query
   try {
-    const response = await fetch(`${WMS_URL}?${params}`, { signal: AbortSignal.timeout(8000) });
-    if (response.ok) {
-      const text = await response.text();
-      try {
-        const data = JSON.parse(text);
-        if (data.features && data.features.length > 0) return jsonResponse(data);
-      } catch {
-        const ntrMatch = text.match(/NTR_ID[^\d]*(\d+)/);
-        const plotasJMatch = text.match(/PLOTAS_J[^\d]*(\d+)/);
-        if (ntrMatch) {
-          return jsonResponse({
-            features: [{
-              type: "Feature",
-              properties: {
-                NTR_ID: ntrMatch[1],
-                PLOTAS_J: plotasJMatch ? parseInt(plotasJMatch[1]) : undefined,
-              },
-              geometry: null,
-            }],
-          });
+    console.log(`Identify: WFS spatial query at ${lat}, ${lng}`);
+    const wfsUrl = `https://www.inspire-geoportal.lt/geoserver/cp/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=cp:CadastralParcel&count=1&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=INTERSECTS(geometry,POINT(${lng}%20${lat}))`;
+    const wfsRes = await fetch(wfsUrl, { signal: AbortSignal.timeout(10000) });
+    if (wfsRes.ok) {
+      const wfsData = await wfsRes.json();
+      if (wfsData.features && wfsData.features.length > 0) {
+        const props = wfsData.features[0].properties || {};
+        const kadastroNr = props.nationalCadastralReference || null;
+        console.log(`WFS found cadastral nr: ${kadastroNr}`);
+
+        // Look up in our DB for full data (area, purpose, etc.)
+        if (kadastroNr) {
+          const supabase = createClient(
+            Deno.env.get("SUPABASE_URL") ?? "",
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+          );
+          const { data: rows } = await supabase
+            .from("parcels")
+            .select("feature, kadastro_nr, unikalus_nr")
+            .or(`kadastro_nr.eq.${kadastroNr},unikalus_nr.eq.${kadastroNr}`)
+            .limit(1);
+          if (rows && rows.length > 0) {
+            console.log("Enriched with DB data");
+            return buildFeatureResponse(rows[0].feature, kadastroNr);
+          }
         }
+
+        // Return WFS data directly
+        return jsonResponse(wfsData);
       }
     }
   } catch (e) {
-    console.error("WMS GetFeatureInfo error:", e);
+    console.error("WFS spatial query error:", e);
   }
+
   return jsonResponse({ features: [] });
 }
 
