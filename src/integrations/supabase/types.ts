@@ -43,7 +43,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      find_parcel_by_lks94_point: {
+        Args: { p_x: number; p_y: number }
+        Returns: {
+          feature: Json | null
+          id: string
+          kadastro_nr: string | null
+          sav_kodas: string | null
+          unikalus_nr: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "parcels"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
