@@ -65,7 +65,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
     if (exactData && exactData.length > 0) {
       console.log("Found via exact DB match");
-      const response = buildFeatureResponse(exactData[0].feature, cleaned);
+      const response = await buildFeatureResponse(exactData[0].feature, cleaned);
       cache.set(cleaned, response); // Cache the result
       return response;
     }
@@ -89,7 +89,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
         if (match) {
           console.log("Found via fuzzy digit DB match");
-          const response = buildFeatureResponse(match.feature, cleaned);
+          const response = await buildFeatureResponse(match.feature, cleaned);
           cache.set(cleaned, response); // Cache the result
           return response;
         }
@@ -107,7 +107,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
       if (partialError) console.error("DB partial match error:", partialError.message);
       else if (partialData && partialData.length > 0) {
         console.log("Found via partial kadastro_nr match");
-        const response = buildFeatureResponse(partialData[0].feature, cleaned);
+        const response = await buildFeatureResponse(partialData[0].feature, cleaned);
         cache.set(cleaned, response); // Cache the result
         return response;
       }
@@ -142,15 +142,19 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
 // ---------- Build response ----------
 
-function buildFeatureResponse(feature: any, searchInput: string) {
+async function buildFeatureResponse(feature: any, searchInput: string) {
   if (!feature) return jsonResponse({ features: [], error: "Tuščias įrašas DB" });
 
   const props = feature.properties || {};
+  let centroidLat: number | null = null;
+  let centroidLon: number | null = null;
 
   if (feature.geometry?.coordinates) {
     const centroidLKS94 = computeCentroid(feature.geometry);
     if (centroidLKS94) {
       const [lon, lat] = lks94ToWGS84(centroidLKS94[0], centroidLKS94[1]);
+      centroidLat = lat;
+      centroidLon = lon;
       props.centroid_lat = lat;
       props.centroid_lon = lon;
       props.centroid_lks94_x = centroidLKS94[0];
@@ -163,6 +167,26 @@ function buildFeatureResponse(feature: any, searchInput: string) {
 
   props.nationalCadastralReference =
     props.kadastro_nr || props.unikalus_nr?.toString() || searchInput;
+
+  // Look up nearest address from lithuanian_addresses table
+  if (centroidLat !== null && centroidLon !== null) {
+    try {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      );
+      const { data: addrRows, error: addrError } = await supabase
+        .rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon });
+
+      if (!addrError && addrRows && addrRows.length > 0) {
+        props.exactAddress = addrRows[0].full_address;
+        props.addressDistance = addrRows[0].distance_m;
+        console.log(`Nearest address: ${addrRows[0].full_address} (${addrRows[0].distance_m?.toFixed(1)}m)`);
+      }
+    } catch (e) {
+      console.error("Address lookup error:", e);
+    }
+  }
 
   return jsonResponse({ features: [feature] });
 }
@@ -332,7 +356,7 @@ async function identifyByCoords(lat: number, lng: number, _zoom: number) {
 
   if (rows && rows.length > 0) {
     console.log(`Found ${rows.length} candidate(s) via bbox`);
-    return buildFeatureResponse(rows[0].feature, rows[0].kadastro_nr || rows[0].unikalus_nr || "");
+    return await buildFeatureResponse(rows[0].feature, rows[0].kadastro_nr || rows[0].unikalus_nr || "");
   }
 
   console.log("No parcel found at this location");
