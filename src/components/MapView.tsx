@@ -191,6 +191,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
           address:
+            props.exactAddress ||
             props.label ||
             props.adresas ||
             props.ADRESAS ||
@@ -242,6 +243,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
           address:
+            props.exactAddress ||
             props.label ||
             props.adresas ||
             props.ADRESAS ||
