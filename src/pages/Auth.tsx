@@ -50,21 +50,96 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex relative overflow-hidden">
-      {/* Center: Login form */}
-      <div className="flex-1 flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl grid md:grid-cols-2 gap-8 items-start">
+        {/* Left: Pricing & Features */}
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Layers className="h-6 w-6 text-primary" />
+              <span className="font-display font-bold text-2xl text-foreground">
+                Žemė<span className="text-gradient">Pro</span>
+              </span>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Greita ir patikima kadastrinė paieška Lietuvoje
+            </p>
+          </div>
+
+          {/* Features */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Ką gausite</h3>
+            {features.map((f, i) => (
+              <div key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <f.icon className="h-4 w-4 text-primary" />
+                </div>
+                {f.text}
+              </div>
+            ))}
+          </div>
+
+          {/* Pricing tiers */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Kainodara</h3>
+            <div className="space-y-2">
+              {tiers.map((tier) => (
+                <div
+                  key={tier.name}
+                  className={`relative rounded-xl border p-4 transition-all ${
+                    tier.popular
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  {tier.popular && (
+                    <span className="absolute -top-2.5 left-4 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Populiariausias
+                    </span>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">{tier.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {tier.credits} {tier.credits === 1 ? "paieška" : "paieškų"} · {tier.perSearch}/paieška
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-foreground text-lg">{tier.price}</p>
+                      {tier.save && (
+                        <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          Sutaupyk {tier.save}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Check className="h-3.5 w-3.5 text-primary" />
+            <span>Mokėjimai apdorojami saugiai per Stripe</span>
+          </div>
+        </div>
+
+        {/* Right: Auth form */}
+        <div className="space-y-6">
+          <div className="text-center space-y-1 md:hidden">
             <div className="flex items-center justify-center gap-2">
               <Layers className="h-6 w-6 text-primary" />
               <span className="font-display font-bold text-2xl text-foreground">
                 Žemė<span className="text-gradient">Pro</span>
               </span>
             </div>
+          </div>
+
+          <div className="text-center md:text-left">
             <h2 className="text-xl font-bold text-foreground">
               {isLogin ? "Prisijunkite" : "Sukurkite paskyrą"}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-1">
               {isLogin
                 ? "Prisijunkite ir pradėkite paiešką"
                 : "Registruokitės ir gaukite prieigą prie paieškos"}
@@ -119,79 +194,10 @@ const Auth = () => {
             </p>
           </form>
 
-          {/* Features row */}
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            {features.map((f, i) => (
-              <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <f.icon className="h-3.5 w-3.5 text-primary" />
-                {f.text}
-              </div>
-            ))}
-          </div>
-
-          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mx-auto">
+          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mx-auto md:mx-0">
             <ArrowLeft className="h-4 w-4" />
             Grįžti į žemėlapį
           </button>
-        </div>
-      </div>
-
-      {/* Right: Skewed pricing panel */}
-      <div className="hidden lg:flex absolute right-0 top-0 bottom-0 w-[420px] items-center">
-        <div
-          className="absolute inset-0 bg-primary/5 border-l border-border"
-          style={{ transform: "skewX(-6deg)", transformOrigin: "top right" }}
-        />
-        <div className="relative z-10 w-full px-12 py-8 space-y-6">
-          <div>
-            <h3 className="text-lg font-bold text-foreground">Kainodara</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Pasirinkite planą po prisijungimo
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {tiers.map((tier, i) => (
-              <div
-                key={tier.name}
-                className={`relative rounded-xl border p-4 transition-all backdrop-blur-sm ${
-                  tier.popular
-                    ? "border-primary bg-primary/10 shadow-md scale-[1.03]"
-                    : "border-border bg-card/80"
-                }`}
-                style={{
-                  transform: `rotate(${tier.popular ? -1 : i === 0 ? 1.5 : -1.5}deg)${tier.popular ? " scale(1.03)" : ""}`,
-                }}
-              >
-                {tier.popular && (
-                  <span className="absolute -top-2.5 left-4 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Populiariausias
-                  </span>
-                )}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-foreground text-sm">{tier.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {tier.credits} {tier.credits === 1 ? "paieška" : "paieškų"} · {tier.perSearch}/paieška
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-foreground text-lg">{tier.price}</p>
-                    {tier.save && (
-                      <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                        Sutaupyk {tier.save}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Check className="h-3.5 w-3.5 text-primary" />
-            <span>Saugūs mokėjimai per Stripe</span>
-          </div>
         </div>
       </div>
     </div>
