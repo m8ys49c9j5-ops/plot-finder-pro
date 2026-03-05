@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Layers, Mail, Lock, ArrowLeft, Search, MapPin, FileText, Check } from "lucide-react";
+import { Layers, Mail, Lock, ArrowLeft, Search, MapPin, FileText, Check, Zap, Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const tiers = [
-  { name: "Starteris", credits: 1, price: "€1,99", perSearch: "€1,99", popular: false },
-  { name: "Populiarus", credits: 10, price: "€9,99", perSearch: "€1,00", popular: true, save: "50%" },
-  { name: "Profesionalus", credits: 30, price: "€19,99", perSearch: "€0,67", popular: false, save: "66%" },
+  { id: "tier1", name: "Starteris", credits: 1, price: "€1,99", perSearch: "€1,99", icon: Search, popular: false },
+  { id: "tier2", name: "Populiarus", credits: 10, price: "€9,99", perSearch: "€1,00", icon: Zap, popular: true, save: "50%" },
+  { id: "tier3", name: "Profesionalus", credits: 30, price: "€19,99", perSearch: "€0,67", icon: Crown, popular: false, save: "66%" },
 ];
 
 const features = [
@@ -21,6 +21,8 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -31,7 +33,12 @@ const Auth = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Sėkmingai prisijungėte!");
-        navigate("/");
+        // If a tier was selected, redirect to checkout
+        if (selectedTier) {
+          await redirectToCheckout(selectedTier);
+        } else {
+          navigate("/");
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -40,7 +47,12 @@ const Auth = () => {
         });
         if (error) throw error;
         toast.success("Registracija sėkminga!");
-        navigate("/");
+        // If a tier was selected, redirect to checkout
+        if (selectedTier) {
+          await redirectToCheckout(selectedTier);
+        } else {
+          navigate("/");
+        }
       }
     } catch (error: any) {
       toast.error(error.message);
@@ -49,100 +61,62 @@ const Auth = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl grid md:grid-cols-2 gap-8 items-start">
-        {/* Left: Pricing & Features */}
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Layers className="h-6 w-6 text-primary" />
-              <span className="font-display font-bold text-2xl text-foreground">
-                Žemė<span className="text-gradient">Pro</span>
-              </span>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Greita ir patikima kadastrinė paieška Lietuvoje
-            </p>
-          </div>
+  const redirectToCheckout = async (tierId: string) => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { tier: tierId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Klaida kuriant mokėjimą");
+      navigate("/");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
-          {/* Features */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Ką gausite</h3>
-            {features.map((f, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
-                <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <f.icon className="h-4 w-4 text-primary" />
-                </div>
-                {f.text}
-              </div>
-            ))}
-          </div>
+  // If a tier is selected, show the auth form
+  if (selectedTier) {
+    const tier = tiers.find((t) => t.id === selectedTier)!;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <button
+            onClick={() => setSelectedTier(null)}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Grįžti į kainas
+          </button>
 
-          {/* Pricing tiers */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Kainodara</h3>
-            <div className="space-y-2">
-              {tiers.map((tier) => (
-                <div
-                  key={tier.name}
-                  className={`relative rounded-xl border p-4 transition-all ${
-                    tier.popular
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  {tier.popular && (
-                    <span className="absolute -top-2.5 left-4 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      Populiariausias
-                    </span>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">{tier.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {tier.credits} {tier.credits === 1 ? "paieška" : "paieškų"} · {tier.perSearch}/paieška
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-foreground text-lg">{tier.price}</p>
-                      {tier.save && (
-                        <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                          Sutaupyk {tier.save}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Check className="h-3.5 w-3.5 text-primary" />
-            <span>Mokėjimai apdorojami saugiai per Stripe</span>
-          </div>
-        </div>
-
-        {/* Right: Auth form */}
-        <div className="space-y-6">
-          <div className="text-center space-y-1 md:hidden">
+          <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2">
               <Layers className="h-6 w-6 text-primary" />
               <span className="font-display font-bold text-2xl text-foreground">
                 Žemė<span className="text-gradient">Pro</span>
               </span>
             </div>
+            <div className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
+              <tier.icon className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">{tier.name}</span>
+              <span className="text-sm text-muted-foreground">·</span>
+              <span className="text-sm font-bold text-foreground">{tier.price}</span>
+              <span className="text-xs text-muted-foreground">({tier.credits} {tier.credits === 1 ? "paieška" : "paieškų"})</span>
+            </div>
           </div>
 
-          <div className="text-center md:text-left">
+          <div className="text-center">
             <h2 className="text-xl font-bold text-foreground">
               {isLogin ? "Prisijunkite" : "Sukurkite paskyrą"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               {isLogin
-                ? "Prisijunkite ir pradėkite paiešką"
-                : "Registruokitės ir gaukite prieigą prie paieškos"}
+                ? "Prisijunkite ir būsite nukreipti į mokėjimą"
+                : "Registruokitės ir būsite nukreipti į mokėjimą"}
             </p>
           </div>
 
@@ -180,10 +154,19 @@ const Auth = () => {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full premium-gradient text-primary-foreground font-semibold rounded-lg py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+              disabled={loading || checkoutLoading}
+              className="w-full premium-gradient text-primary-foreground font-semibold rounded-lg py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? "Palaukite..." : isLogin ? "Prisijungti" : "Registruotis"}
+              {loading || checkoutLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Palaukite...
+                </>
+              ) : isLogin ? (
+                "Prisijungti ir mokėti"
+              ) : (
+                "Registruotis ir mokėti"
+              )}
             </button>
 
             <p className="text-center text-sm text-muted-foreground">
@@ -194,11 +177,97 @@ const Auth = () => {
             </p>
           </form>
 
-          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mx-auto md:mx-0">
-            <ArrowLeft className="h-4 w-4" />
-            Grįžti į žemėlapį
-          </button>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Check className="h-3.5 w-3.5 text-primary" />
+            <span>Saugus mokėjimas per Stripe</span>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  // Default: show pricing selection
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-lg space-y-6">
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <Layers className="h-6 w-6 text-primary" />
+            <span className="font-display font-bold text-2xl text-foreground">
+              Žemė<span className="text-gradient">Pro</span>
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Greita ir patikima kadastrinė paieška Lietuvoje
+          </p>
+        </div>
+
+        {/* Features */}
+        <div className="flex justify-center gap-6">
+          {features.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+              <f.icon className="h-4 w-4 text-primary" />
+              <span className="hidden sm:inline">{f.text}</span>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="text-center text-lg font-bold text-foreground">Pasirinkite planą</h3>
+
+        {/* Pricing tiers as buttons */}
+        <div className="space-y-3">
+          {tiers.map((tier) => {
+            const Icon = tier.icon;
+            return (
+              <button
+                key={tier.id}
+                onClick={() => setSelectedTier(tier.id)}
+                className={`relative w-full text-left rounded-xl border p-5 transition-all hover:scale-[1.02] active:scale-[0.99] cursor-pointer ${
+                  tier.popular
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-md"
+                    : "border-border bg-card hover:border-primary/40 hover:shadow-sm"
+                }`}
+              >
+                {tier.popular && (
+                  <span className="absolute -top-2.5 left-4 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Populiariausias
+                  </span>
+                )}
+                {tier.save && (
+                  <span className="absolute -top-2.5 right-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full premium-gradient text-primary-foreground">
+                    Sutaupyk {tier.save}
+                  </span>
+                )}
+                <div className="flex items-center gap-4">
+                  <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${
+                    tier.popular ? "premium-gradient" : "bg-muted"
+                  }`}>
+                    <Icon className={`h-5 w-5 ${tier.popular ? "text-primary-foreground" : "text-foreground"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground">{tier.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tier.credits} {tier.credits === 1 ? "paieška" : "paieškų"} · {tier.perSearch}/paieška
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-foreground text-xl">{tier.price}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Check className="h-3.5 w-3.5 text-primary" />
+          <span>Mokėjimai apdorojami saugiai per Stripe</span>
+        </div>
+
+        <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mx-auto">
+          <ArrowLeft className="h-4 w-4" />
+          Grįžti į žemėlapį
+        </button>
       </div>
     </div>
   );
