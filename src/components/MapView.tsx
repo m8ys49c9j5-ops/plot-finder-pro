@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
@@ -17,14 +19,10 @@ interface MapViewProps {
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
-
 const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
-
 const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
-// Build ArcGIS MapServer export URL and route through map proxy
 const buildExportProxyUrl = (
   baseUrl: string,
   coords: L.Coords,
@@ -36,36 +34,25 @@ const buildExportProxyUrl = (
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
   const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
-
   const nw = map.unproject(nwPoint, coords.z);
   const se = map.unproject(sePoint, coords.z);
-
-  // Convert to Web Mercator (EPSG:3857)
   const nwMerc = L.CRS.EPSG3857.project(nw);
   const seMerc = L.CRS.EPSG3857.project(se);
-
   const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
   let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
-  if (layers) {
-    exportUrl += `&layers=${encodeURIComponent(layers)}`;
-  }
-
+  if (layers) exportUrl += `&layers=${encodeURIComponent(layers)}`;
   return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
 };
 
-// Custom TileLayer that uses ArcGIS MapServer export endpoint via proxy
 const OrthoTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    const map = (this as any)._map as L.Map;
-    return buildExportProxyUrl(ORTHO_BASE, coords, map, "jpg", false);
+    return buildExportProxyUrl(ORTHO_BASE, coords, (this as any)._map as L.Map, "jpg", false);
   },
 });
 
-// Kadastro overlay - only sklypai boundary layers (IDs 15,21,27,33 at various scales)
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    const map = (this as any)._map as L.Map;
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:15,21,27,33");
   },
 });
 
@@ -78,81 +65,47 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
   const orthoLayerRef = useRef<L.TileLayer | null>(null);
   const kadastroLayerRef = useRef<L.TileLayer | null>(null);
+  const { user, credits, refreshCredits } = useAuth();
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
       if (!mapRef.current) return;
       if (type === "ortho") {
         if (geoportalTileRef.current) mapRef.current.removeLayer(geoportalTileRef.current);
-
-        // Keep a guaranteed visible base map underneath ortofoto
-        if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) {
-          baseTileRef.current.addTo(mapRef.current);
-        }
+        if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) baseTileRef.current.addTo(mapRef.current);
         if (baseTileRef.current) baseTileRef.current.bringToBack();
-
         if (!orthoLayerRef.current) {
-          orthoLayerRef.current = new (OrthoTileLayer as any)("", {
-            maxZoom: 19,
-            attribution: "Ortofoto © NŽT",
-          });
+          orthoLayerRef.current = new (OrthoTileLayer as any)("", { maxZoom: 19, attribution: "Ortofoto © NŽT" });
         }
         orthoLayerRef.current.addTo(mapRef.current).bringToFront();
       } else {
         if (orthoLayerRef.current) mapRef.current.removeLayer(orthoLayerRef.current);
-        if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) {
-          baseTileRef.current.addTo(mapRef.current);
-        }
-        if (geoportalTileRef.current && !mapRef.current.hasLayer(geoportalTileRef.current)) {
-          geoportalTileRef.current.addTo(mapRef.current);
-        }
+        if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current)) baseTileRef.current.addTo(mapRef.current);
+        if (geoportalTileRef.current && !mapRef.current.hasLayer(geoportalTileRef.current)) geoportalTileRef.current.addTo(mapRef.current);
         if (baseTileRef.current) baseTileRef.current.bringToBack();
       }
-      // Always keep kadastro overlay on top
-      if (kadastroLayerRef.current) {
-        kadastroLayerRef.current.bringToFront();
-      }
+      if (kadastroLayerRef.current) kadastroLayerRef.current.bringToFront();
     },
   }));
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-
-    const map = L.map(containerRef.current, {
-      center: [55.1694, 23.8813],
-      zoom: 8,
-      zoomControl: false,
-    });
-
+    const map = L.map(containerRef.current, { center: [55.1694, 23.8813], zoom: 8, zoomControl: false });
     L.control.zoom({ position: "topleft" }).addTo(map);
-
     baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19,
     }).addTo(map);
-
     geoportalTileRef.current = L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
-      maxZoom: 19,
-      opacity: 0.7,
-      attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
+      maxZoom: 19, opacity: 0.7, attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
     }).addTo(map);
-
     kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
-      maxZoom: 19,
-      opacity: 0.85,
-      attribution: "Kadastro žemėlapis",
+      maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
     }).addTo(map);
-
     map.on("click", async (e: L.LeafletMouseEvent) => {
       await identifyParcel(e.latlng, map);
     });
-
     mapRef.current = map;
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
+    return () => { map.remove(); mapRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -161,60 +114,64 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   }, [searchQuery]);
 
   const callEdgeFunction = async (body: any) => {
-    const { data, error } = await supabase.functions.invoke("cadastral-search", {
-      body,
-    });
-
-    if (error) {
-      console.error("Edge function error:", error);
-      return null;
-    }
+    const { data, error } = await supabase.functions.invoke("cadastral-search", { body });
+    if (error) { console.error("Edge function error:", error); return null; }
     return data;
   };
 
+  const deductCredit = async (): Promise<boolean> => {
+    if (!user) return false;
+    const { data, error } = await supabase.rpc("deduct_credit", { p_user_id: user.id });
+    if (error) { console.error("Deduct credit error:", error); return false; }
+    if (data) await refreshCredits();
+    return !!data;
+  };
+
   const identifyParcel = async (latlng: L.LatLng, map: L.Map) => {
+    if (!user) {
+      toast.error("Prisijunkite, kad galėtumėte identifikuoti sklypus");
+      return;
+    }
+    if (credits <= 0) {
+      toast.error("Neturite paieškos kreditų");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const data = await callEdgeFunction({
-        action: "identify",
-        lat: latlng.lat,
-        lng: latlng.lng,
-      });
+      const data = await callEdgeFunction({ action: "identify", lat: latlng.lat, lng: latlng.lng });
 
       if (data?.features && data.features.length > 0) {
         const feature = data.features[0];
         const props = feature.properties || {};
+
+        // Deduct credit only on successful find
+        const deducted = await deductCredit();
+        if (!deducted) {
+          toast.error("Nepavyko nuskaičiuoti kredito");
+          return;
+        }
 
         const parcel: ParcelData = {
           cadastralNumber: props.nationalCadastralReference || props.NTR_ID?.toString() || "Nežinomas",
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
-          address:
-            props.exactAddress ||
-            props.label ||
-            props.adresas ||
-            props.ADRESAS ||
+          address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
             (props.sav_pavadinimas || props.seniunijos_pavad
               ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
               : undefined),
-          lat: latlng.lat,
-          lng: latlng.lng,
+          lat: latlng.lat, lng: latlng.lng,
           coordinates: feature.geometry?.coordinates,
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
-
-        if (feature.geometry) {
-          highlightGeoJSON(feature);
-        }
-
+        if (feature.geometry) highlightGeoJSON(feature);
         onParcelSelect(parcel);
       } else {
         onParcelSelect({
           cadastralNumber: "Nežinomas",
           address: "Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.",
-          lat: latlng.lat,
-          lng: latlng.lng,
+          lat: latlng.lat, lng: latlng.lng,
         });
       }
     } catch (error) {
@@ -227,26 +184,25 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const searchCadastralNumber = async (query: string) => {
     setIsLoading(true);
     try {
-      const data = await callEdgeFunction({
-        action: "search",
-        cadastralNumber: query.trim(),
-      });
+      const data = await callEdgeFunction({ action: "search", cadastralNumber: query.trim() });
 
       if (data?.features && data.features.length > 0) {
         const feature = data.features[0];
         const props = feature.properties || {};
 
+        // Deduct credit only on successful find
+        const deducted = await deductCredit();
+        if (!deducted) {
+          toast.error("Nepavyko nuskaičiuoti kredito");
+          return;
+        }
+
         const parcel: ParcelData = {
-          cadastralNumber:
-            props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim(),
+          cadastralNumber: props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim(),
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
-          address:
-            props.exactAddress ||
-            props.label ||
-            props.adresas ||
-            props.ADRESAS ||
+          address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
             (props.sav_pavadinimas || props.seniunijos_pavad
               ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
               : undefined),
@@ -258,19 +214,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           const layer = highlightGeoJSON(feature);
           if (layer) {
             const bounds = layer.getBounds();
-            // Offset padding to center parcel in visible map area (accounting for 400px sidebar on the right)
             const sidebarWidth = window.innerWidth >= 640 ? 400 : 0;
             mapRef.current.fitBounds(bounds, {
-              paddingTopLeft: [80, 80],
-              paddingBottomRight: [80 + sidebarWidth, 80],
-              maxZoom: 17,
+              paddingTopLeft: [80, 80], paddingBottomRight: [80 + sidebarWidth, 80], maxZoom: 17,
             });
             const center = bounds.getCenter();
             parcel.lat = center.lat;
             parcel.lng = center.lng;
           }
         }
-
         onParcelSelect(parcel);
       } else {
         onParcelSelect({
@@ -280,10 +232,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       }
     } catch (error) {
       console.error("Search error:", error);
-      onParcelSelect({
-        cadastralNumber: query,
-        address: "Paieškos klaida. Pabandykite vėliau.",
-      });
+      onParcelSelect({ cadastralNumber: query, address: "Paieškos klaida. Pabandykite vėliau." });
     } finally {
       setIsLoading(false);
       onSearchComplete();
@@ -292,21 +241,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
 
   const highlightGeoJSON = (feature: any): L.GeoJSON | null => {
     if (!mapRef.current || !feature.geometry) return null;
-
-    if (highlightLayerRef.current) {
-      mapRef.current.removeLayer(highlightLayerRef.current);
-    }
-
+    if (highlightLayerRef.current) mapRef.current.removeLayer(highlightLayerRef.current);
     try {
       highlightLayerRef.current = L.geoJSON(feature, {
-        style: {
-          color: "hsl(160, 84%, 39%)",
-          weight: 3,
-          fillColor: "hsl(160, 84%, 39%)",
-          fillOpacity: 0.15,
-        },
+        style: { color: "hsl(160, 84%, 39%)", weight: 3, fillColor: "hsl(160, 84%, 39%)", fillOpacity: 0.15 },
       }).addTo(mapRef.current);
-
       return highlightLayerRef.current;
     } catch (e) {
       console.error("GeoJSON highlight error:", e);

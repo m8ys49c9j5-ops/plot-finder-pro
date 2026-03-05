@@ -1,9 +1,12 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import { Layers, Map, Satellite } from "lucide-react";
-
+import PricingModal from "@/components/PricingModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
+import { toast } from "sonner";
 
 const Index = () => {
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
@@ -11,7 +14,21 @@ const Index = () => {
   const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
+  const [pricingOpen, setPricingOpen] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user, credits, loading, signOut, refreshCredits } = useAuth();
+
+  // Handle payment success redirect
+  useEffect(() => {
+    if (searchParams.get("payment") === "success") {
+      toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
+      refreshCredits();
+      // Clean URL
+      window.history.replaceState({}, "", "/");
+    }
+  }, [searchParams, refreshCredits]);
 
   const toggleLayer = useCallback(() => {
     const next: MapLayerType = activeLayer === "standard" ? "ortho" : "standard";
@@ -20,10 +37,19 @@ const Index = () => {
   }, [activeLayer]);
 
   const handleSearch = useCallback((query: string) => {
+    if (!user) {
+      toast.error("Prisijunkite, kad galėtumėte ieškoti");
+      navigate("/auth");
+      return;
+    }
+    if (credits <= 0) {
+      setPricingOpen(true);
+      return;
+    }
     setIsSearching(true);
     setSearchQuery(query);
     setLastSearchInput(query);
-  }, []);
+  }, [user, credits, navigate]);
 
   const handleSearchComplete = useCallback(() => {
     setIsSearching(false);
@@ -34,10 +60,8 @@ const Index = () => {
     setSelectedParcel(parcel);
   }, []);
 
-
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
-      {/* Full-screen map */}
       <MapView
         ref={mapViewRef}
         onParcelSelect={handleParcelSelect}
@@ -63,15 +87,48 @@ const Index = () => {
         </button>
       </div>
 
-      {/* Top overlay - Logo + Search */}
+      {/* Top overlay - Logo + Search + Auth */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
         <div className="flex flex-col items-center pt-4 px-4 gap-3">
-          {/* Logo */}
-          <div className="pointer-events-auto glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg">
-            <Layers className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold text-foreground text-lg">
-              Žemė<span className="text-gradient">Pro</span>
-            </span>
+          {/* Top bar: Logo + Credits/Auth */}
+          <div className="pointer-events-auto flex items-center gap-2">
+            <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg">
+              <Layers className="h-5 w-5 text-primary" />
+              <span className="font-display font-bold text-foreground text-lg">
+                Žemė<span className="text-gradient">Pro</span>
+              </span>
+            </div>
+
+            {!loading && (
+              <>
+                {user ? (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPricingOpen(true)}
+                      className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
+                    >
+                      <Coins className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold text-foreground">{credits}</span>
+                    </button>
+                    <button
+                      onClick={signOut}
+                      className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
+                      title="Atsijungti"
+                    >
+                      <LogOut className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => navigate("/auth")}
+                    className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
+                  >
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium text-foreground">Prisijungti</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           {/* Search */}
@@ -98,6 +155,9 @@ const Index = () => {
           onClick={() => setSelectedParcel(null)}
         />
       )}
+
+      {/* Pricing modal */}
+      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </div>
   );
 };
