@@ -224,14 +224,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         }
         onParcelSelect(parcel);
       } else {
-        onParcelSelect({
-          cadastralNumber: query.trim(),
-          address: data?.error || "Sklypas su tokiu kadastriniu numeriu nerastas. Patikrinkite numerį.",
-        });
+        toast.error(data?.error || "Sklypas nerastas. Patikrinkite numerį.");
       }
     } catch (error) {
       console.error("Search error:", error);
-      onParcelSelect({ cadastralNumber: query, address: "Paieškos klaida. Pabandykite vėliau." });
+      toast.error("Paieškos klaida. Pabandykite vėliau.");
     } finally {
       setIsLoading(false);
       onSearchComplete();
