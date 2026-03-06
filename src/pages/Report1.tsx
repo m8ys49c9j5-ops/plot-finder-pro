@@ -125,7 +125,12 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
       zoom: 17,
       zoomControl: true,
       attributionControl: false,
+      scrollWheelZoom: false,
     });
+
+    // Enable scroll zoom only when map is clicked/focused
+    map.on("click", () => map.scrollWheelZoom.enable());
+    map.on("mouseout", () => map.scrollWheelZoom.disable());
 
     const buildTileUrl = (baseUrl: string, coords: L.Coords, format: string, transparent: boolean, layers?: string) => {
       const tileSize = 256;
