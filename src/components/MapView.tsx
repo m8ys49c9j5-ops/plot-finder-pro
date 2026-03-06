@@ -88,7 +88,25 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       }
       if (kadastroLayerRef.current) kadastroLayerRef.current.bringToFront();
     },
+    highlightAndFit: (feature: any) => {
+      if (!mapRef.current || !feature?.geometry) return;
+      const layer = highlightGeoJSON(feature);
+      if (layer) {
+        const bounds = layer.getBounds();
+        mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [80, 80], maxZoom: 17 });
+      }
+    },
   }));
+
+  // Re-highlight initial feature when map mounts or becomes visible
+  useEffect(() => {
+    if (!initialFeature?.geometry || !mapRef.current) return;
+    const layer = highlightGeoJSON(initialFeature);
+    if (layer) {
+      const bounds = layer.getBounds();
+      mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [480, 80], maxZoom: 17 });
+    }
+  }, [initialFeature]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
