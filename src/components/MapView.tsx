@@ -194,7 +194,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
         if (feature.geometry) highlightGeoJSON(feature);
-        onParcelSelect(parcel);
+        onParcelSelect(parcel, feature);
       } else {
         toast.error("Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.");
       }
