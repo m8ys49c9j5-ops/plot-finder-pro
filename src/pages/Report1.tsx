@@ -489,12 +489,12 @@ export default function Report1() {
 
           {/* CTA card */}
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-border bg-muted/50 flex items-center justify-between">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
+            <div className="px-3 py-2.5 border-b border-border bg-muted/50 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-primary" />
                 Ataskaitos peržiūra
               </h3>
-              <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" /> Patikrinti duomenys
               </span>
             </div>
