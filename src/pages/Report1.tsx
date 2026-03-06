@@ -1,4 +1,4 @@
-import React, { useState, useRef, type FormEvent } from "react";
+import React, { useState, useRef, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ParcelData } from "@/components/ParcelSidebar";
 import { supabase } from "@/integrations/supabase/client";
