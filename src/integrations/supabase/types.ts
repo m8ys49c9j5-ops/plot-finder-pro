@@ -83,6 +83,27 @@ export type Database = {
         }
         Relationships: []
       }
+      search_history: {
+        Row: {
+          cadastral_number: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cadastral_number: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          cadastral_number?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -1097,6 +1118,10 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      unlock_parcel: {
+        Args: { p_cadastral_number: string; p_user_id: string }
+        Returns: Json
       }
       unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {

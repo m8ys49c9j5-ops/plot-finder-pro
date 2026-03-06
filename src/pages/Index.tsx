@@ -2,16 +2,23 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
-import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
+import ParcelPreview, { type ParcelPreviewData } from "@/components/ParcelPreview";
+import ParcelReport from "@/components/ParcelReport";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
 import { toast } from "sonner";
 
+type SearchFlowState = "idle" | "searching" | "not_found" | "preview" | "report";
+
 const Index = () => {
-  const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
+  const [flowState, setFlowState] = useState<SearchFlowState>("idle");
+  const [foundParcel, setFoundParcel] = useState<ParcelPreviewData | null>(null);
+  const [foundFeature, setFoundFeature] = useState<any>(null);
+  const [wasAlreadyUnlocked, setWasAlreadyUnlocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
-  const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -25,7 +32,6 @@ const Index = () => {
     if (searchParams.get("payment") === "success") {
       toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
       refreshCredits();
-      // Clean URL
       window.history.replaceState({}, "", "/");
     }
   }, [searchParams, refreshCredits]);
@@ -42,34 +48,104 @@ const Index = () => {
       navigate("/auth");
       return;
     }
-    if (credits <= 0) {
-      setPricingOpen(true);
-      return;
-    }
+    setFlowState("idle");
+    setFoundParcel(null);
+    setFoundFeature(null);
     setIsSearching(true);
     setSearchQuery(query);
-    setLastSearchInput(query);
-  }, [user, credits, navigate]);
+  }, [user, navigate]);
 
-  const handleSearchComplete = useCallback(() => {
-    setIsSearching(false);
-    setSearchQuery(null);
+  const handleSearchStart = useCallback(() => {
+    setFlowState("searching");
   }, []);
 
-  const handleParcelSelect = useCallback((parcel: ParcelData) => {
-    setSelectedParcel(parcel);
+  const handleSearchComplete = useCallback(async (parcel: ParcelPreviewData | null, feature: any | null) => {
+    setIsSearching(false);
+    setSearchQuery(null);
+
+    if (!parcel) {
+      setFlowState("not_found");
+      toast.error("Sklypas nerastas. Patikrinkite numerį.");
+      setTimeout(() => setFlowState("idle"), 3000);
+      return;
+    }
+
+    setFoundParcel(parcel);
+    setFoundFeature(feature);
+
+    // Check search history
+    if (user) {
+      const { data } = await supabase
+        .from("search_history" as any)
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cadastral_number", parcel.cadastralNumber)
+        .maybeSingle();
+
+      if (data) {
+        // Already unlocked - show full report instantly
+        setWasAlreadyUnlocked(true);
+        setFlowState("report");
+        return;
+      }
+    }
+
+    // Not yet unlocked - show preview
+    setWasAlreadyUnlocked(false);
+    setFlowState("preview");
+  }, [user]);
+
+  const handleUnlock = useCallback(async () => {
+    if (!user || !foundParcel) return;
+    setIsUnlocking(true);
+    try {
+      const { data, error } = await supabase.rpc("unlock_parcel" as any, {
+        p_user_id: user.id,
+        p_cadastral_number: foundParcel.cadastralNumber,
+      });
+
+      if (error) {
+        toast.error("Klaida atrakinant sklypą");
+        console.error("Unlock error:", error);
+        return;
+      }
+
+      const result = data as any;
+      const status = typeof result === "object" ? result.status : result;
+
+      if (status === "already_unlocked") {
+        setWasAlreadyUnlocked(true);
+        setFlowState("report");
+      } else if (status === "insufficient_credits") {
+        toast.error("Neturite kreditų");
+        setPricingOpen(true);
+      } else if (status === "success") {
+        await refreshCredits();
+        setWasAlreadyUnlocked(false);
+        setFlowState("report");
+        toast.success("Ataskaita atrakinta!");
+      }
+    } finally {
+      setIsUnlocking(false);
+    }
+  }, [user, foundParcel, refreshCredits]);
+
+  const handleCloseReport = useCallback(() => {
+    setFlowState("idle");
+    setFoundParcel(null);
+    setFoundFeature(null);
   }, []);
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
       <MapView
         ref={mapViewRef}
-        onParcelSelect={handleParcelSelect}
         searchQuery={searchQuery}
         onSearchComplete={handleSearchComplete}
+        onSearchStart={handleSearchStart}
       />
 
-      {/* Map layer toggle - top left */}
+      {/* Map layer toggle */}
       <div className="absolute top-4 left-4 z-[900]">
         <button
           onClick={toggleLayer}
@@ -87,10 +163,9 @@ const Index = () => {
         </button>
       </div>
 
-      {/* Top overlay - Logo + Search + Auth */}
+      {/* Top overlay */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
         <div className="flex flex-col items-center pt-4 px-4 gap-3">
-          {/* Top bar: Logo + Credits/Auth */}
           <div className="pointer-events-auto flex items-center gap-2">
             <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg">
               <Layers className="h-5 w-5 text-primary" />
@@ -131,7 +206,6 @@ const Index = () => {
             )}
           </div>
 
-          {/* Search */}
           <div className="pointer-events-auto w-full max-w-xl">
             <SearchBar onSearch={handleSearch} isLoading={isSearching} />
           </div>
@@ -145,15 +219,32 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Parcel sidebar */}
-      <ParcelSidebar parcel={selectedParcel} onClose={() => setSelectedParcel(null)} searchInput={lastSearchInput} />
-
-      {/* Overlay backdrop when sidebar is open */}
-      {selectedParcel && (
-        <div
-          className="fixed inset-0 bg-foreground/20 z-[999] sm:hidden animate-fade-in"
-          onClick={() => setSelectedParcel(null)}
+      {/* Preview modal */}
+      {flowState === "preview" && foundParcel && (
+        <ParcelPreview
+          parcel={foundParcel}
+          onUnlock={handleUnlock}
+          isUnlocking={isUnlocking}
+          credits={credits}
+          onClose={() => setFlowState("idle")}
+          onBuyCredits={() => setPricingOpen(true)}
         />
+      )}
+
+      {/* Full report sidebar */}
+      {flowState === "report" && foundParcel && (
+        <>
+          <ParcelReport
+            parcel={foundParcel}
+            onClose={handleCloseReport}
+            wasAlreadyUnlocked={wasAlreadyUnlocked}
+          />
+          {/* Mobile backdrop */}
+          <div
+            className="fixed inset-0 bg-foreground/20 z-[999] sm:hidden animate-fade-in"
+            onClick={handleCloseReport}
+          />
+        </>
       )}
 
       {/* Pricing modal */}
