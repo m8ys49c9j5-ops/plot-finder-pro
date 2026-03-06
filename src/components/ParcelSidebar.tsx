@@ -168,7 +168,7 @@ const PURPOSE_MAP: Record<string, string> = {
   "999": "Tarpinė",
 };
 
-const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
+const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSidebarProps) => {
   if (!parcel) return null;
 
   return (

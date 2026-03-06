@@ -239,7 +239,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
             parcel.lng = center.lng;
           }
         }
-        onParcelSelect(parcel);
+        onParcelSelect(parcel, feature);
       } else {
         toast.error(data?.error || "Sklypas nerastas. Patikrinkite numerį.");
       }
