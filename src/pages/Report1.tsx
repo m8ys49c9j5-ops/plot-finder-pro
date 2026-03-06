@@ -132,26 +132,46 @@ function ReportContent({ data, isSample = false, onGoToMap }: { data: ReportData
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px]">
+        <div
+          onClick={!isSample ? onGoToMap : undefined}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+        >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <Map className="w-4 h-4 text-muted-foreground" /> Kadastro žemėlapis
           </div>
-          <div className="flex-1 bg-primary/5 flex items-center justify-center">
+          <div className="flex-1 bg-primary/5 flex items-center justify-center relative">
             <div className="text-center">
               <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
               <p className="text-sm font-medium text-foreground">Sklypo ribos</p>
             </div>
+            {!isSample && onGoToMap && (
+              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
+                  <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
+                </span>
+              </div>
+            )}
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px]">
+        <div
+          onClick={!isSample ? onGoToMap : undefined}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+        >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
           </div>
-          <div className="flex-1 bg-muted/20 flex items-center justify-center">
+          <div className="flex-1 bg-muted/20 flex items-center justify-center relative">
             <div className="text-center">
               <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-70" />
               <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
             </div>
+            {!isSample && onGoToMap && (
+              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
+                  <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
