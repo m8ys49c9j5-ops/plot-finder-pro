@@ -10,12 +10,14 @@ export type MapLayerType = "standard" | "ortho";
 
 export interface MapViewHandle {
   setLayerType: (type: MapLayerType) => void;
+  highlightAndFit: (feature: any) => void;
 }
 
 interface MapViewProps {
   onParcelSelect: (parcel: ParcelData) => void;
   searchQuery: string | null;
   onSearchComplete: () => void;
+  initialFeature?: any;
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
