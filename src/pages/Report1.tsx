@@ -109,7 +109,7 @@ function DataCard({ title, icon, children }: { title: string; icon: React.ReactN
 }
 
 // --- Interactive Leaflet map for report ---
-function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
+function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number; feature?: any }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -118,7 +118,6 @@ function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
 
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
     const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
-    const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
     const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
 
     const map = L.map(mapContainerRef.current, {
@@ -128,12 +127,7 @@ function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
       attributionControl: false,
     });
 
-    // Base tile layer via proxy
-    const baseTile = L.tileLayer("", {
-      tileSize: 256,
-    });
-    // Override getTileUrl for base
-    (baseTile as any).getTileUrl = function (coords: L.Coords) {
+    const buildTileUrl = (baseUrl: string, coords: L.Coords, format: string, transparent: boolean, layers?: string) => {
       const tileSize = 256;
       const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
       const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
@@ -142,37 +136,31 @@ function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
       const nwMerc = L.CRS.EPSG3857.project(nw);
       const seMerc = L.CRS.EPSG3857.project(se);
       const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
-      const exportUrl = `${GEOPORTAL_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=jpg&transparent=false&f=image`;
+      let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
+      if (layers) exportUrl += `&layers=${encodeURIComponent(layers)}`;
       return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
     };
+
+    const baseTile = L.tileLayer("", { tileSize: 256 });
+    (baseTile as any).getTileUrl = (coords: L.Coords) => buildTileUrl(GEOPORTAL_BASE, coords, "jpg", false);
     baseTile.addTo(map);
 
-    // Cadastre overlay
-    const kadTile = L.tileLayer("", {
-      tileSize: 256,
-    });
-    (kadTile as any).getTileUrl = function (coords: L.Coords) {
-      const tileSize = 256;
-      const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
-      const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
-      const nw = map.unproject(nwPoint, coords.z);
-      const se = map.unproject(sePoint, coords.z);
-      const nwMerc = L.CRS.EPSG3857.project(nw);
-      const seMerc = L.CRS.EPSG3857.project(se);
-      const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
-      const exportUrl = `${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`;
-      return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
-    };
+    const kadTile = L.tileLayer("", { tileSize: 256 });
+    (kadTile as any).getTileUrl = (coords: L.Coords) => buildTileUrl(KADASTRAS_BASE, coords, "png32", true, "show:15,21,27,33");
     kadTile.addTo(map);
 
-    // Marker
-    L.circleMarker([lat, lng], {
-      radius: 8,
-      color: "hsl(var(--primary))",
-      fillColor: "hsl(var(--primary))",
-      fillOpacity: 0.3,
-      weight: 2,
-    }).addTo(map);
+    // Highlight parcel polygon
+    if (feature?.geometry) {
+      const geoLayer = L.geoJSON(feature, {
+        style: {
+          color: "#ef4444",
+          weight: 3,
+          fillColor: "#ef4444",
+          fillOpacity: 0.15,
+        },
+      }).addTo(map);
+      map.fitBounds(geoLayer.getBounds(), { padding: [40, 40] });
+    }
 
     mapInstanceRef.current = map;
 
@@ -180,7 +168,7 @@ function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, [lat, lng]);
+  }, [lat, lng, feature]);
 
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden relative z-10">
