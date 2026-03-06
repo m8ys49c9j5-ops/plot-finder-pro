@@ -70,6 +70,7 @@ interface ParcelSidebarProps {
   parcel: ParcelData | null;
   onClose: () => void;
   searchInput?: string;
+  onGoToReport?: () => void;
 }
 
 // Land use purpose code to Lithuanian description mapping
