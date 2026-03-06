@@ -56,7 +56,15 @@ const Index = () => {
 
   const handleGoToMap = useCallback(() => {
     setActiveView("map");
-  }, []);
+    // Re-trigger the map to zoom to the selected parcel
+    if (selectedParcel && mapViewRef.current) {
+      setTimeout(() => {
+        if (selectedFeature) {
+          mapViewRef.current?.highlightFeature(selectedFeature);
+        }
+      }, 100);
+    }
+  }, [selectedParcel, selectedFeature]);
 
   const handleGoToReport = useCallback(() => {
     setActiveView("report");
