@@ -681,7 +681,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
               {/* Conditional: Auth, Pricing, or Unlock */}
               {needsAuth ? (
                 <div className="w-full max-w-md">
-                  <InlineAuthForm onSuccess={() => window.location.reload()} />
+                  <InlineAuthForm onSuccess={() => {}} />
                 </div>
               ) : needsCredits ? (
                 <div className="w-full max-w-md">
