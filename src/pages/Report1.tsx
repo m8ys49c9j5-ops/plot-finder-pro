@@ -126,7 +126,7 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
     };
 
     const center = toMerc(parcelLat, parcelLng);
-    const span = 300; // meters in mercator
+    const span = 800; // meters in mercator (zoomed out)
     const bbox = `${center.x - span},${center.y - span},${center.x + span},${center.y + span}`;
     const size = "512,512";
 

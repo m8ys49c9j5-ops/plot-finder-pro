@@ -51,6 +51,7 @@ const Index = () => {
   const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
     setSelectedParcel(parcel);
     if (feature) setSelectedFeature(feature);
+    setActiveView("report");
   }, []);
 
   const handleGoToMap = useCallback(() => {
