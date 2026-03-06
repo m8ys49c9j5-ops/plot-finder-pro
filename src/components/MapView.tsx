@@ -116,12 +116,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
     return data;
   };
 
-  const deductCredit = async (): Promise<boolean> => {
-    if (!user) return false;
-    const { data, error } = await supabase.rpc("deduct_credit", { p_user_id: user.id });
-    if (error) { console.error("Deduct credit error:", error); return false; }
-    if (data) await refreshCredits();
-    return !!data;
+  const unlockParcel = async (cadastralNumber: string): Promise<{ status: string }> => {
+    if (!user) return { status: "error" };
+    const { data, error } = await supabase.rpc("unlock_parcel", { 
+      p_user_id: user.id, 
+      p_cadastral_number: cadastralNumber 
+    });
+    if (error) { console.error("Unlock parcel error:", error); return { status: "error" }; }
+    const result = typeof data === 'string' ? JSON.parse(data) : data;
+    if (result?.status === 'success') await refreshCredits();
+    return result || { status: "error" };
   };
 
   const identifyParcel = async (latlng: L.LatLng, map: L.Map) => {
@@ -142,15 +146,22 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         const feature = data.features[0];
         const props = feature.properties || {};
 
-        // Deduct credit only on successful find
-        const deducted = await deductCredit();
-        if (!deducted) {
-          toast.error("Nepavyko nuskaičiuoti kredito");
+        const cadastralNr = props.nationalCadastralReference || props.NTR_ID?.toString() || "Nežinomas";
+        const unlockResult = await unlockParcel(cadastralNr);
+        if (unlockResult.status === 'insufficient_credits') {
+          toast.error("Neturite paieškos kreditų");
           return;
+        }
+        if (unlockResult.status === 'error') {
+          toast.error("Nepavyko apdoroti užklausos");
+          return;
+        }
+        if (unlockResult.status === 'already_unlocked') {
+          toast.info("Šis sklypas jau atrakintas – kreditas nenurašytas");
         }
 
         const parcel: ParcelData = {
-          cadastralNumber: props.nationalCadastralReference || props.NTR_ID?.toString() || "Nežinomas",
+          cadastralNumber: cadastralNr,
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
@@ -187,15 +198,22 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         const feature = data.features[0];
         const props = feature.properties || {};
 
-        // Deduct credit only on successful find
-        const deducted = await deductCredit();
-        if (!deducted) {
-          toast.error("Nepavyko nuskaičiuoti kredito");
+        const cadastralNr = props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim();
+        const unlockResult = await unlockParcel(cadastralNr);
+        if (unlockResult.status === 'insufficient_credits') {
+          toast.error("Neturite paieškos kreditų");
           return;
+        }
+        if (unlockResult.status === 'error') {
+          toast.error("Nepavyko apdoroti užklausos");
+          return;
+        }
+        if (unlockResult.status === 'already_unlocked') {
+          toast.info("Šis sklypas jau atrakintas – kreditas nenurašytas");
         }
 
         const parcel: ParcelData = {
-          cadastralNumber: props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim(),
+          cadastralNumber: cadastralNr,
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,

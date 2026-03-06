@@ -42,10 +42,7 @@ const Index = () => {
       navigate("/auth");
       return;
     }
-    if (credits <= 0) {
-      setPricingOpen(true);
-      return;
-    }
+    // Credits check is handled by unlock_parcel RPC
     setIsSearching(true);
     setSearchQuery(query);
     setLastSearchInput(query);
