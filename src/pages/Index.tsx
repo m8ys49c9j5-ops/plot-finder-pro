@@ -68,6 +68,7 @@ const Index = () => {
       <Report1
         parcel={selectedParcel}
         onGoToMap={handleGoToMap}
+        feature={selectedFeature}
       />
     );
   }

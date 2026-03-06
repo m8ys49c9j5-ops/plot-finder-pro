@@ -591,7 +591,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
           </div>
         </div>
         <div className="max-w-4xl mx-auto p-4 mt-4">
-          <ReportContent data={realReportData} onGoToMap={onGoToMap} parcelLat={parcel.lat} parcelLng={parcel.lng} />
+          <ReportContent data={realReportData} onGoToMap={onGoToMap} parcelLat={parcel.lat} parcelLng={parcel.lng} feature={feature} />
         </div>
       </div>
     );
