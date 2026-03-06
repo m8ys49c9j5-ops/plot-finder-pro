@@ -259,10 +259,6 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
         </div>
       </div>
 
-      {/* Interactive Leaflet Map */}
-      {!isSample && parcelLat && parcelLng && (
-        <ReportInteractiveMap lat={parcelLat} lng={parcelLng} />
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
         <div
