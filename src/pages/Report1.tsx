@@ -175,10 +175,15 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
         </div>
       </div>
 
+      {/* Interactive Leaflet Map */}
+      {!isSample && parcelLat && parcelLng && (
+        <ReportInteractiveMap lat={parcelLat} lng={parcelLng} />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
         <div
           onClick={!isSample ? onGoToMap : undefined}
-          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[200px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
         >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <Map className="w-4 h-4 text-muted-foreground" /> Kadastro žemėlapis
@@ -201,7 +206,7 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
         </div>
         <div
           onClick={!isSample ? onGoToMap : undefined}
-          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[200px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
         >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
