@@ -2,15 +2,22 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
-import type { ParcelPreviewData } from "@/components/ParcelPreview";
+import ParcelPreview, { type ParcelPreviewData } from "@/components/ParcelPreview";
+import ParcelReport from "@/components/ParcelReport";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
 import { toast } from "sonner";
 
+type SearchFlowState = "idle" | "searching" | "not_found" | "preview" | "report";
+
 const Index = () => {
+  const [flowState, setFlowState] = useState<SearchFlowState>("idle");
   const [foundParcel, setFoundParcel] = useState<ParcelPreviewData | null>(null);
   const [foundFeature, setFoundFeature] = useState<any>(null);
+  const [wasAlreadyUnlocked, setWasAlreadyUnlocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
@@ -41,26 +48,92 @@ const Index = () => {
       navigate("/auth");
       return;
     }
+    setFlowState("idle");
     setFoundParcel(null);
     setFoundFeature(null);
     setIsSearching(true);
     setSearchQuery(query);
   }, [user, navigate]);
 
-  const handleSearchStart = useCallback(() => {}, []);
+  const handleSearchStart = useCallback(() => {
+    setFlowState("searching");
+  }, []);
 
   const handleSearchComplete = useCallback(async (parcel: ParcelPreviewData | null, feature: any | null) => {
     setIsSearching(false);
     setSearchQuery(null);
 
     if (!parcel) {
+      setFlowState("not_found");
       toast.error("Sklypas nerastas. Patikrinkite numerį.");
+      setTimeout(() => setFlowState("idle"), 3000);
       return;
     }
 
     setFoundParcel(parcel);
     setFoundFeature(feature);
-    // Parcel is highlighted on the map automatically by MapView
+
+    // Check search history
+    if (user) {
+      const { data } = await supabase
+        .from("search_history" as any)
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cadastral_number", parcel.cadastralNumber)
+        .maybeSingle();
+
+      if (data) {
+        // Already unlocked - show full report instantly
+        setWasAlreadyUnlocked(true);
+        setFlowState("report");
+        return;
+      }
+    }
+
+    // Not yet unlocked - show preview
+    setWasAlreadyUnlocked(false);
+    setFlowState("preview");
+  }, [user]);
+
+  const handleUnlock = useCallback(async () => {
+    if (!user || !foundParcel) return;
+    setIsUnlocking(true);
+    try {
+      const { data, error } = await supabase.rpc("unlock_parcel" as any, {
+        p_user_id: user.id,
+        p_cadastral_number: foundParcel.cadastralNumber,
+      });
+
+      if (error) {
+        toast.error("Klaida atrakinant sklypą");
+        console.error("Unlock error:", error);
+        return;
+      }
+
+      const result = data as any;
+      const status = typeof result === "object" ? result.status : result;
+
+      if (status === "already_unlocked") {
+        setWasAlreadyUnlocked(true);
+        setFlowState("report");
+      } else if (status === "insufficient_credits") {
+        toast.error("Neturite kreditų");
+        setPricingOpen(true);
+      } else if (status === "success") {
+        await refreshCredits();
+        setWasAlreadyUnlocked(false);
+        setFlowState("report");
+        toast.success("Ataskaita atrakinta!");
+      }
+    } finally {
+      setIsUnlocking(false);
+    }
+  }, [user, foundParcel, refreshCredits]);
+
+  const handleCloseReport = useCallback(() => {
+    setFlowState("idle");
+    setFoundParcel(null);
+    setFoundFeature(null);
   }, []);
 
   return (
@@ -146,6 +219,33 @@ const Index = () => {
         </div>
       </div>
 
+      {/* Preview modal */}
+      {flowState === "preview" && foundParcel && (
+        <ParcelPreview
+          parcel={foundParcel}
+          onUnlock={handleUnlock}
+          isUnlocking={isUnlocking}
+          credits={credits}
+          onClose={() => setFlowState("idle")}
+          onBuyCredits={() => setPricingOpen(true)}
+        />
+      )}
+
+      {/* Full report sidebar */}
+      {flowState === "report" && foundParcel && (
+        <>
+          <ParcelReport
+            parcel={foundParcel}
+            onClose={handleCloseReport}
+            wasAlreadyUnlocked={wasAlreadyUnlocked}
+          />
+          {/* Mobile backdrop */}
+          <div
+            className="fixed inset-0 bg-foreground/20 z-[999] sm:hidden animate-fade-in"
+            onClick={handleCloseReport}
+          />
+        </>
+      )}
 
       {/* Pricing modal */}
       <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
