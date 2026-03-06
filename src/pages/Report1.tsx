@@ -427,7 +427,7 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 // --- INLINE PRICING ---
-function InlinePricing({ parcel }: { parcel?: ParcelFromRoute | null }) {
+function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; feature?: any }) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
 
   const handleBuy = async (tierId: string) => {
@@ -436,6 +436,9 @@ function InlinePricing({ parcel }: { parcel?: ParcelFromRoute | null }) {
       // Save parcel + feature to localStorage before redirecting to Stripe
       if (parcel) {
         localStorage.setItem("pendingParcel", JSON.stringify(parcel));
+      }
+      if (feature) {
+        localStorage.setItem("pendingFeature", JSON.stringify(feature));
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", { body: { tier: tierId } });
       if (error) throw error;
