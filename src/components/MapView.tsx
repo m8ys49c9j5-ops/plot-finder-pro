@@ -58,7 +58,7 @@ const KadastroTileLayer = L.TileLayer.extend({
   },
 });
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete, initialFeature }, ref) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
