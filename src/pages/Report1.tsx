@@ -487,9 +487,9 @@ export default function Report1() {
             </p>
           </div>
 
-          {/* Blurred preview card */}
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden relative">
-            <div className="p-6 border-b border-border bg-muted/50 flex items-center justify-between">
+          {/* CTA card */}
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted/50 flex items-center justify-between">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
                 Ataskaitos peržiūra
@@ -498,55 +498,58 @@ export default function Report1() {
                 <ShieldCheck className="w-3 h-3" /> Patikrinti duomenys
               </span>
             </div>
-            <div className="p-6 relative">
-              <div className="filter blur-[6px] opacity-60 select-none pointer-events-none space-y-4">
-                <div className="h-48 bg-muted rounded-lg w-full mb-6" />
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-12 bg-muted/60 rounded" />
-                  <div className="h-12 bg-muted/60 rounded" />
-                  <div className="h-12 bg-muted/60 rounded" />
-                  <div className="h-12 bg-muted/60 rounded" />
+
+            {/* Blurred teaser */}
+            <div className="relative">
+              <div className="filter blur-[6px] opacity-50 select-none pointer-events-none p-4 space-y-3">
+                <div className="h-24 bg-muted rounded-lg w-full" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="h-8 bg-muted/60 rounded" />
+                  <div className="h-8 bg-muted/60 rounded" />
                 </div>
               </div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-card via-card/90 to-transparent p-6 text-center">
-                <Lock className="w-10 h-10 text-muted-foreground mb-4" />
-                <h4 className="text-xl font-bold text-foreground mb-2">Atrakinti pilną sklypo ataskaitą</h4>
-                <ul className="text-sm text-muted-foreground mb-6 space-y-2 text-left inline-block">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslūs interaktyvaus žemėlapio kontūrai</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Registruota žemės paskirtis ir plotas</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslus adresas ir koordinatės</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Unikalus turto numeris</li>
-                </ul>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/80 to-card" />
+            </div>
 
-                {/* Conditional: Auth, Pricing, or Unlock */}
-                {needsAuth ? (
-                  <div className="w-full max-w-md">
-                    <InlineAuthForm onSuccess={() => window.location.reload()} />
-                  </div>
-                ) : needsCredits ? (
-                  <div className="w-full max-w-md">
-                    <InlinePricing />
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleUnlock}
-                      disabled={isUnlocking}
-                      className="w-full max-w-md bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-                    >
-                      {isUnlocking ? (
-                        <div className="w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Unlock className="w-5 h-5" />
-                          Atrakinti ataskaitą (1 kreditas)
-                        </>
-                      )}
-                    </button>
-                    <p className="text-xs text-muted-foreground mt-4">Jums liko {credits} {credits === 1 ? "kreditas" : "kreditų"}.</p>
-                  </>
-                )}
-              </div>
+            {/* CTA content - not absolute, flows naturally */}
+            <div className="px-6 pb-8 pt-2 flex flex-col items-center text-center">
+              <Lock className="w-8 h-8 text-muted-foreground mb-3" />
+              <h4 className="text-lg font-bold text-foreground mb-2">Atrakinti pilną sklypo ataskaitą</h4>
+              <ul className="text-sm text-muted-foreground mb-5 space-y-1.5 text-left inline-block">
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Tikslūs interaktyvaus žemėlapio kontūrai</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Registruota žemės paskirtis ir plotas</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Tikslus adresas ir koordinatės</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Unikalus turto numeris</li>
+              </ul>
+
+              {/* Conditional: Auth, Pricing, or Unlock */}
+              {needsAuth ? (
+                <div className="w-full max-w-md">
+                  <InlineAuthForm onSuccess={() => window.location.reload()} />
+                </div>
+              ) : needsCredits ? (
+                <div className="w-full max-w-md">
+                  <InlinePricing />
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleUnlock}
+                    disabled={isUnlocking}
+                    className="w-full max-w-md bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                  >
+                    {isUnlocking ? (
+                      <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Unlock className="w-5 h-5" />
+                        Atrakinti ataskaitą (1 kreditas)
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-muted-foreground mt-3">Jums liko {credits} {credits === 1 ? "kreditas" : "kreditų"}.</p>
+                </>
+              )}
             </div>
           </div>
         </div>
