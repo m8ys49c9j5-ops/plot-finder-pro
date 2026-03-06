@@ -521,28 +521,32 @@ interface Report1Props {
   feature?: any;
 }
 
-export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Report1Props) {
+export default function Report1({ parcel: parcelProp, onGoToMap, feature: featureProp }: Report1Props) {
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
-  // Recover parcel from localStorage if not passed as prop (e.g., after Stripe redirect)
+  // Recover parcel + feature from localStorage if not passed as prop (e.g., after Stripe redirect)
   const [recoveredParcel, setRecoveredParcel] = useState<ParcelFromRoute | null>(null);
+  const [recoveredFeature, setRecoveredFeature] = useState<any>(null);
   
   useEffect(() => {
     if (!parcelProp) {
       const stored = localStorage.getItem("pendingParcel");
       if (stored) {
-        try {
-          setRecoveredParcel(JSON.parse(stored));
-        } catch {}
+        try { setRecoveredParcel(JSON.parse(stored)); } catch {}
+      }
+      const storedFeature = localStorage.getItem("pendingFeature");
+      if (storedFeature) {
+        try { setRecoveredFeature(JSON.parse(storedFeature)); } catch {}
       }
     } else {
-      // Clear pending parcel when we have a fresh one
       localStorage.removeItem("pendingParcel");
+      localStorage.removeItem("pendingFeature");
     }
   }, [parcelProp]);
 
   const parcel = parcelProp || recoveredParcel;
+  const feature = featureProp || recoveredFeature;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
