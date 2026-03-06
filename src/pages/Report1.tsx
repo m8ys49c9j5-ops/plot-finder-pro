@@ -504,9 +504,10 @@ function InlinePricing() {
 interface Report1Props {
   parcel?: ParcelFromRoute;
   onGoToMap?: () => void;
+  feature?: any;
 }
 
-export default function Report1({ parcel: parcelProp, onGoToMap }: Report1Props) {
+export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Report1Props) {
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
