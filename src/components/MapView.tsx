@@ -10,12 +10,14 @@ export type MapLayerType = "standard" | "ortho";
 
 export interface MapViewHandle {
   setLayerType: (type: MapLayerType) => void;
+  highlightAndFit: (feature: any) => void;
 }
 
 interface MapViewProps {
-  onParcelSelect: (parcel: ParcelData) => void;
+  onParcelSelect: (parcel: ParcelData, feature?: any) => void;
   searchQuery: string | null;
   onSearchComplete: () => void;
+  initialFeature?: any;
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
@@ -56,7 +58,7 @@ const KadastroTileLayer = L.TileLayer.extend({
   },
 });
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete, initialFeature }, ref) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
@@ -86,7 +88,25 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       }
       if (kadastroLayerRef.current) kadastroLayerRef.current.bringToFront();
     },
+    highlightAndFit: (feature: any) => {
+      if (!mapRef.current || !feature?.geometry) return;
+      const layer = highlightGeoJSON(feature);
+      if (layer) {
+        const bounds = layer.getBounds();
+        mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [80, 80], maxZoom: 17 });
+      }
+    },
   }));
+
+  // Re-highlight initial feature when map mounts or becomes visible
+  useEffect(() => {
+    if (!initialFeature?.geometry || !mapRef.current) return;
+    const layer = highlightGeoJSON(initialFeature);
+    if (layer) {
+      const bounds = layer.getBounds();
+      mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [480, 80], maxZoom: 17 });
+    }
+  }, [initialFeature]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -174,7 +194,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
         if (feature.geometry) highlightGeoJSON(feature);
-        onParcelSelect(parcel);
+        onParcelSelect(parcel, feature);
       } else {
         toast.error("Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.");
       }
@@ -219,7 +239,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
             parcel.lng = center.lng;
           }
         }
-        onParcelSelect(parcel);
+        onParcelSelect(parcel, feature);
       } else {
         toast.error(data?.error || "Sklypas nerastas. Patikrinkite numerį.");
       }

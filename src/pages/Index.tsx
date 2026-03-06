@@ -2,14 +2,19 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
-import type { ParcelData } from "@/components/ParcelSidebar";
+import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import PricingModal from "@/components/PricingModal";
+import Report1 from "@/pages/Report1";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
+  const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const [activeView, setActiveView] = useState<"map" | "report">("map");
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -18,7 +23,6 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { user, credits, loading, signOut, refreshCredits } = useAuth();
 
-  // Handle payment success redirect
   useEffect(() => {
     if (searchParams.get("payment") === "success") {
       toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
@@ -36,6 +40,7 @@ const Index = () => {
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
     setSearchQuery(query);
+    setLastSearchInput(query);
   }, []);
 
   const handleSearchComplete = useCallback(() => {
@@ -43,10 +48,29 @@ const Index = () => {
     setSearchQuery(null);
   }, []);
 
-  const handleParcelSelect = useCallback((parcel: ParcelData) => {
-    // Navigate to report1 with parcel data
-    navigate("/report1", { state: { parcel, searchQuery: searchQuery } });
-  }, [navigate, searchQuery]);
+  const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
+    setSelectedParcel(parcel);
+    if (feature) setSelectedFeature(feature);
+    setActiveView("report");
+  }, []);
+
+  const handleGoToMap = useCallback(() => {
+    setActiveView("map");
+  }, []);
+
+  const handleGoToReport = useCallback(() => {
+    setActiveView("report");
+  }, []);
+
+  // Report view
+  if (activeView === "report" && selectedParcel) {
+    return (
+      <Report1
+        parcel={selectedParcel}
+        onGoToMap={handleGoToMap}
+      />
+    );
+  }
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
@@ -55,9 +79,10 @@ const Index = () => {
         onParcelSelect={handleParcelSelect}
         searchQuery={searchQuery}
         onSearchComplete={handleSearchComplete}
+        initialFeature={selectedFeature}
       />
 
-      {/* Map layer toggle - top left */}
+      {/* Map layer toggle */}
       <div className="absolute top-4 left-4 z-[900]">
         <button
           onClick={toggleLayer}
@@ -75,10 +100,9 @@ const Index = () => {
         </button>
       </div>
 
-      {/* Top overlay - Logo + Search + Auth */}
+      {/* Top overlay */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
         <div className="flex flex-col items-center pt-4 px-4 gap-3">
-          {/* Top bar: Logo + Credits/Auth */}
           <div className="pointer-events-auto flex items-center gap-2">
             <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg">
               <Layers className="h-5 w-5 text-primary" />
@@ -119,7 +143,6 @@ const Index = () => {
             )}
           </div>
 
-          {/* Search */}
           <div className="pointer-events-auto w-full max-w-xl">
             <SearchBar onSearch={handleSearch} isLoading={isSearching} />
           </div>
@@ -133,7 +156,21 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Pricing modal */}
+      {/* Parcel sidebar on map */}
+      <ParcelSidebar
+        parcel={selectedParcel}
+        onClose={() => setSelectedParcel(null)}
+        searchInput={lastSearchInput}
+        onGoToReport={selectedParcel ? handleGoToReport : undefined}
+      />
+
+      {selectedParcel && (
+        <div
+          className="fixed inset-0 bg-foreground/20 z-[999] sm:hidden animate-fade-in"
+          onClick={() => setSelectedParcel(null)}
+        />
+      )}
+
       <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </div>
   );

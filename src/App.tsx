@@ -8,7 +8,6 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ParcelAudit from "./pages/ParcelAudit";
 import ParcelAudit2 from "./pages/ParcelAudit2";
-import Report1 from "./pages/Report1";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,7 +24,6 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/auditas" element={<ParcelAudit />} />
             <Route path="/auditas2" element={<ParcelAudit2 />} />
-            <Route path="/report1" element={<Report1 />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

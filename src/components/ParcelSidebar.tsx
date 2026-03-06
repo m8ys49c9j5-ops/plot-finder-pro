@@ -70,6 +70,7 @@ interface ParcelSidebarProps {
   parcel: ParcelData | null;
   onClose: () => void;
   searchInput?: string;
+  onGoToReport?: () => void;
 }
 
 // Land use purpose code to Lithuanian description mapping
@@ -167,7 +168,7 @@ const PURPOSE_MAP: Record<string, string> = {
   "999": "Tarpinė",
 };
 
-const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
+const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSidebarProps) => {
   if (!parcel) return null;
 
   return (
@@ -191,6 +192,17 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          {/* Go to report button */}
+          {onGoToReport && (
+            <button
+              onClick={onGoToReport}
+              className="w-full premium-gradient text-primary-foreground font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm"
+            >
+              <FileText className="h-4 w-4" />
+              📄 Atidaryti išsamią ataskaitą
+            </button>
+          )}
+
           {/* Free Section */}
           <div>
             <div className="flex items-center gap-2 mb-4">

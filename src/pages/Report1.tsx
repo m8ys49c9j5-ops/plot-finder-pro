@@ -1,5 +1,6 @@
 import React, { useState, useRef, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import type { ParcelData } from "@/components/ParcelSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -7,7 +8,7 @@ import {
   CheckCircle2, Lock, Map, FileText, MapPin, Maximize, Calendar, Info,
   ShieldCheck, Unlock, Shield, Image as ImageIcon, Euro, Ruler, AlertTriangle,
   ArrowLeft, Mail, Lock as LockIcon, Search, Zap, Crown, Loader2, Check, Coins,
-  LogOut, Layers,
+  LogOut, Layers, ExternalLink,
 } from "lucide-react";
 
 // --- SAMPLE DATA for preview ---
@@ -105,7 +106,7 @@ function DataCard({ title, icon, children }: { title: string; icon: React.ReactN
   );
 }
 
-function ReportContent({ data, isSample = false }: { data: ReportData; isSample?: boolean }) {
+function ReportContent({ data, isSample = false, onGoToMap }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void }) {
   return (
     <div className={`w-full space-y-6 ${isSample ? "grayscale-[15%]" : ""} relative`}>
       {isSample && (
@@ -131,26 +132,46 @@ function ReportContent({ data, isSample = false }: { data: ReportData; isSample?
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px]">
+        <div
+          onClick={!isSample ? onGoToMap : undefined}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+        >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <Map className="w-4 h-4 text-muted-foreground" /> Kadastro žemėlapis
           </div>
-          <div className="flex-1 bg-primary/5 flex items-center justify-center">
+          <div className="flex-1 bg-primary/5 flex items-center justify-center relative">
             <div className="text-center">
               <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
               <p className="text-sm font-medium text-foreground">Sklypo ribos</p>
             </div>
+            {!isSample && onGoToMap && (
+              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
+                  <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
+                </span>
+              </div>
+            )}
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px]">
+        <div
+          onClick={!isSample ? onGoToMap : undefined}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+        >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
           </div>
-          <div className="flex-1 bg-muted/20 flex items-center justify-center">
+          <div className="flex-1 bg-muted/20 flex items-center justify-center relative">
             <div className="text-center">
               <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-70" />
               <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
             </div>
+            {!isSample && onGoToMap && (
+              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
+                  <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -354,13 +375,16 @@ function InlinePricing() {
 }
 
 // --- MAIN COMPONENT ---
-export default function Report1() {
-  const location = useLocation();
+interface Report1Props {
+  parcel?: ParcelFromRoute;
+  onGoToMap?: () => void;
+}
+
+export default function Report1({ parcel: parcelProp, onGoToMap }: Report1Props) {
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
-  const routeState = location.state as { parcel?: ParcelFromRoute } | null;
-  const parcel = routeState?.parcel;
+  const parcel = parcelProp || null;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -409,7 +433,7 @@ export default function Report1() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
         <p className="text-muted-foreground">Nėra paieškos duomenų.</p>
-        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-primary hover:underline">
+        <button onClick={onGoToMap || (() => navigate("/"))} className="flex items-center gap-2 text-primary hover:underline">
           <ArrowLeft className="h-4 w-4" /> Grįžti į žemėlapį
         </button>
       </div>
@@ -423,7 +447,7 @@ export default function Report1() {
         {/* Header */}
         <div className="border-b border-border bg-card">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <button onClick={onGoToMap || (() => navigate("/"))} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
               <Layers className="h-5 w-5 text-primary" />
               <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
@@ -440,7 +464,7 @@ export default function Report1() {
           </div>
         </div>
         <div className="max-w-4xl mx-auto p-4 mt-4">
-          <ReportContent data={realReportData} />
+          <ReportContent data={realReportData} onGoToMap={onGoToMap} />
         </div>
       </div>
     );
@@ -455,7 +479,7 @@ export default function Report1() {
       {/* Header */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <button onClick={onGoToMap || (() => navigate("/"))} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             <Layers className="h-5 w-5 text-primary" />
             <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
