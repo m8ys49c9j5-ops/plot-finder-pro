@@ -520,7 +520,24 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
-  const parcel = parcelProp || null;
+  // Recover parcel from localStorage if not passed as prop (e.g., after Stripe redirect)
+  const [recoveredParcel, setRecoveredParcel] = useState<ParcelFromRoute | null>(null);
+  
+  useEffect(() => {
+    if (!parcelProp) {
+      const stored = localStorage.getItem("pendingParcel");
+      if (stored) {
+        try {
+          setRecoveredParcel(JSON.parse(stored));
+        } catch {}
+      }
+    } else {
+      // Clear pending parcel when we have a fresh one
+      localStorage.removeItem("pendingParcel");
+    }
+  }, [parcelProp]);
+
+  const parcel = parcelProp || recoveredParcel;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
