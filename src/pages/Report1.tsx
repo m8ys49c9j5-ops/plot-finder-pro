@@ -515,7 +515,7 @@ function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; f
 // --- MAIN COMPONENT ---
 interface Report1Props {
   parcel?: ParcelFromRoute;
-  onGoToMap?: () => void;
+  onGoToMap?: (shouldHighlight?: boolean) => void;
   feature?: any;
 }
 
