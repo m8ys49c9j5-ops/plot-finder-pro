@@ -106,7 +106,49 @@ function DataCard({ title, icon, children }: { title: string; icon: React.ReactN
   );
 }
 
-function ReportContent({ data, isSample = false, onGoToMap }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void }) {
+function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; parcelLat?: number; parcelLng?: number }) {
+  const kadastroMapRef = useRef<HTMLDivElement>(null);
+  const orthoMapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isSample || !parcelLat || !parcelLng) return;
+
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
+    const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
+    const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
+
+    // Convert lat/lng to EPSG:3857 (Web Mercator)
+    const toMerc = (lat: number, lng: number) => {
+      const x = lng * 20037508.34 / 180;
+      const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180) * 20037508.34 / 180;
+      return { x, y };
+    };
+
+    const center = toMerc(parcelLat, parcelLng);
+    const span = 300; // meters in mercator
+    const bbox = `${center.x - span},${center.y - span},${center.x + span},${center.y + span}`;
+    const size = "512,512";
+
+    // Kadastro map: base + cadastre overlay
+    const baseUrl = `${GEOPORTAL_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=jpg&transparent=false&f=image`;
+    const kadUrl = `${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`;
+    
+    if (kadastroMapRef.current) {
+      kadastroMapRef.current.style.backgroundImage = `url(${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(kadUrl)}), url(${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(baseUrl)})`;
+      kadastroMapRef.current.style.backgroundSize = "cover";
+      kadastroMapRef.current.style.backgroundPosition = "center";
+    }
+
+    // Ortho map
+    const orthoUrl = `${ORTHO_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=jpg&transparent=false&f=image`;
+    if (orthoMapRef.current) {
+      orthoMapRef.current.style.backgroundImage = `url(${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(orthoUrl)})`;
+      orthoMapRef.current.style.backgroundSize = "cover";
+      orthoMapRef.current.style.backgroundPosition = "center";
+    }
+  }, [isSample, parcelLat, parcelLng]);
+
   return (
     <div className={`w-full space-y-6 ${isSample ? "grayscale-[15%]" : ""} relative`}>
       {isSample && (
@@ -139,13 +181,15 @@ function ReportContent({ data, isSample = false, onGoToMap }: { data: ReportData
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <Map className="w-4 h-4 text-muted-foreground" /> Kadastro žemėlapis
           </div>
-          <div className="flex-1 bg-primary/5 flex items-center justify-center relative">
-            <div className="text-center">
-              <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Sklypo ribos</p>
-            </div>
+          <div ref={kadastroMapRef} className="flex-1 bg-primary/5 flex items-center justify-center relative">
+            {(!parcelLat || !parcelLng || isSample) && (
+              <div className="text-center">
+                <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">Sklypo ribos</p>
+              </div>
+            )}
             {!isSample && onGoToMap && (
-              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 bg-foreground/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
                   <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
                 </span>
@@ -160,13 +204,15 @@ function ReportContent({ data, isSample = false, onGoToMap }: { data: ReportData
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
           </div>
-          <div className="flex-1 bg-muted/20 flex items-center justify-center relative">
-            <div className="text-center">
-              <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-70" />
-              <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
-            </div>
+          <div ref={orthoMapRef} className="flex-1 bg-muted/20 flex items-center justify-center relative">
+            {(!parcelLat || !parcelLng || isSample) && (
+              <div className="text-center">
+                <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-70" />
+                <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
+              </div>
+            )}
             {!isSample && onGoToMap && (
-              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 bg-foreground/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
                   <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
                 </span>
