@@ -108,6 +108,90 @@ function DataCard({ title, icon, children }: { title: string; icon: React.ReactN
   );
 }
 
+// --- Interactive Leaflet map for report ---
+function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
+    const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
+    const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
+
+    const map = L.map(mapContainerRef.current, {
+      center: [lat, lng],
+      zoom: 17,
+      zoomControl: true,
+      attributionControl: false,
+    });
+
+    // Base tile layer via proxy
+    const baseTile = L.tileLayer("", {
+      tileSize: 256,
+    });
+    // Override getTileUrl for base
+    (baseTile as any).getTileUrl = function (coords: L.Coords) {
+      const tileSize = 256;
+      const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+      const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+      const nw = map.unproject(nwPoint, coords.z);
+      const se = map.unproject(sePoint, coords.z);
+      const nwMerc = L.CRS.EPSG3857.project(nw);
+      const seMerc = L.CRS.EPSG3857.project(se);
+      const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
+      const exportUrl = `${GEOPORTAL_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=jpg&transparent=false&f=image`;
+      return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
+    };
+    baseTile.addTo(map);
+
+    // Cadastre overlay
+    const kadTile = L.tileLayer("", {
+      tileSize: 256,
+    });
+    (kadTile as any).getTileUrl = function (coords: L.Coords) {
+      const tileSize = 256;
+      const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+      const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+      const nw = map.unproject(nwPoint, coords.z);
+      const se = map.unproject(sePoint, coords.z);
+      const nwMerc = L.CRS.EPSG3857.project(nw);
+      const seMerc = L.CRS.EPSG3857.project(se);
+      const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
+      const exportUrl = `${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`;
+      return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
+    };
+    kadTile.addTo(map);
+
+    // Marker
+    L.circleMarker([lat, lng], {
+      radius: 8,
+      color: "hsl(var(--primary))",
+      fillColor: "hsl(var(--primary))",
+      fillOpacity: 0.3,
+      weight: 2,
+    }).addTo(map);
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [lat, lng]);
+
+  return (
+    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden relative z-10">
+      <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
+        <Map className="w-4 h-4 text-primary" /> Interaktyvus žemėlapis
+      </div>
+      <div ref={mapContainerRef} className="w-full" style={{ height: "450px" }} />
+    </div>
+  );
+}
+
 function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; parcelLat?: number; parcelLng?: number }) {
   const kadastroMapRef = useRef<HTMLDivElement>(null);
   const orthoMapRef = useRef<HTMLDivElement>(null);
