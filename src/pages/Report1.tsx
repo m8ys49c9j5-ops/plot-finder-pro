@@ -341,6 +341,11 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
           <DataRow icon={<AlertTriangle />} label="Specialiosios sąlygos" value={data.specialiosiosSalygos} />
         </DataCard>
       </div>
+
+      {/* Interactive Leaflet Map at bottom */}
+      {!isSample && parcelLat && parcelLng && (
+        <ReportInteractiveMap lat={parcelLat} lng={parcelLng} feature={feature} />
+      )}
     </div>
   );
 }
