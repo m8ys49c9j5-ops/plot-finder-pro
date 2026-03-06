@@ -8,7 +8,7 @@ import {
   CheckCircle2, Lock, Map, FileText, MapPin, Maximize, Calendar, Info,
   ShieldCheck, Unlock, Shield, Image as ImageIcon, Euro, Ruler, AlertTriangle,
   ArrowLeft, Mail, Lock as LockIcon, Search, Zap, Crown, Loader2, Check, Coins,
-  LogOut, Layers,
+  LogOut, Layers, ExternalLink,
 } from "lucide-react";
 
 // --- SAMPLE DATA for preview ---
