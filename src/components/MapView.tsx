@@ -176,14 +176,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         if (feature.geometry) highlightGeoJSON(feature);
         onParcelSelect(parcel);
       } else {
-        onParcelSelect({
-          cadastralNumber: "Nežinomas",
-          address: "Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.",
-          lat: latlng.lat, lng: latlng.lng,
-        });
+        toast.error("Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.");
       }
     } catch (error) {
       console.error("Identify error:", error);
+      toast.error("Paieškos klaida. Pabandykite vėliau.");
     } finally {
       setIsLoading(false);
     }
