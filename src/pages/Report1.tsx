@@ -680,7 +680,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       {/* Header */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={onGoToMap || (() => navigate("/"))} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <button onClick={handleGoToMap} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             <Layers className="h-5 w-5 text-primary" />
             <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
