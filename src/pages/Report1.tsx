@@ -510,7 +510,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap }: Report1Props)
           </div>
         </div>
         <div className="max-w-4xl mx-auto p-4 mt-4">
-          <ReportContent data={realReportData} onGoToMap={onGoToMap} />
+          <ReportContent data={realReportData} onGoToMap={onGoToMap} parcelLat={parcel.lat} parcelLng={parcel.lng} />
         </div>
       </div>
     );
