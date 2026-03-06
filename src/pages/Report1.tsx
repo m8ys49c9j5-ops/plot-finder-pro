@@ -552,17 +552,6 @@ export default function Report1() {
               )}
             </div>
           </div>
-                          <Unlock className="w-5 h-5" />
-                          Atrakinti ataskaitą (1 kreditas)
-                        </>
-                      )}
-                    </button>
-                    <p className="text-xs text-muted-foreground mt-4">Jums liko {credits} {credits === 1 ? "kreditas" : "kreditų"}.</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Divider */}
