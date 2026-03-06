@@ -605,6 +605,15 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Still checking unlock status
+  if (checkingUnlock) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   // No parcel data - redirect home
   if (!parcel) {
     return (
