@@ -8,7 +8,6 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ParcelAudit from "./pages/ParcelAudit";
 import ParcelAudit2 from "./pages/ParcelAudit2";
-import Report1 from "./pages/Report1";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
