@@ -153,9 +153,9 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
     if (feature?.geometry) {
       const geoLayer = L.geoJSON(feature, {
         style: {
-          color: "#ef4444",
+          color: "#22c55e",
           weight: 3,
-          fillColor: "#ef4444",
+          fillColor: "#22c55e",
           fillOpacity: 0.15,
         },
       }).addTo(map);
