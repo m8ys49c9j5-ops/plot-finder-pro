@@ -541,7 +541,31 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [checkingUnlock, setCheckingUnlock] = useState(true);
   const ctaRef = useRef<HTMLDivElement>(null);
+
+  // Check if parcel is already unlocked in search_history
+  useEffect(() => {
+    if (!user || !parcel?.cadastralNumber) {
+      setCheckingUnlock(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("search_history")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("cadastral_number", parcel.cadastralNumber)
+          .limit(1);
+        if (data && data.length > 0) {
+          setIsUnlocked(true);
+        }
+      } catch {} finally {
+        setCheckingUnlock(false);
+      }
+    })();
+  }, [user, parcel?.cadastralNumber]);
 
   // Build report data from real parcel
   const realReportData: ReportData | null = parcel ? parcelToReportData(parcel) : null;
