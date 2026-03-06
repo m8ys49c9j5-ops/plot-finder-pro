@@ -375,13 +375,16 @@ function InlinePricing() {
 }
 
 // --- MAIN COMPONENT ---
-export default function Report1() {
-  const location = useLocation();
+interface Report1Props {
+  parcel?: ParcelFromRoute;
+  onGoToMap?: () => void;
+}
+
+export default function Report1({ parcel: parcelProp, onGoToMap }: Report1Props) {
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
-  const routeState = location.state as { parcel?: ParcelFromRoute } | null;
-  const parcel = routeState?.parcel;
+  const parcel = parcelProp || null;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
