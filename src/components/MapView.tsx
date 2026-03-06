@@ -63,6 +63,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
   const orthoLayerRef = useRef<L.TileLayer | null>(null);
@@ -98,15 +99,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
     },
   }));
 
-  // Re-highlight initial feature when map mounts or becomes visible
+  // Re-highlight initial feature when map is ready
   useEffect(() => {
-    if (!initialFeature?.geometry || !mapRef.current) return;
+    if (!mapReady || !initialFeature?.geometry || !mapRef.current) return;
     const layer = highlightGeoJSON(initialFeature);
     if (layer) {
       const bounds = layer.getBounds();
       mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [480, 80], maxZoom: 17 });
     }
-  }, [initialFeature]);
+  }, [initialFeature, mapReady]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -122,7 +123,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
     }).addTo(map);
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    setMapReady(true);
+    return () => { map.remove(); mapRef.current = null; setMapReady(false); };
   }, []);
 
   useEffect(() => {
