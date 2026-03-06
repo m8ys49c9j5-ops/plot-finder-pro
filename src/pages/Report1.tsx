@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect, type FormEvent } from "react";
+import React, { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { ParcelData } from "@/components/ParcelSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
