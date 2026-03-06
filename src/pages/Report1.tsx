@@ -427,15 +427,18 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 // --- INLINE PRICING ---
-function InlinePricing({ parcel }: { parcel?: ParcelFromRoute | null }) {
+function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; feature?: any }) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
 
   const handleBuy = async (tierId: string) => {
     setLoadingTier(tierId);
     try {
-      // Save parcel to localStorage before redirecting to Stripe
+      // Save parcel + feature to localStorage before redirecting to Stripe
       if (parcel) {
         localStorage.setItem("pendingParcel", JSON.stringify(parcel));
+      }
+      if (feature) {
+        localStorage.setItem("pendingFeature", JSON.stringify(feature));
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", { body: { tier: tierId } });
       if (error) throw error;
@@ -516,32 +519,60 @@ interface Report1Props {
   feature?: any;
 }
 
-export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Report1Props) {
+export default function Report1({ parcel: parcelProp, onGoToMap, feature: featureProp }: Report1Props) {
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
-  // Recover parcel from localStorage if not passed as prop (e.g., after Stripe redirect)
+  // Recover parcel + feature from localStorage if not passed as prop (e.g., after Stripe redirect)
   const [recoveredParcel, setRecoveredParcel] = useState<ParcelFromRoute | null>(null);
+  const [recoveredFeature, setRecoveredFeature] = useState<any>(null);
   
   useEffect(() => {
     if (!parcelProp) {
       const stored = localStorage.getItem("pendingParcel");
       if (stored) {
-        try {
-          setRecoveredParcel(JSON.parse(stored));
-        } catch {}
+        try { setRecoveredParcel(JSON.parse(stored)); } catch {}
+      }
+      const storedFeature = localStorage.getItem("pendingFeature");
+      if (storedFeature) {
+        try { setRecoveredFeature(JSON.parse(storedFeature)); } catch {}
       }
     } else {
-      // Clear pending parcel when we have a fresh one
       localStorage.removeItem("pendingParcel");
+      localStorage.removeItem("pendingFeature");
     }
   }, [parcelProp]);
 
   const parcel = parcelProp || recoveredParcel;
+  const feature = featureProp || recoveredFeature;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [checkingUnlock, setCheckingUnlock] = useState(true);
   const ctaRef = useRef<HTMLDivElement>(null);
+
+  // Check if parcel is already unlocked in search_history
+  useEffect(() => {
+    if (!user || !parcel?.cadastralNumber) {
+      setCheckingUnlock(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("search_history")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("cadastral_number", parcel.cadastralNumber)
+          .limit(1);
+        if (data && data.length > 0) {
+          setIsUnlocked(true);
+        }
+      } catch {} finally {
+        setCheckingUnlock(false);
+      }
+    })();
+  }, [user, parcel?.cadastralNumber]);
 
   // Build report data from real parcel
   const realReportData: ReportData | null = parcel ? parcelToReportData(parcel) : null;
@@ -580,6 +611,15 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
   const scrollToCta = () => {
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Still checking unlock status
+  if (checkingUnlock) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // No parcel data - redirect home
   if (!parcel) {
@@ -706,7 +746,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
                 </div>
               ) : needsCredits ? (
                 <div className="w-full max-w-md">
-                  <InlinePricing parcel={parcel} />
+                  <InlinePricing parcel={parcel} feature={feature} />
                 </div>
               ) : (
                 <>

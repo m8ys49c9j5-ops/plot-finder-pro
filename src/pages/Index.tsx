@@ -23,7 +23,7 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { user, credits, loading, signOut, refreshCredits } = useAuth();
 
-  // Recover parcel from localStorage after Stripe redirect
+  // Recover parcel + feature from localStorage after Stripe redirect
   useEffect(() => {
     if (searchParams.get("payment") === "success") {
       toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
@@ -35,6 +35,12 @@ const Index = () => {
           const parcel = JSON.parse(stored);
           setSelectedParcel(parcel);
           setActiveView("report");
+        } catch {}
+      }
+      const storedFeature = localStorage.getItem("pendingFeature");
+      if (storedFeature) {
+        try {
+          setSelectedFeature(JSON.parse(storedFeature));
         } catch {}
       }
       window.history.replaceState({}, "", "/");
