@@ -23,10 +23,20 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { user, credits, loading, signOut, refreshCredits } = useAuth();
 
+  // Recover parcel from localStorage after Stripe redirect
   useEffect(() => {
     if (searchParams.get("payment") === "success") {
       toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
       refreshCredits();
+      
+      const stored = localStorage.getItem("pendingParcel");
+      if (stored) {
+        try {
+          const parcel = JSON.parse(stored);
+          setSelectedParcel(parcel);
+          setActiveView("report");
+        } catch {}
+      }
       window.history.replaceState({}, "", "/");
     }
   }, [searchParams, refreshCredits]);
