@@ -427,12 +427,16 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 // --- INLINE PRICING ---
-function InlinePricing() {
+function InlinePricing({ parcel }: { parcel?: ParcelFromRoute | null }) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
 
   const handleBuy = async (tierId: string) => {
     setLoadingTier(tierId);
     try {
+      // Save parcel to localStorage before redirecting to Stripe
+      if (parcel) {
+        localStorage.setItem("pendingParcel", JSON.stringify(parcel));
+      }
       const { data, error } = await supabase.functions.invoke("create-checkout", { body: { tier: tierId } });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
@@ -516,7 +520,24 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
   const navigate = useNavigate();
   const { user, credits, refreshCredits, signOut } = useAuth();
 
-  const parcel = parcelProp || null;
+  // Recover parcel from localStorage if not passed as prop (e.g., after Stripe redirect)
+  const [recoveredParcel, setRecoveredParcel] = useState<ParcelFromRoute | null>(null);
+  
+  useEffect(() => {
+    if (!parcelProp) {
+      const stored = localStorage.getItem("pendingParcel");
+      if (stored) {
+        try {
+          setRecoveredParcel(JSON.parse(stored));
+        } catch {}
+      }
+    } else {
+      // Clear pending parcel when we have a fresh one
+      localStorage.removeItem("pendingParcel");
+    }
+  }, [parcelProp]);
+
+  const parcel = parcelProp || recoveredParcel;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -681,11 +702,11 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
               {/* Conditional: Auth, Pricing, or Unlock */}
               {needsAuth ? (
                 <div className="w-full max-w-md">
-                  <InlineAuthForm onSuccess={() => window.location.reload()} />
+                  <InlineAuthForm onSuccess={() => {}} />
                 </div>
               ) : needsCredits ? (
                 <div className="w-full max-w-md">
-                  <InlinePricing />
+                  <InlinePricing parcel={parcel} />
                 </div>
               ) : (
                 <>
