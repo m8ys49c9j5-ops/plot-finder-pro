@@ -259,46 +259,6 @@ const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSid
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-border" />
-
-          {/* Premium Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-6 w-6 rounded-md bg-amber-500/10 flex items-center justify-center">
-                <Lock className="h-3.5 w-3.5 text-amber-500" />
-              </div>
-              <h3 className="font-display font-semibold text-foreground">Išsami analizė</h3>
-            </div>
-
-            <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Gaukite aktualią ir išsamią sklypo informaciją: savininko apribojimai, specialiosios naudojimo sąlygos,
-                naujausi pokyčiai ir kt.
-              </p>
-
-              <ul className="space-y-2">
-                {[
-                  "Savininko apribojimai",
-                  "Specialiosios žemės naudojimo sąlygos",
-                  "Naujausi įregistruoti pokyčiai",
-                  "Detalūs teritorijų planavimo duomenys",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-foreground">
-                    <ChevronRight className="h-3.5 w-3.5 text-primary" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <button className="w-full premium-gradient text-primary-foreground font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-3 hover:opacity-90 transition-opacity text-sm">
-                <CreditCard className="h-4 w-4" />
-                Atrakinti už 2,99 €
-              </button>
-
-              <p className="text-xs text-muted-foreground text-center">Saugus mokėjimas per Stripe</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
