@@ -123,7 +123,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
     }).addTo(map);
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    setMapReady(true);
+    return () => { map.remove(); mapRef.current = null; setMapReady(false); };
   }, []);
 
   useEffect(() => {
