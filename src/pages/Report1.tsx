@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   CheckCircle2, Lock, Map, FileText, MapPin,
-  Maximize, Calendar, Info, ShieldCheck, Unlock
+  Maximize, Calendar, Info, ShieldCheck, Unlock, Eye, ArrowUp
 } from 'lucide-react';
 
 const MOCK_PARCEL = {
@@ -12,6 +12,16 @@ const MOCK_PARCEL = {
   address: "Gedimino pr. 1, Vilniaus m. sav.",
   formavimoData: "2015-05-20",
   coordinates: "54.687157, 25.279652"
+};
+
+const SAMPLE_REPORT_DATA = {
+  cadastralNumber: "0101/0001:0001",
+  unikalusNr: "4400-0000-0001",
+  area: "0.1200 ha",
+  purpose: "Namų valda (Vienbučių gyvenamųjų pastatų teritorijos)",
+  address: "Pavyzdžio g. 1, Vilniaus m. sav.",
+  formavimoData: "2020-03-15",
+  coordinates: "54.689200, 25.271400"
 };
 
 function DataRow({ icon, label, value, isMono = false }: { icon: React.ReactNode; label: string; value: string; isMono?: boolean }) {
@@ -28,9 +38,71 @@ function DataRow({ icon, label, value, isMono = false }: { icon: React.ReactNode
   );
 }
 
+function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; isSample?: boolean }) {
+  return (
+    <div className={`max-w-4xl mx-auto space-y-6 ${isSample ? 'grayscale-[20%]' : ''}`}>
+      {/* Report Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-xl border border-border shadow-sm relative">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Property Report</h1>
+          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            Unlocked on {new Date().toLocaleDateString()}
+          </p>
+        </div>
+        <div className="bg-muted/50 px-4 py-2 rounded-lg border border-border text-right">
+          <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Cadastral Number</p>
+          <p className="text-lg font-mono font-bold text-primary">{data.cadastralNumber}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Map Placeholder */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[300px] relative">
+            <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
+              <Map className="w-4 h-4 text-muted-foreground" /> Map View
+            </div>
+            <div className={`flex-1 bg-primary/5 flex items-center justify-center relative ${isSample ? 'opacity-60' : ''}`}>
+              {isSample && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                  <span className="text-6xl font-black text-foreground/[0.06] rotate-[-25deg] select-none tracking-widest uppercase">
+                    SAMPLE
+                  </span>
+                </div>
+              )}
+              <div className="text-center z-10">
+                <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">Interactive Map Loaded</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Data Grid */}
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/50 font-semibold flex items-center gap-2">
+            <Info className="w-5 h-5 text-primary" /> Registry Details
+          </div>
+
+          <div className="divide-y divide-border">
+            <DataRow icon={<FileText />} label="Unique Number" value={data.unikalusNr} />
+            <DataRow icon={<MapPin />} label="Exact Address" value={data.address} />
+            <DataRow icon={<Maximize />} label="Registered Area" value={data.area} />
+            <DataRow icon={<Info />} label="Land Purpose" value={data.purpose} />
+            <DataRow icon={<Calendar />} label="Formation Date" value={data.formavimoData} />
+            <DataRow icon={<Map />} label="Center Coordinates" value={data.coordinates} isMono />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Report1() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const ctaRef = useRef<HTMLDivElement>(null);
 
   const handleUnlock = () => {
     setIsUnlocking(true);
@@ -40,10 +112,15 @@ export default function Report1() {
     }, 1500);
   };
 
+  const scrollToCta = () => {
+    ctaRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   if (!isUnlocked) {
     return (
       <div className="min-h-screen bg-background p-4">
-        <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
+        {/* ===== TOP: Locked Preview ===== */}
+        <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500" ref={ctaRef}>
           {/* Success Header */}
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-3">
             <div className="flex justify-center">
@@ -67,7 +144,6 @@ export default function Report1() {
               </span>
             </div>
 
-            {/* Blurred Content Area */}
             <div className="p-6 relative">
               <div className="filter blur-[6px] opacity-60 select-none pointer-events-none space-y-4">
                 <div className="h-48 bg-muted rounded-lg w-full mb-6"></div>
@@ -79,7 +155,6 @@ export default function Report1() {
                 </div>
               </div>
 
-              {/* Overlay CTA */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-card via-card/90 to-transparent p-6 text-center">
                 <Lock className="w-10 h-10 text-muted-foreground mb-4" />
                 <h4 className="text-xl font-bold text-foreground mb-2">Unlock Full Property Report</h4>
@@ -109,60 +184,65 @@ export default function Report1() {
             </div>
           </div>
         </div>
+
+        {/* ===== DIVIDER ===== */}
+        <div className="max-w-3xl mx-auto my-12">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-border" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/60 border border-border">
+              <Eye className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-muted-foreground">See what's included in a Full Report</span>
+              <span className="text-lg">👇</span>
+            </div>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+        </div>
+
+        {/* ===== BOTTOM: Sample Report ===== */}
+        <div className="max-w-4xl mx-auto">
+          <div className="relative rounded-2xl border-2 border-dashed border-border bg-muted/30 p-6 pt-12">
+            {/* SAMPLE badge */}
+            <div className="absolute top-3 right-3 z-10">
+              <span className="bg-amber-100 text-amber-800 text-xs font-black px-4 py-1.5 rounded-full border border-amber-200 uppercase tracking-wider shadow-sm">
+                Sample Report
+              </span>
+            </div>
+
+            {/* Watermark overlay */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl">
+              <span className="text-[120px] font-black text-foreground/[0.03] rotate-[-30deg] select-none tracking-[0.2em] uppercase whitespace-nowrap">
+                SAMPLE
+              </span>
+            </div>
+
+            <div className="relative">
+              <ReportContent data={SAMPLE_REPORT_DATA} isSample />
+            </div>
+
+            {/* Bottom CTA */}
+            <div className="mt-8 text-center">
+              <button
+                onClick={scrollToCta}
+                className="inline-flex items-center gap-2 premium-gradient text-primary-foreground font-bold py-3 px-8 rounded-xl shadow-lg transition-all hover:opacity-90"
+              >
+                <ArrowUp className="w-5 h-5" />
+                Unlock Your Actual Report Now
+              </button>
+              <p className="text-xs text-muted-foreground mt-3">
+                The above is a sample with dummy data. Your real report contains verified registry data.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ===== UNLOCKED STATE =====
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-        {/* Report Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-xl border border-border shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Property Report</h1>
-            <p className="text-muted-foreground flex items-center gap-2 mt-1">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              Unlocked on {new Date().toLocaleDateString()}
-            </p>
-          </div>
-          <div className="bg-muted/50 px-4 py-2 rounded-lg border border-border text-right">
-            <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Cadastral Number</p>
-            <p className="text-lg font-mono font-bold text-primary">{MOCK_PARCEL.cadastralNumber}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Map Placeholder */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[300px]">
-              <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
-                <Map className="w-4 h-4 text-muted-foreground" /> Map View
-              </div>
-              <div className="flex-1 bg-primary/5 flex items-center justify-center relative">
-                <div className="text-center z-10">
-                  <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
-                  <p className="text-sm font-medium text-foreground">Interactive Map Loaded</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Data Grid */}
-          <div className="lg:col-span-2 bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-border bg-muted/50 font-semibold flex items-center gap-2">
-              <Info className="w-5 h-5 text-primary" /> Registry Details
-            </div>
-
-            <div className="divide-y divide-border">
-              <DataRow icon={<FileText />} label="Unique Number" value={MOCK_PARCEL.unikalusNr} />
-              <DataRow icon={<MapPin />} label="Exact Address" value={MOCK_PARCEL.address} />
-              <DataRow icon={<Maximize />} label="Registered Area" value={MOCK_PARCEL.area} />
-              <DataRow icon={<Info />} label="Land Purpose" value={MOCK_PARCEL.purpose} />
-              <DataRow icon={<Calendar />} label="Formation Date" value={MOCK_PARCEL.formavimoData} />
-              <DataRow icon={<Map />} label="Center Coordinates" value={MOCK_PARCEL.coordinates} isMono />
-            </div>
-          </div>
-        </div>
+      <div className="animate-in slide-in-from-bottom-4 duration-500">
+        <ReportContent data={MOCK_PARCEL} />
       </div>
     </div>
   );
