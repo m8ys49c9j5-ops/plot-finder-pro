@@ -125,7 +125,12 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
       zoom: 17,
       zoomControl: true,
       attributionControl: false,
+      scrollWheelZoom: false,
     });
+
+    // Enable scroll zoom only when map is clicked/focused
+    map.on("click", () => map.scrollWheelZoom.enable());
+    map.on("mouseout", () => map.scrollWheelZoom.disable());
 
     const buildTileUrl = (baseUrl: string, coords: L.Coords, format: string, transparent: boolean, layers?: string) => {
       const tileSize = 256;
@@ -153,9 +158,9 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
     if (feature?.geometry) {
       const geoLayer = L.geoJSON(feature, {
         style: {
-          color: "#ef4444",
+          color: "#22c55e",
           weight: 3,
-          fillColor: "#ef4444",
+          fillColor: "#22c55e",
           fillOpacity: 0.15,
         },
       }).addTo(map);
@@ -200,7 +205,7 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
     };
 
     const center = toMerc(parcelLat, parcelLng);
-    const span = 2000; // meters in mercator (zoomed out more)
+    const span = 1000;
     const bbox = `${center.x - span},${center.y - span},${center.x + span},${center.y + span}`;
     const size = "512,512";
 
