@@ -63,6 +63,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
   const orthoLayerRef = useRef<L.TileLayer | null>(null);
