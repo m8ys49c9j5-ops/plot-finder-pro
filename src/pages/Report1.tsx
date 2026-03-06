@@ -1,45 +1,16 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, type FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import {
-  CheckCircle2,
-  Lock,
-  Map,
-  FileText,
-  MapPin,
-  Maximize,
-  Calendar,
-  Info,
-  ShieldCheck,
-  Unlock,
-  Eye,
-  ArrowRight,
-  Shield,
-  CreditCard,
-  Zap,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  Image as ImageIcon,
-  Euro,
-  Ruler,
-  AlertTriangle,
+  CheckCircle2, Lock, Map, FileText, MapPin, Maximize, Calendar, Info,
+  ShieldCheck, Unlock, Shield, Image as ImageIcon, Euro, Ruler, AlertTriangle,
+  ArrowLeft, Mail, Lock as LockIcon, Search, Zap, Crown, Loader2, Check, Coins,
+  LogOut, Layers,
 } from "lucide-react";
 
-// --- EXPANDED MOCK DATA ---
-const MOCK_PARCEL = {
-  cadastralNumber: "4400-1234-5678",
-  unikalusNr: "4400-1234-5678-0001",
-  area: "0.1500 ha",
-  purpose: "Kitos paskirties žemė (Vienbučių ir dvibučių gyvenamųjų pastatų teritorijos)",
-  address: "Gedimino pr. 1, Vilniaus m. sav.",
-  formavimoData: "2015-05-20",
-  coordinates: "54.687157, 25.279652",
-  vidutineRinkosVerte: "125 400 €",
-  vertinimoData: "2023-08-01",
-  matavimuTipas: "Kadastriniai matavimai",
-  nasumoBalas: "Netaikoma",
-  specialiosiosSalygos: "Yra (Kelių apsaugos zonos, Ryšių linijų apsaugos zonos)",
-};
-
+// --- SAMPLE DATA for preview ---
 const SAMPLE_REPORT_DATA = {
   cadastralNumber: "0101/0001:0001",
   unikalusNr: "4400-0000-0001",
@@ -56,24 +27,59 @@ const SAMPLE_REPORT_DATA = {
 };
 
 const PRICING_TIERS = [
-  { id: "tier-1", credits: 1, price: 1.99, originalPrice: null, badge: null },
-  { id: "tier-2", credits: 10, price: 9.99, originalPrice: 19.9, badge: "Sutaupote 50%" },
-  { id: "tier-3", credits: 30, price: 19.99, originalPrice: 59.7, badge: "Sutaupote 67%", isPopular: true },
+  { id: "tier1", name: "Starteris", credits: 1, price: "€1,99", perSearch: "€1,99", icon: Search, popular: false },
+  { id: "tier2", name: "Populiarus", credits: 10, price: "€9,99", perSearch: "€1,00", icon: Zap, popular: true, save: "50%" },
+  { id: "tier3", name: "Profesionalus", credits: 30, price: "€19,99", perSearch: "€0,67", icon: Crown, popular: false, save: "66%" },
 ];
 
+// --- Types ---
+interface ReportData {
+  cadastralNumber: string;
+  unikalusNr: string;
+  area: string;
+  purpose: string;
+  address: string;
+  formavimoData: string;
+  coordinates: string;
+  vidutineRinkosVerte: string;
+  vertinimoData: string;
+  matavimuTipas: string;
+  nasumoBalas: string;
+  specialiosiosSalygos: string;
+}
+
+interface ParcelFromRoute {
+  cadastralNumber: string;
+  unikalusNr?: string;
+  area?: number;
+  purpose?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  formavimoData?: string;
+}
+
+// Convert route parcel data to report format
+function parcelToReportData(parcel: ParcelFromRoute): ReportData {
+  return {
+    cadastralNumber: parcel.cadastralNumber || "",
+    unikalusNr: parcel.unikalusNr || "",
+    area: parcel.area ? `${parcel.area} ha` : "",
+    purpose: parcel.purpose || "",
+    address: parcel.address || "",
+    formavimoData: parcel.formavimoData || "",
+    coordinates: parcel.lat && parcel.lng ? `${parcel.lat.toFixed(6)}, ${parcel.lng.toFixed(6)}` : "",
+    vidutineRinkosVerte: "",
+    vertinimoData: "",
+    matavimuTipas: "",
+    nasumoBalas: "",
+    specialiosiosSalygos: "",
+  };
+}
+
 // --- HELPER COMPONENTS ---
-function DataRow({
-  icon,
-  label,
-  value,
-  isMono = false,
-  highlight = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  isMono?: boolean;
-  highlight?: boolean;
+function DataRow({ icon, label, value, isMono = false, highlight = false }: {
+  icon: React.ReactNode; label: string; value: string; isMono?: boolean; highlight?: boolean;
 }) {
   return (
     <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 hover:bg-muted/40 transition-colors">
@@ -81,9 +87,7 @@ function DataRow({
         <div className="w-4 h-4 opacity-70">{icon}</div>
         {label}
       </div>
-      <div
-        className={`sm:w-3/5 ${isMono ? "font-mono text-sm" : "font-medium"} ${highlight ? "text-emerald-600 font-bold text-lg" : "text-foreground"}`}
-      >
+      <div className={`sm:w-3/5 ${isMono ? "font-mono text-sm" : "font-medium"} ${highlight ? "text-emerald-600 font-bold text-lg" : "text-foreground"}`}>
         {value || "Nėra duomenų"}
       </div>
     </div>
@@ -101,7 +105,7 @@ function DataCard({ title, icon, children }: { title: string; icon: React.ReactN
   );
 }
 
-function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; isSample?: boolean }) {
+function ReportContent({ data, isSample = false }: { data: ReportData; isSample?: boolean }) {
   return (
     <div className={`w-full space-y-6 ${isSample ? "grayscale-[15%]" : ""} relative`}>
       {isSample && (
@@ -112,7 +116,6 @@ function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; i
         </div>
       )}
 
-      {/* Antraštė */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-xl border border-border shadow-sm relative z-10">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Išsami sklypo ataskaita</h2>
@@ -127,40 +130,34 @@ function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; i
         </div>
       </div>
 
-      {/* Žemėlapių galerija */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-        {/* Standartinis žemėlapis */}
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px]">
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <Map className="w-4 h-4 text-muted-foreground" /> Kadastro žemėlapis
           </div>
-          <div className="flex-1 bg-primary/5 flex items-center justify-center relative">
+          <div className="flex-1 bg-primary/5 flex items-center justify-center">
             <div className="text-center">
               <MapPin className="w-10 h-10 text-primary mx-auto mb-2" />
               <p className="text-sm font-medium text-foreground">Sklypo ribos</p>
             </div>
           </div>
         </div>
-
-        {/* Ortofoto žemėlapis */}
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[250px]">
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
           </div>
-          <div className="flex-1 bg-emerald-900/10 flex items-center justify-center relative">
+          <div className="flex-1 bg-muted/20 flex items-center justify-center">
             <div className="text-center">
-              <ImageIcon className="w-10 h-10 text-emerald-700 mx-auto mb-2 opacity-70" />
-              <p className="text-sm font-medium text-emerald-900 dark:text-emerald-300">Palydovinis vaizdas</p>
+              <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-70" />
+              <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Duomenų sekcijos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
-        {/* 1. Pagrindinė informacija */}
         <div className="lg:col-span-2">
-          <DataCard title="Pagrindinė informacija" icon={<Info className="w-5 h-5 text-blue-500" />}>
+          <DataCard title="Pagrindinė informacija" icon={<Info className="w-5 h-5 text-primary" />}>
             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
               <div className="divide-y divide-border">
                 <DataRow icon={<FileText />} label="Unikalus numeris" value={data.unikalusNr} />
@@ -176,17 +173,14 @@ function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; i
           </DataCard>
         </div>
 
-        {/* 2. Vertės duomenys */}
         <DataCard title="Mokestinė ir vertės informacija" icon={<Euro className="w-5 h-5 text-emerald-500" />}>
           <DataRow icon={<Euro />} label="Vidutinė rinkos vertė" value={data.vidutineRinkosVerte} highlight />
           <DataRow icon={<Calendar />} label="Vertinimo data" value={data.vertinimoData} />
           <div className="p-4 bg-muted/30 text-xs text-muted-foreground">
-            * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės
-            vertės.
+            * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės vertės.
           </div>
         </DataCard>
 
-        {/* 3. Matavimai ir apribojimai */}
         <DataCard title="Matavimai ir apribojimai" icon={<Ruler className="w-5 h-5 text-amber-500" />}>
           <DataRow icon={<Ruler />} label="Matavimų tipas" value={data.matavimuTipas} />
           <DataRow icon={<Shield />} label="Našumo balas" value={data.nasumoBalas} />
@@ -197,117 +191,390 @@ function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; i
   );
 }
 
+// --- INLINE AUTH FORM ---
+function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Sėkmingai prisijungėte!");
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        toast.success("Registracija sėkminga!");
+      }
+      onSuccess();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <h3 className="text-lg font-bold text-foreground">
+          {isLogin ? "Prisijunkite" : "Sukurkite paskyrą"}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isLogin ? "Prisijunkite, kad galėtumėte atrakinti ataskaitą" : "Registruokitės ir gaukite prieigą"}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground">El. paštas</label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-input text-foreground text-sm focus:ring-2 focus:ring-primary/40 outline-none"
+              placeholder="jusu@pastas.lt"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground">Slaptažodis</label>
+          <div className="relative">
+            <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-input text-foreground text-sm focus:ring-2 focus:ring-primary/40 outline-none"
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+        <button
+          type="submit" disabled={loading}
+          className="w-full premium-gradient text-primary-foreground font-semibold rounded-lg py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {isLogin ? "Prisijungti" : "Registruotis"}
+        </button>
+        <p className="text-center text-sm text-muted-foreground">
+          {isLogin ? "Neturite paskyros?" : "Jau turite paskyrą?"}{" "}
+          <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary font-medium hover:underline">
+            {isLogin ? "Registruotis" : "Prisijungti"}
+          </button>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+// --- INLINE PRICING ---
+function InlinePricing() {
+  const [loadingTier, setLoadingTier] = useState<string | null>(null);
+
+  const handleBuy = async (tierId: string) => {
+    setLoadingTier(tierId);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", { body: { tier: tierId } });
+      if (error) throw error;
+      if (data?.url) window.location.href = data.url;
+    } catch (err: any) {
+      toast.error(err.message || "Klaida kuriant mokėjimą");
+    } finally {
+      setLoadingTier(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <h3 className="text-lg font-bold text-foreground">Įsigykite kreditų</h3>
+        <p className="text-sm text-muted-foreground mt-1">1 ataskaita = 1 kreditas</p>
+      </div>
+      <div className="space-y-3">
+        {PRICING_TIERS.map((tier) => {
+          const Icon = tier.icon;
+          return (
+            <button
+              key={tier.id}
+              onClick={() => handleBuy(tier.id)}
+              disabled={loadingTier !== null}
+              className={`relative w-full text-left rounded-xl border p-4 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-60 ${
+                tier.popular
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-md"
+                  : "border-border bg-card hover:border-primary/40"
+              }`}
+            >
+              {tier.popular && (
+                <span className="absolute -top-2.5 left-4 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Populiariausias
+                </span>
+              )}
+              {tier.save && (
+                <span className="absolute -top-2.5 right-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full premium-gradient text-primary-foreground">
+                  Sutaupyk {tier.save}
+                </span>
+              )}
+              <div className="flex items-center gap-4">
+                <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
+                  tier.popular ? "premium-gradient" : "bg-muted"
+                }`}>
+                  <Icon className={`h-5 w-5 ${tier.popular ? "text-primary-foreground" : "text-foreground"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground">{tier.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tier.credits} {tier.credits === 1 ? "paieška" : "paieškų"} · {tier.perSearch}/paieška
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  {loadingTier === tier.id ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  ) : (
+                    <p className="font-bold text-foreground text-xl">{tier.price}</p>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Check className="h-3.5 w-3.5 text-primary" />
+        <span>Saugus mokėjimas per Stripe</span>
+      </div>
+    </div>
+  );
+}
+
+// --- MAIN COMPONENT ---
 export default function Report1() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, credits, refreshCredits, signOut } = useAuth();
+
+  const routeState = location.state as { parcel?: ParcelFromRoute } | null;
+  const parcel = routeState?.parcel;
+
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
 
-  const handleUnlock = () => {
+  // Build report data from real parcel
+  const realReportData: ReportData | null = parcel ? parcelToReportData(parcel) : null;
+  const displayCadastralNr = parcel?.cadastralNumber || "—";
+
+  const handleUnlock = async () => {
+    if (!user || !parcel) return;
     setIsUnlocking(true);
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.rpc("unlock_parcel", {
+        p_user_id: user.id,
+        p_cadastral_number: parcel.cadastralNumber,
+      });
+      if (error) throw error;
+      const result = typeof data === "string" ? JSON.parse(data) : data;
+      if (result?.status === "insufficient_credits") {
+        toast.error("Neturite paieškos kreditų");
+        return;
+      }
+      if (result?.status === "error") {
+        toast.error("Nepavyko apdoroti užklausos");
+        return;
+      }
+      if (result?.status === "already_unlocked") {
+        toast.info("Šis sklypas jau atrakintas – kreditas nenurašytas");
+      }
+      await refreshCredits();
       setIsUnlocked(true);
+    } catch (err: any) {
+      toast.error(err.message || "Klaida");
+    } finally {
       setIsUnlocking(false);
-    }, 1500);
+    }
   };
 
   const scrollToCta = () => {
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  if (isUnlocked) {
+  // No parcel data - redirect home
+  if (!parcel) {
     return (
-      <div className="max-w-4xl mx-auto p-4">
-        <ReportContent data={MOCK_PARCEL} />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
+        <p className="text-muted-foreground">Nėra paieškos duomenų.</p>
+        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-primary hover:underline">
+          <ArrowLeft className="h-4 w-4" /> Grįžti į žemėlapį
+        </button>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8">
-      {/* Viršutinė dalis: Rastas sklypas + CTA */}
-      <div ref={ctaRef} className="space-y-6">
-        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6 text-center space-y-3">
-          <div className="flex justify-center">
-            <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">Žemės sklypas rastas!</h2>
-          <p className="text-emerald-700 dark:text-emerald-300 font-medium">
-            Įrašas rastas Nekilnojamojo turto registre pagal kadastrą: <span className="font-bold">{MOCK_PARCEL.cadastralNumber}</span>
-          </p>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden relative">
-          <div className="p-6 border-b border-border bg-muted/50 flex items-center justify-between">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              Ataskaitos peržiūra
-            </h3>
-            <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> Patikrinti duomenys
-            </span>
-          </div>
-          <div className="p-6 relative">
-            <div className="filter blur-[6px] opacity-60 select-none pointer-events-none space-y-4">
-              <div className="h-48 bg-muted rounded-lg w-full mb-6" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="h-12 bg-muted/60 rounded" />
-                <div className="h-12 bg-muted/60 rounded" />
-                <div className="h-12 bg-muted/60 rounded" />
-                <div className="h-12 bg-muted/60 rounded" />
+  // UNLOCKED STATE
+  if (isUnlocked && realReportData) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="border-b border-border bg-card">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
+              <Layers className="h-5 w-5 text-primary" />
+              <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Coins className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-foreground">{credits}</span>
               </div>
+              <button onClick={signOut} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Atsijungti">
+                <LogOut className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-card via-card/90 to-transparent p-6 text-center">
-              <Lock className="w-10 h-10 text-muted-foreground mb-4" />
-              <h4 className="text-xl font-bold text-foreground mb-2">Atrakinti pilną sklypo ataskaitą</h4>
-              <ul className="text-sm text-muted-foreground mb-6 space-y-2 text-left inline-block">
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslūs interaktyvaus žemėlapio kontūrai</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Registruota žemės paskirtis ir plotas</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslus adresas ir koordinatės</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Unikalus turto numeris</li>
-              </ul>
-              <button
-                onClick={handleUnlock}
-                disabled={isUnlocking}
-                className="w-full max-w-md bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-              >
-                {isUnlocking ? (
-                  <div className="w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto p-4 mt-4">
+          <ReportContent data={realReportData} />
+        </div>
+      </div>
+    );
+  }
+
+  // LOCKED STATE
+  const needsAuth = !user;
+  const needsCredits = user && credits <= 0;
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b border-border bg-card">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            <Layers className="h-5 w-5 text-primary" />
+            <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
+          </button>
+          {user && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Coins className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-foreground">{credits}</span>
+              </div>
+              <button onClick={signOut} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Atsijungti">
+                <LogOut className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4 space-y-8">
+        {/* Top: Found banner + CTA */}
+        <div ref={ctaRef} className="space-y-6">
+          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6 text-center space-y-3">
+            <div className="flex justify-center">
+              <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">Žemės sklypas rastas!</h2>
+            <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+              Įrašas rastas Nekilnojamojo turto registre pagal kadastrą: <span className="font-bold">{displayCadastralNr}</span>
+            </p>
+          </div>
+
+          {/* Blurred preview card */}
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden relative">
+            <div className="p-6 border-b border-border bg-muted/50 flex items-center justify-between">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Ataskaitos peržiūra
+              </h3>
+              <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" /> Patikrinti duomenys
+              </span>
+            </div>
+            <div className="p-6 relative">
+              <div className="filter blur-[6px] opacity-60 select-none pointer-events-none space-y-4">
+                <div className="h-48 bg-muted rounded-lg w-full mb-6" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="h-12 bg-muted/60 rounded" />
+                  <div className="h-12 bg-muted/60 rounded" />
+                  <div className="h-12 bg-muted/60 rounded" />
+                  <div className="h-12 bg-muted/60 rounded" />
+                </div>
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-card via-card/90 to-transparent p-6 text-center">
+                <Lock className="w-10 h-10 text-muted-foreground mb-4" />
+                <h4 className="text-xl font-bold text-foreground mb-2">Atrakinti pilną sklypo ataskaitą</h4>
+                <ul className="text-sm text-muted-foreground mb-6 space-y-2 text-left inline-block">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslūs interaktyvaus žemėlapio kontūrai</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Registruota žemės paskirtis ir plotas</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslus adresas ir koordinatės</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Unikalus turto numeris</li>
+                </ul>
+
+                {/* Conditional: Auth, Pricing, or Unlock */}
+                {needsAuth ? (
+                  <div className="w-full max-w-md">
+                    <InlineAuthForm onSuccess={() => window.location.reload()} />
+                  </div>
+                ) : needsCredits ? (
+                  <div className="w-full max-w-md">
+                    <InlinePricing />
+                  </div>
                 ) : (
                   <>
-                    <Unlock className="w-5 h-5" />
-                    Atrakinti ataskaitą (1 kreditas)
+                    <button
+                      onClick={handleUnlock}
+                      disabled={isUnlocking}
+                      className="w-full max-w-md bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                    >
+                      {isUnlocking ? (
+                        <div className="w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Unlock className="w-5 h-5" />
+                          Atrakinti ataskaitą (1 kreditas)
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-muted-foreground mt-4">Jums liko {credits} {credits === 1 ? "kreditas" : "kreditų"}.</p>
                   </>
                 )}
-              </button>
-              <p className="text-xs text-muted-foreground mt-4">Jums liko 12 kreditų.</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Skirtukas */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">👇 Žiūrėkite, ką gausite pilnoje ataskaitoje 👇</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      {/* Pavyzdinė ataskaita */}
-      <div className="bg-muted/30 border-2 border-dashed border-border rounded-2xl p-6 relative">
-        <div className="absolute top-4 right-4 z-20">
-          <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
-            Pavyzdinė ataskaita
-          </span>
+        {/* Divider */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">👇 Žiūrėkite, ką gausite pilnoje ataskaitoje 👇</span>
+          <div className="flex-1 h-px bg-border" />
         </div>
-        <ReportContent data={SAMPLE_REPORT_DATA} isSample />
-        <div className="mt-6 text-center">
-          <button
-            onClick={scrollToCta}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-8 rounded-xl shadow-lg transition-all inline-flex items-center gap-2"
-          >
-            <Unlock className="w-5 h-5" />
-            Atrakinti savo tikrą ataskaitą
-          </button>
+
+        {/* Sample Report */}
+        <div className="bg-muted/30 border-2 border-dashed border-border rounded-2xl p-6 relative">
+          <div className="absolute top-4 right-4 z-20">
+            <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
+              Pavyzdinė ataskaita
+            </span>
+          </div>
+          <ReportContent data={SAMPLE_REPORT_DATA} isSample />
+          <div className="mt-6 text-center">
+            <button
+              onClick={scrollToCta}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-8 rounded-xl shadow-lg transition-all inline-flex items-center gap-2"
+            >
+              <Unlock className="w-5 h-5" />
+              Atrakinti savo tikrą ataskaitą
+            </button>
+          </div>
         </div>
       </div>
     </div>
