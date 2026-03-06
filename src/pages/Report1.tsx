@@ -613,12 +613,14 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   };
 
   const handleGoToMap = useCallback(() => {
-    if (isUnlocked && feature?.geometry) {
+    if (onGoToMap) {
+      onGoToMap();
+    } else if (isUnlocked && feature?.geometry) {
       navigate("/", { state: { highlightFeature: feature, centerLat: parcel?.lat, centerLng: parcel?.lng } });
     } else {
       navigate("/");
     }
-  }, [isUnlocked, feature, parcel, navigate]);
+  }, [onGoToMap, isUnlocked, feature, parcel, navigate]);
 
   // Still checking unlock status
   if (checkingUnlock) {
