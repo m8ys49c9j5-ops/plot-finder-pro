@@ -706,7 +706,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature }: Repo
                 </div>
               ) : needsCredits ? (
                 <div className="w-full max-w-md">
-                  <InlinePricing />
+                  <InlinePricing parcel={parcel} />
                 </div>
               ) : (
                 <>
