@@ -437,11 +437,6 @@ function InlinePricing({ parcel }: { parcel?: ParcelFromRoute | null }) {
       if (parcel) {
         localStorage.setItem("pendingParcel", JSON.stringify(parcel));
       }
-      // Also save the feature if available from parent scope
-      const pendingFeature = document.querySelector("[data-pending-feature]")?.getAttribute("data-pending-feature");
-      if (pendingFeature) {
-        localStorage.setItem("pendingFeature", pendingFeature);
-      }
       const { data, error } = await supabase.functions.invoke("create-checkout", { body: { tier: tierId } });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
