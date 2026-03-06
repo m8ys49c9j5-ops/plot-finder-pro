@@ -2,20 +2,19 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import type { ParcelData } from "./ParcelSidebar";
+import type { ParcelPreviewData } from "./ParcelPreview";
 
 export type MapLayerType = "standard" | "ortho";
 
 export interface MapViewHandle {
   setLayerType: (type: MapLayerType) => void;
+  highlightParcel: (feature: any) => void;
 }
 
 interface MapViewProps {
-  onParcelSelect: (parcel: ParcelData) => void;
   searchQuery: string | null;
-  onSearchComplete: () => void;
+  onSearchComplete: (parcel: ParcelPreviewData | null, feature: any | null) => void;
+  onSearchStart: () => void;
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
@@ -24,12 +23,7 @@ const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const buildExportProxyUrl = (
-  baseUrl: string,
-  coords: L.Coords,
-  map: L.Map,
-  format: "jpg" | "png32",
-  transparent = false,
-  layers?: string,
+  baseUrl: string, coords: L.Coords, map: L.Map, format: "jpg" | "png32", transparent = false, layers?: string,
 ) => {
   const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
@@ -56,7 +50,7 @@ const KadastroTileLayer = L.TileLayer.extend({
   },
 });
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searchQuery, onSearchComplete }, ref) => {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(({ searchQuery, onSearchComplete, onSearchStart }, ref) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
@@ -65,7 +59,20 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const geoportalTileRef = useRef<L.TileLayer | null>(null);
   const orthoLayerRef = useRef<L.TileLayer | null>(null);
   const kadastroLayerRef = useRef<L.TileLayer | null>(null);
-  const { user, credits, refreshCredits } = useAuth();
+
+  const highlightGeoJSON = (feature: any): L.GeoJSON | null => {
+    if (!mapRef.current || !feature.geometry) return null;
+    if (highlightLayerRef.current) mapRef.current.removeLayer(highlightLayerRef.current);
+    try {
+      highlightLayerRef.current = L.geoJSON(feature, {
+        style: { color: "hsl(160, 84%, 39%)", weight: 3, fillColor: "hsl(160, 84%, 39%)", fillOpacity: 0.15 },
+      }).addTo(mapRef.current);
+      return highlightLayerRef.current;
+    } catch (e) {
+      console.error("GeoJSON highlight error:", e);
+      return null;
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
@@ -85,6 +92,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         if (baseTileRef.current) baseTileRef.current.bringToBack();
       }
       if (kadastroLayerRef.current) kadastroLayerRef.current.bringToFront();
+    },
+    highlightParcel: (feature: any) => {
+      if (!mapRef.current || !feature?.geometry) return;
+      const layer = highlightGeoJSON(feature);
+      if (layer) {
+        const bounds = layer.getBounds();
+        const sidebarWidth = window.innerWidth >= 640 ? 420 : 0;
+        mapRef.current.fitBounds(bounds, {
+          paddingTopLeft: [80, 80], paddingBottomRight: [80 + sidebarWidth, 80], maxZoom: 17,
+        });
+      }
     },
   }));
 
@@ -110,91 +128,20 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
     searchCadastralNumber(searchQuery);
   }, [searchQuery]);
 
-  const callEdgeFunction = async (body: any) => {
-    const { data, error } = await supabase.functions.invoke("cadastral-search", { body });
-    if (error) { console.error("Edge function error:", error); return null; }
-    return data;
-  };
-
-  const deductCredit = async (): Promise<boolean> => {
-    if (!user) return false;
-    const { data, error } = await supabase.rpc("deduct_credit", { p_user_id: user.id });
-    if (error) { console.error("Deduct credit error:", error); return false; }
-    if (data) await refreshCredits();
-    return !!data;
-  };
-
-  const identifyParcel = async (latlng: L.LatLng, map: L.Map) => {
-    if (!user) {
-      toast.error("Prisijunkite, kad galėtumėte identifikuoti sklypus");
-      return;
-    }
-    if (credits <= 0) {
-      toast.error("Neturite paieškos kreditų");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const data = await callEdgeFunction({ action: "identify", lat: latlng.lat, lng: latlng.lng });
-
-      if (data?.features && data.features.length > 0) {
-        const feature = data.features[0];
-        const props = feature.properties || {};
-
-        // Deduct credit only on successful find
-        const deducted = await deductCredit();
-        if (!deducted) {
-          toast.error("Nepavyko nuskaičiuoti kredito");
-          return;
-        }
-
-        const parcel: ParcelData = {
-          cadastralNumber: props.nationalCadastralReference || props.NTR_ID?.toString() || "Nežinomas",
-          unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
-          area: props.areaValue || props.PLOTAS_J,
-          purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
-          address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
-            (props.sav_pavadinimas || props.seniunijos_pavad
-              ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
-              : undefined),
-          lat: latlng.lat, lng: latlng.lng,
-          coordinates: feature.geometry?.coordinates,
-          formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
-        };
-        if (feature.geometry) highlightGeoJSON(feature);
-        onParcelSelect(parcel);
-      } else {
-        onParcelSelect({
-          cadastralNumber: "Nežinomas",
-          address: "Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.",
-          lat: latlng.lat, lng: latlng.lng,
-        });
-      }
-    } catch (error) {
-      console.error("Identify error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const searchCadastralNumber = async (query: string) => {
     setIsLoading(true);
+    onSearchStart();
     try {
-      const data = await callEdgeFunction({ action: "search", cadastralNumber: query.trim() });
+      const { data, error } = await supabase.functions.invoke("cadastral-search", {
+        body: { action: "search", cadastralNumber: query.trim() },
+      });
+      if (error) { console.error("Edge function error:", error); onSearchComplete(null, null); return; }
 
       if (data?.features && data.features.length > 0) {
         const feature = data.features[0];
         const props = feature.properties || {};
 
-        // Deduct credit only on successful find
-        const deducted = await deductCredit();
-        if (!deducted) {
-          toast.error("Nepavyko nuskaičiuoti kredito");
-          return;
-        }
-
-        const parcel: ParcelData = {
+        const parcel: ParcelPreviewData = {
           cadastralNumber: props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim(),
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
@@ -211,42 +158,24 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           const layer = highlightGeoJSON(feature);
           if (layer) {
             const bounds = layer.getBounds();
-            const sidebarWidth = window.innerWidth >= 640 ? 400 : 0;
-            mapRef.current.fitBounds(bounds, {
-              paddingTopLeft: [80, 80], paddingBottomRight: [80 + sidebarWidth, 80], maxZoom: 17,
-            });
             const center = bounds.getCenter();
             parcel.lat = center.lat;
             parcel.lng = center.lng;
+            const sidebarWidth = window.innerWidth >= 640 ? 420 : 0;
+            mapRef.current.fitBounds(bounds, {
+              paddingTopLeft: [80, 80], paddingBottomRight: [80 + sidebarWidth, 80], maxZoom: 17,
+            });
           }
         }
-        onParcelSelect(parcel);
+        onSearchComplete(parcel, feature);
       } else {
-        onParcelSelect({
-          cadastralNumber: query.trim(),
-          address: data?.error || "Sklypas su tokiu kadastriniu numeriu nerastas. Patikrinkite numerį.",
-        });
+        onSearchComplete(null, null);
       }
     } catch (error) {
       console.error("Search error:", error);
-      onParcelSelect({ cadastralNumber: query, address: "Paieškos klaida. Pabandykite vėliau." });
+      onSearchComplete(null, null);
     } finally {
       setIsLoading(false);
-      onSearchComplete();
-    }
-  };
-
-  const highlightGeoJSON = (feature: any): L.GeoJSON | null => {
-    if (!mapRef.current || !feature.geometry) return null;
-    if (highlightLayerRef.current) mapRef.current.removeLayer(highlightLayerRef.current);
-    try {
-      highlightLayerRef.current = L.geoJSON(feature, {
-        style: { color: "hsl(160, 84%, 39%)", weight: 3, fillColor: "hsl(160, 84%, 39%)", fillOpacity: 0.15 },
-      }).addTo(mapRef.current);
-      return highlightLayerRef.current;
-    } catch (e) {
-      console.error("GeoJSON highlight error:", e);
-      return null;
     }
   };
 
@@ -257,7 +186,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[999]">
           <div className="glass-panel rounded-xl px-5 py-3 flex items-center gap-3 shadow-lg">
             <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <span className="text-sm font-medium text-foreground">Ieškoma...</span>
+            <span className="text-sm font-medium text-foreground">Ieškoma nacionaliniame registre...</span>
           </div>
         </div>
       )}
