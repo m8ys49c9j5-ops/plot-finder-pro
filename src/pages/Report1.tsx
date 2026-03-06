@@ -433,7 +433,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap }: Report1Props)
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
         <p className="text-muted-foreground">Nėra paieškos duomenų.</p>
-        <button onClick={() => navigate("/")} className="flex items-center gap-2 text-primary hover:underline">
+        <button onClick={onGoToMap || (() => navigate("/"))} className="flex items-center gap-2 text-primary hover:underline">
           <ArrowLeft className="h-4 w-4" /> Grįžti į žemėlapį
         </button>
       </div>
