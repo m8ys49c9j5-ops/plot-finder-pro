@@ -14,7 +14,7 @@ export interface MapViewHandle {
 }
 
 interface MapViewProps {
-  onParcelSelect: (parcel: ParcelData) => void;
+  onParcelSelect: (parcel: ParcelData, feature?: any) => void;
   searchQuery: string | null;
   onSearchComplete: () => void;
   initialFeature?: any;
