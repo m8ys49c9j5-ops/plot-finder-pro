@@ -99,15 +99,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
     },
   }));
 
-  // Re-highlight initial feature when map mounts or becomes visible
+  // Re-highlight initial feature when map is ready
   useEffect(() => {
-    if (!initialFeature?.geometry || !mapRef.current) return;
+    if (!mapReady || !initialFeature?.geometry || !mapRef.current) return;
     const layer = highlightGeoJSON(initialFeature);
     if (layer) {
       const bounds = layer.getBounds();
       mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [480, 80], maxZoom: 17 });
     }
-  }, [initialFeature]);
+  }, [initialFeature, mapReady]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
