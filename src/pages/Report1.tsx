@@ -192,7 +192,7 @@ function ReportInteractiveMap({ lat, lng }: { lat: number; lng: number }) {
   );
 }
 
-function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; parcelLat?: number; parcelLng?: number }) {
+function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng, feature }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; parcelLat?: number; parcelLng?: number; feature?: any }) {
   const kadastroMapRef = useRef<HTMLDivElement>(null);
   const orthoMapRef = useRef<HTMLDivElement>(null);
 
