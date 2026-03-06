@@ -106,7 +106,7 @@ function DataCard({ title, icon, children }: { title: string; icon: React.ReactN
   );
 }
 
-function ReportContent({ data, isSample = false }: { data: ReportData; isSample?: boolean }) {
+function ReportContent({ data, isSample = false, onGoToMap }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void }) {
   return (
     <div className={`w-full space-y-6 ${isSample ? "grayscale-[15%]" : ""} relative`}>
       {isSample && (
