@@ -199,18 +199,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
         const props = feature.properties || {};
 
         const cadastralNr = props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim();
-        const unlockResult = await unlockParcel(cadastralNr);
-        if (unlockResult.status === 'insufficient_credits') {
-          toast.error("Neturite paieškos kreditų");
-          return;
-        }
-        if (unlockResult.status === 'error') {
-          toast.error("Nepavyko apdoroti užklausos");
-          return;
-        }
-        if (unlockResult.status === 'already_unlocked') {
-          toast.info("Šis sklypas jau atrakintas – kreditas nenurašytas");
-        }
 
         const parcel: ParcelData = {
           cadastralNumber: cadastralNr,
@@ -229,10 +217,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           const layer = highlightGeoJSON(feature);
           if (layer) {
             const bounds = layer.getBounds();
-            const sidebarWidth = window.innerWidth >= 640 ? 400 : 0;
-            mapRef.current.fitBounds(bounds, {
-              paddingTopLeft: [80, 80], paddingBottomRight: [80 + sidebarWidth, 80], maxZoom: 17,
-            });
             const center = bounds.getCenter();
             parcel.lat = center.lat;
             parcel.lng = center.lng;

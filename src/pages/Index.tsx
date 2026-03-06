@@ -2,16 +2,14 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
-import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
+import type { ParcelData } from "@/components/ParcelSidebar";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
-  const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
-  const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -25,7 +23,6 @@ const Index = () => {
     if (searchParams.get("payment") === "success") {
       toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
       refreshCredits();
-      // Clean URL
       window.history.replaceState({}, "", "/");
     }
   }, [searchParams, refreshCredits]);
@@ -37,16 +34,9 @@ const Index = () => {
   }, [activeLayer]);
 
   const handleSearch = useCallback((query: string) => {
-    if (!user) {
-      toast.error("Prisijunkite, kad galėtumėte ieškoti");
-      navigate("/auth");
-      return;
-    }
-    // Credits check is handled by unlock_parcel RPC
     setIsSearching(true);
     setSearchQuery(query);
-    setLastSearchInput(query);
-  }, [user, credits, navigate]);
+  }, []);
 
   const handleSearchComplete = useCallback(() => {
     setIsSearching(false);
@@ -54,8 +44,9 @@ const Index = () => {
   }, []);
 
   const handleParcelSelect = useCallback((parcel: ParcelData) => {
-    setSelectedParcel(parcel);
-  }, []);
+    // Navigate to report1 with parcel data
+    navigate("/report1", { state: { parcel, searchQuery: searchQuery } });
+  }, [navigate, searchQuery]);
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
@@ -141,17 +132,6 @@ const Index = () => {
           Duomenys: Geoportal.lt · RC Kadastras
         </div>
       </div>
-
-      {/* Parcel sidebar */}
-      <ParcelSidebar parcel={selectedParcel} onClose={() => setSelectedParcel(null)} searchInput={lastSearchInput} />
-
-      {/* Overlay backdrop when sidebar is open */}
-      {selectedParcel && (
-        <div
-          className="fixed inset-0 bg-foreground/20 z-[999] sm:hidden animate-fade-in"
-          onClick={() => setSelectedParcel(null)}
-        />
-      )}
 
       {/* Pricing modal */}
       <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
