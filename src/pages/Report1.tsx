@@ -197,4 +197,119 @@ function ReportContent({ data, isSample = false }: { data: typeof MOCK_PARCEL; i
   );
 }
 
-// ... (Keep the rest of the ParcelCheckout component exactly the same, just ensure it uses this new ReportContent)
+export default function Report1() {
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const ctaRef = useRef<HTMLDivElement>(null);
+
+  const handleUnlock = () => {
+    setIsUnlocking(true);
+    setTimeout(() => {
+      setIsUnlocked(true);
+      setIsUnlocking(false);
+    }, 1500);
+  };
+
+  const scrollToCta = () => {
+    ctaRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  if (isUnlocked) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <ReportContent data={MOCK_PARCEL} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto p-4 space-y-8">
+      {/* Viršutinė dalis: Rastas sklypas + CTA */}
+      <div ref={ctaRef} className="space-y-6">
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6 text-center space-y-3">
+          <div className="flex justify-center">
+            <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">Žemės sklypas rastas!</h2>
+          <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+            Įrašas rastas Nekilnojamojo turto registre pagal kadastrą: <span className="font-bold">{MOCK_PARCEL.cadastralNumber}</span>
+          </p>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden relative">
+          <div className="p-6 border-b border-border bg-muted/50 flex items-center justify-between">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Ataskaitos peržiūra
+            </h3>
+            <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> Patikrinti duomenys
+            </span>
+          </div>
+          <div className="p-6 relative">
+            <div className="filter blur-[6px] opacity-60 select-none pointer-events-none space-y-4">
+              <div className="h-48 bg-muted rounded-lg w-full mb-6" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="h-12 bg-muted/60 rounded" />
+                <div className="h-12 bg-muted/60 rounded" />
+                <div className="h-12 bg-muted/60 rounded" />
+                <div className="h-12 bg-muted/60 rounded" />
+              </div>
+            </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-card via-card/90 to-transparent p-6 text-center">
+              <Lock className="w-10 h-10 text-muted-foreground mb-4" />
+              <h4 className="text-xl font-bold text-foreground mb-2">Atrakinti pilną sklypo ataskaitą</h4>
+              <ul className="text-sm text-muted-foreground mb-6 space-y-2 text-left inline-block">
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslūs interaktyvaus žemėlapio kontūrai</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Registruota žemės paskirtis ir plotas</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tikslus adresas ir koordinatės</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Unikalus turto numeris</li>
+              </ul>
+              <button
+                onClick={handleUnlock}
+                disabled={isUnlocking}
+                className="w-full max-w-md bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isUnlocking ? (
+                  <div className="w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Unlock className="w-5 h-5" />
+                    Atrakinti ataskaitą (1 kreditas)
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-muted-foreground mt-4">Jums liko 12 kreditų.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Skirtukas */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">👇 Žiūrėkite, ką gausite pilnoje ataskaitoje 👇</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      {/* Pavyzdinė ataskaita */}
+      <div className="bg-muted/30 border-2 border-dashed border-border rounded-2xl p-6 relative">
+        <div className="absolute top-4 right-4 z-20">
+          <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
+            Pavyzdinė ataskaita
+          </span>
+        </div>
+        <ReportContent data={SAMPLE_REPORT_DATA} isSample />
+        <div className="mt-6 text-center">
+          <button
+            onClick={scrollToCta}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 px-8 rounded-xl shadow-lg transition-all inline-flex items-center gap-2"
+          >
+            <Unlock className="w-5 h-5" />
+            Atrakinti savo tikrą ataskaitą
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
