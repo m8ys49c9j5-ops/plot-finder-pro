@@ -60,7 +60,7 @@ const Index = () => {
     if (selectedParcel && mapViewRef.current) {
       setTimeout(() => {
         if (selectedFeature) {
-          mapViewRef.current?.highlightFeature(selectedFeature);
+          mapViewRef.current?.highlightAndFit(selectedFeature);
         }
       }, 100);
     }
