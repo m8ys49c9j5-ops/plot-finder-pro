@@ -188,9 +188,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
           address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
-            (props.sav_pavadinimas || props.seniunijos_pavad
-              ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
-              : undefined),
+            [props.sav_pavadinimas, props.seniunijos_pavad ? `${props.seniunijos_pavad} sen.` : null, props.apskritis ? `${props.apskritis} apskr.` : null]
+              .filter(Boolean).join(", ") || undefined,
           lat: latlng.lat, lng: latlng.lng,
           coordinates: feature.geometry?.coordinates,
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
@@ -225,9 +224,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
           address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
-            (props.sav_pavadinimas || props.seniunijos_pavad
-              ? `${props.sav_pavadinimas || ""}${props.seniunijos_pavad ? ", " + props.seniunijos_pavad : ""}`
-              : undefined),
+            [props.sav_pavadinimas, props.seniunijos_pavad ? `${props.seniunijos_pavad} sen.` : null, props.apskritis ? `${props.apskritis} apskr.` : null]
+              .filter(Boolean).join(", ") || undefined,
           coordinates: feature.geometry?.coordinates,
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
         };
