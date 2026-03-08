@@ -73,8 +73,12 @@ const Index = () => {
     setActiveView("report");
   }, []);
 
-  const handleGoToMap = useCallback((shouldHighlight = false) => {
+  const handleGoToMap = useCallback((shouldHighlight = false, layer?: "standard" | "ortho") => {
     setParcelUnlocked(shouldHighlight);
+    if (layer) {
+      setActiveLayer(layer);
+      mapViewRef.current?.setLayerType(layer);
+    }
     setActiveView("map");
     if (shouldHighlight && selectedParcel && mapViewRef.current) {
       setTimeout(() => {
