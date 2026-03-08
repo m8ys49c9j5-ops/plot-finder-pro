@@ -612,15 +612,19 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleGoToMap = useCallback(() => {
+  const handleGoToMap = useCallback((layer?: "standard" | "ortho") => {
     if (onGoToMap) {
-      onGoToMap(isUnlocked);
+      onGoToMap(isUnlocked, layer);
     } else if (isUnlocked && feature?.geometry) {
       navigate("/", { state: { highlightFeature: feature, centerLat: parcel?.lat, centerLng: parcel?.lng } });
     } else {
       navigate("/");
     }
   }, [onGoToMap, isUnlocked, feature, parcel, navigate]);
+
+  const handleGoToMapStandard = useCallback(() => handleGoToMap("standard"), [handleGoToMap]);
+  const handleGoToMapOrtho = useCallback(() => handleGoToMap("ortho"), [handleGoToMap]);
+  const handleGoToMapDefault = useCallback(() => handleGoToMap(), [handleGoToMap]);
 
   // Still checking unlock status
   if (checkingUnlock) {
