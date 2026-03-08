@@ -593,8 +593,11 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     })();
   }, [user, parcel?.cadastralNumber, parcel?.unikalusNr, fetchMarketValue]);
 
-  // Build report data from real parcel
-  const realReportData: ReportData | null = parcel ? parcelToReportData(parcel) : null;
+  // Build report data from real parcel, with market value overlay
+  const realReportData: ReportData | null = parcel ? {
+    ...parcelToReportData(parcel),
+    ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
+  } : null;
   const displayCadastralNr = parcel?.cadastralNumber || "—";
 
   const handleUnlock = async () => {
