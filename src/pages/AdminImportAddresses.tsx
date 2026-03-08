@@ -34,7 +34,7 @@ export default function AdminImportAddresses() {
     let total = 0;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
-      const { error } = await (supabase.from(tableName) as any).upsert(batch, {
+      const { error } = await (supabase as any).from(tableName).upsert(batch, {
         onConflict: Object.keys(batch[0])[0],
         ignoreDuplicates: false,
       });
