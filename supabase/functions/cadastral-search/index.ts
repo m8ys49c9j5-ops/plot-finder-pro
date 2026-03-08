@@ -168,24 +168,37 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
   props.nationalCadastralReference =
     props.kadastro_nr || props.unikalus_nr?.toString() || searchInput;
 
-  // Look up nearest address from lithuanian_addresses table
-  if (centroidLat !== null && centroidLon !== null) {
-    try {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
-      const { data: addrRows, error: addrError } = await supabase
+  // Look up exact address inside parcel, then fallback to nearest
+  const kadastroToSearch = props.kadastro_nr || props.unikalus_nr || searchInput;
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // 1. Try to find exact address inside plot boundaries
+    const { data: exactAddrRows, error: exactError } = await supabase
+      .rpc("find_exact_address_in_parcel", { p_kadastro: kadastroToSearch });
+
+    if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
+      props.exactAddress = exactAddrRows[0].full_address;
+      console.log(`Exact address found: ${props.exactAddress}`);
+    }
+    // 2. Fallback to nearest address
+    else if (centroidLat !== null && centroidLon !== null) {
+      const { data: nearAddrRows, error: nearError } = await supabase
         .rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon });
 
-      if (!addrError && addrRows && addrRows.length > 0) {
-        props.exactAddress = addrRows[0].full_address;
-        props.addressDistance = addrRows[0].distance_m;
-        console.log(`Nearest address: ${addrRows[0].full_address} (${addrRows[0].distance_m?.toFixed(1)}m)`);
+      if (!nearError && nearAddrRows && nearAddrRows.length > 0 && nearAddrRows[0].distance_m < 50) {
+        props.exactAddress = nearAddrRows[0].full_address;
+        props.addressDistance = nearAddrRows[0].distance_m;
+        console.log(`Nearest address: ${nearAddrRows[0].full_address} (${nearAddrRows[0].distance_m?.toFixed(1)}m)`);
+      } else {
+        props.exactAddress = "Nėra registruoto adreso";
       }
-    } catch (e) {
-      console.error("Address lookup error:", e);
     }
+  } catch (e) {
+    console.error("Address lookup error:", e);
   }
 
   return jsonResponse({ features: [feature] });

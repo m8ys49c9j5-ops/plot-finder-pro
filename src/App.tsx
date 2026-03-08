@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import ParcelAudit from "./pages/ParcelAudit";
 import ParcelAudit2 from "./pages/ParcelAudit2";
 import NotFound from "./pages/NotFound";
+import AdminImportAddresses from "./pages/AdminImportAddresses";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/auditas" element={<ParcelAudit />} />
             <Route path="/auditas2" element={<ParcelAudit2 />} />
+            <Route path="/admin/import-addresses" element={<AdminImportAddresses />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
