@@ -73,7 +73,8 @@ const Index = () => {
     setActiveView("report");
   }, []);
 
-  const handleGoToMap = useCallback((shouldHighlight = true) => {
+  const handleGoToMap = useCallback((shouldHighlight = false) => {
+    setParcelUnlocked(shouldHighlight);
     setActiveView("map");
     if (shouldHighlight && selectedParcel && mapViewRef.current) {
       setTimeout(() => {
@@ -87,6 +88,23 @@ const Index = () => {
   const handleGoToReport = useCallback(() => {
     setActiveView("report");
   }, []);
+
+  // Check unlock status when parcel is selected and we're on map view
+  useEffect(() => {
+    if (!selectedParcel?.cadastralNumber || !user) {
+      setParcelUnlocked(false);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("search_history")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cadastral_number", selectedParcel.cadastralNumber)
+        .limit(1);
+      setParcelUnlocked(!!(data && data.length > 0));
+    })();
+  }, [selectedParcel?.cadastralNumber, user]);
 
   // Report view
   if (activeView === "report" && selectedParcel) {
