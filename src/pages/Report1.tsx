@@ -549,6 +549,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
+  const [marketValue, setMarketValue] = useState<string>("");
   const ctaRef = useRef<HTMLDivElement>(null);
 
   // Check if parcel is already unlocked in search_history
