@@ -87,19 +87,15 @@ Deno.serve(async (req) => {
     console.log(`POST response status: ${postResponse.status}, length: ${postHtml.length}`);
 
     // Step 3: Parse the result — look for property value
-    // Try multiple patterns for the value field
     let value: string | null = null;
 
-    // Pattern: "Daikto vertė" or "Mokestinė vertė" followed by a number
     const patterns = [
       /Daikto\s+vert[eė]\s*:?\s*<[^>]*>\s*([\d\s,.]+)/i,
       /Mokestin[eė]\s+vert[eė]\s*:?\s*<[^>]*>\s*([\d\s,.]+)/i,
       /Daikto\s+vert[eė][^<]*<\/[^>]+>\s*<[^>]*>\s*([\d\s,.]+)/i,
       /Mokestin[eė]\s+vert[eė][^<]*<\/[^>]+>\s*<[^>]*>\s*([\d\s,.]+)/i,
-      // Table cell patterns
       /Daikto\s+vert[eė].*?<td[^>]*>\s*([\d\s,.]+)\s*<\/td>/is,
       /Mokestin[eė]\s+vert[eė].*?<td[^>]*>\s*([\d\s,.]+)\s*<\/td>/is,
-      // Generic: any number near "vertė"
       /vert[eė][^<]{0,50}?([\d][\d\s,.]{2,})/i,
     ];
 
@@ -112,10 +108,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Extract valuation date (vertinimo data)
+    let vertinimoData: string | null = null;
+    const datePatterns = [
+      /[Vv]ertinimo\s+data.*?(\d{4}[-./]\d{2}[-./]\d{2})/is,
+      /[Vv]ertinimo\s+data.*?<td[^>]*>\s*(\d{4}[-./]\d{2}[-./]\d{2})\s*<\/td>/is,
+      /[Mm]asinio\s+vertinimo\s+data.*?(\d{4}[-./]\d{2}[-./]\d{2})/is,
+      /[Ss]tv\s+galioja.*?(\d{4}[-./]\d{2}[-./]\d{2})/is,
+    ];
+    for (const dp of datePatterns) {
+      const dm = postHtml.match(dp);
+      if (dm?.[1]) {
+        vertinimoData = dm[1].replace(/[./]/g, '-');
+        console.log(`Valuation date found: ${vertinimoData}`);
+        break;
+      }
+    }
+
     if (value) {
-      // Clean up the value — remove trailing dots/commas, format nicely
       const cleanValue = value.replace(/[,.]$/, '').trim();
-      // Format with spaces as thousands separator
       const numericStr = cleanValue.replace(/[^\d.,]/g, '').replace(',', '.');
       const num = parseFloat(numericStr);
       
@@ -128,7 +139,7 @@ Deno.serve(async (req) => {
 
       console.log(`Returning value: ${formatted}`);
       return new Response(
-        JSON.stringify({ vidutineRinkosVerte: formatted }),
+        JSON.stringify({ vidutineRinkosVerte: formatted, vertinimoData: vertinimoData || "" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
