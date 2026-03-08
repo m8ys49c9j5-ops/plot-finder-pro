@@ -71,6 +71,7 @@ interface ParcelSidebarProps {
   onClose: () => void;
   searchInput?: string;
   onGoToReport?: () => void;
+  isUnlocked?: boolean;
 }
 
 // Land use purpose code to Lithuanian description mapping
