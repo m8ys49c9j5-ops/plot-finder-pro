@@ -77,16 +77,16 @@ const Index = () => {
     setParcelUnlocked(shouldHighlight);
     if (layer) {
       setActiveLayer(layer);
-      mapViewRef.current?.setLayerType(layer);
     }
     setActiveView("map");
-    if (shouldHighlight && selectedParcel && mapViewRef.current) {
-      setTimeout(() => {
-        if (selectedFeature) {
-          mapViewRef.current?.highlightAndFit(selectedFeature);
-        }
-      }, 100);
-    }
+    setTimeout(() => {
+      if (layer) {
+        mapViewRef.current?.setLayerType(layer);
+      }
+      if (shouldHighlight && selectedParcel && mapViewRef.current && selectedFeature) {
+        mapViewRef.current?.highlightAndFit(selectedFeature);
+      }
+    }, 200);
   }, [selectedParcel, selectedFeature]);
 
   const handleGoToReport = useCallback(() => {
