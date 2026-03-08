@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
 import { Layers, Mail, Lock, ArrowLeft, Search, MapPin, FileText, Check, Zap, Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
