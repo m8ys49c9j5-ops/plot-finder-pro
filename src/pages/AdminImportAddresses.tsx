@@ -116,8 +116,9 @@ export default function AdminImportAddresses() {
   const handleBuild = async () => {
     setBuildStatus("uploading");
     try {
-      const { error } = await (supabase.rpc as any)("build_official_addresses");
+      const { data, error } = await supabase.functions.invoke("build-addresses");
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       setBuildStatus("done");
       toast.success("Official addresses lentelė sukurta sėkmingai!");
     } catch (err: any) {
