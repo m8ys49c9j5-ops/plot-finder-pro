@@ -19,6 +19,7 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [parcelUnlocked, setParcelUnlocked] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
