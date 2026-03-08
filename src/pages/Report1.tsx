@@ -623,6 +623,10 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       }
       await refreshCredits();
       setIsUnlocked(true);
+      // Fetch market value in background
+      if (parcel.unikalusNr) {
+        fetchMarketValue(parcel.unikalusNr);
+      }
     } catch (err: any) {
       toast.error(err.message || "Klaida");
     } finally {
