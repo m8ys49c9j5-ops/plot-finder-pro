@@ -185,7 +185,7 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
   );
 }
 
-function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng, feature }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; parcelLat?: number; parcelLng?: number; feature?: any }) {
+function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parcelLat, parcelLng, feature }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; onGoToMapOrtho?: () => void; parcelLat?: number; parcelLng?: number; feature?: any }) {
   const kadastroMapRef = useRef<HTMLDivElement>(null);
   const orthoMapRef = useRef<HTMLDivElement>(null);
 
@@ -278,8 +278,8 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
           </div>
         </div>
         <div
-          onClick={!isSample ? onGoToMap : undefined}
-          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[200px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+          onClick={!isSample ? onGoToMapOrtho : undefined}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[200px] group ${!isSample && onGoToMapOrtho ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
         >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
@@ -291,7 +291,7 @@ function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng
                 <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
               </div>
             )}
-            {!isSample && onGoToMap && (
+            {!isSample && onGoToMapOrtho && (
               <div className="absolute inset-0 bg-foreground/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
                   <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
@@ -515,7 +515,7 @@ function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; f
 // --- MAIN COMPONENT ---
 interface Report1Props {
   parcel?: ParcelFromRoute;
-  onGoToMap?: (shouldHighlight?: boolean) => void;
+  onGoToMap?: (shouldHighlight?: boolean, layer?: "standard" | "ortho") => void;
   feature?: any;
 }
 
@@ -612,15 +612,19 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleGoToMap = useCallback(() => {
+  const handleGoToMap = useCallback((layer?: "standard" | "ortho") => {
     if (onGoToMap) {
-      onGoToMap(isUnlocked);
+      onGoToMap(isUnlocked, layer);
     } else if (isUnlocked && feature?.geometry) {
       navigate("/", { state: { highlightFeature: feature, centerLat: parcel?.lat, centerLng: parcel?.lng } });
     } else {
       navigate("/");
     }
   }, [onGoToMap, isUnlocked, feature, parcel, navigate]);
+
+  const handleGoToMapStandard = useCallback(() => handleGoToMap("standard"), [handleGoToMap]);
+  const handleGoToMapOrtho = useCallback(() => handleGoToMap("ortho"), [handleGoToMap]);
+  const handleGoToMapDefault = useCallback(() => handleGoToMap(), [handleGoToMap]);
 
   // Still checking unlock status
   if (checkingUnlock) {
@@ -635,7 +639,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
         <p className="text-muted-foreground">Nėra paieškos duomenų.</p>
-        <button onClick={handleGoToMap} className="flex items-center gap-2 text-primary hover:underline">
+        <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-primary hover:underline">
           <ArrowLeft className="h-4 w-4" /> Grįžti į žemėlapį
         </button>
       </div>
@@ -649,7 +653,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
         {/* Header */}
         <div className="border-b border-border bg-card">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <button onClick={handleGoToMap} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
               <Layers className="h-5 w-5 text-primary" />
               <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
@@ -666,7 +670,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
           </div>
         </div>
         <div className="max-w-4xl mx-auto p-4 mt-4">
-          <ReportContent data={realReportData} onGoToMap={handleGoToMap} parcelLat={parcel.lat} parcelLng={parcel.lng} feature={feature} />
+          <ReportContent data={realReportData} onGoToMap={handleGoToMapStandard} onGoToMapOrtho={handleGoToMapOrtho} parcelLat={parcel.lat} parcelLng={parcel.lng} feature={feature} />
         </div>
       </div>
     );
@@ -681,7 +685,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       {/* Header */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={handleGoToMap} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             <Layers className="h-5 w-5 text-primary" />
             <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
