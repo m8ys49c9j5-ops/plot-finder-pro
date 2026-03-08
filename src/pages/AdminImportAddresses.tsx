@@ -120,7 +120,7 @@ export default function AdminImportAddresses() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setBuildStatus("done");
-      toast.success("Official addresses lentelė sukurta sėkmingai!");
+      toast.success("Build paleistas fone. Tai gali užtrukti kelias minutes.");
     } catch (err: any) {
       setBuildStatus("error");
       toast.error(err.message || "Klaida kuriant adresų lentelę");
