@@ -549,7 +549,22 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
+  const [marketValue, setMarketValue] = useState<string>("");
   const ctaRef = useRef<HTMLDivElement>(null);
+
+  // Fetch market value from edge function
+  const fetchMarketValue = useCallback(async (unikalusNr: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-market-value", {
+        body: { unikalusNr },
+      });
+      if (!error && data?.vidutineRinkosVerte) {
+        setMarketValue(data.vidutineRinkosVerte);
+      }
+    } catch {
+      console.error("Failed to fetch market value");
+    }
+  }, []);
 
   // Check if parcel is already unlocked in search_history
   useEffect(() => {
@@ -567,15 +582,22 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
           .limit(1);
         if (data && data.length > 0) {
           setIsUnlocked(true);
+          // Fetch market value for already unlocked parcels
+          if (parcel.unikalusNr) {
+            fetchMarketValue(parcel.unikalusNr);
+          }
         }
       } catch {} finally {
         setCheckingUnlock(false);
       }
     })();
-  }, [user, parcel?.cadastralNumber]);
+  }, [user, parcel?.cadastralNumber, parcel?.unikalusNr, fetchMarketValue]);
 
-  // Build report data from real parcel
-  const realReportData: ReportData | null = parcel ? parcelToReportData(parcel) : null;
+  // Build report data from real parcel, with market value overlay
+  const realReportData: ReportData | null = parcel ? {
+    ...parcelToReportData(parcel),
+    ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
+  } : null;
   const displayCadastralNr = parcel?.cadastralNumber || "—";
 
   const handleUnlock = async () => {
@@ -601,6 +623,10 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       }
       await refreshCredits();
       setIsUnlocked(true);
+      // Fetch market value in background
+      if (parcel.unikalusNr) {
+        fetchMarketValue(parcel.unikalusNr);
+      }
     } catch (err: any) {
       toast.error(err.message || "Klaida");
     } finally {
