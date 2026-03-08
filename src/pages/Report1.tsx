@@ -278,8 +278,8 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
           </div>
         </div>
         <div
-          onClick={!isSample ? onGoToMap : undefined}
-          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[200px] group ${!isSample && onGoToMap ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
+          onClick={!isSample ? onGoToMapOrtho : undefined}
+          className={`bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-[200px] group ${!isSample && onGoToMapOrtho ? "cursor-pointer hover:ring-2 hover:ring-primary transition-all" : ""}`}
         >
           <div className="p-3 border-b border-border bg-muted/50 font-semibold text-sm flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-muted-foreground" /> Ortofoto vaizdas
