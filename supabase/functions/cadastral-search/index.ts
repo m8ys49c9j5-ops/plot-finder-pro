@@ -193,9 +193,8 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
         props.exactAddress = nearAddrRows[0].full_address;
         props.addressDistance = nearAddrRows[0].distance_m;
         console.log(`Nearest address: ${nearAddrRows[0].full_address} (${nearAddrRows[0].distance_m?.toFixed(1)}m)`);
-      } else {
-        props.exactAddress = "Nėra registruoto adreso";
       }
+      // If no exact address found, leave exactAddress unset so frontend falls back to WFS properties
     }
   } catch (e) {
     console.error("Address lookup error:", e);
