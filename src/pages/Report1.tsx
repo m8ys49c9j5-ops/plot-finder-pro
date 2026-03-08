@@ -291,7 +291,7 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
                 <p className="text-sm font-medium text-muted-foreground">Palydovinis vaizdas</p>
               </div>
             )}
-            {!isSample && onGoToMap && (
+            {!isSample && onGoToMapOrtho && (
               <div className="absolute inset-0 bg-foreground/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="bg-card/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
                   <ExternalLink className="w-3.5 h-3.5" /> Žiūrėti interaktyviame žemėlapyje
