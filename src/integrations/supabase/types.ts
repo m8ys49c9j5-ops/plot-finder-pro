@@ -452,6 +452,12 @@ export type Database = {
           full_address: string
         }[]
       }
+      find_nearest_savivaldybe: {
+        Args: { p_lat: number; p_lon: number }
+        Returns: {
+          savivaldybe: string
+        }[]
+      }
       find_parcel_by_bbox: {
         Args: { p_x: number; p_y: number }
         Returns: {
