@@ -550,6 +550,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
   const [marketValue, setMarketValue] = useState<string>("");
+  const [valuationDate, setValuationDate] = useState<string>("");
   const ctaRef = useRef<HTMLDivElement>(null);
 
   // Fetch market value from edge function
@@ -560,6 +561,9 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       });
       if (!error && data?.vidutineRinkosVerte) {
         setMarketValue(data.vidutineRinkosVerte);
+      }
+      if (!error && data?.vertinimoData) {
+        setValuationDate(data.vertinimoData);
       }
     } catch {
       console.error("Failed to fetch market value");
