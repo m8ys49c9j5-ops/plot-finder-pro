@@ -181,7 +181,20 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
       .rpc("find_exact_address_in_parcel", { p_kadastro: kadastroToSearch });
 
     if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
-      props.exactAddress = exactAddrRows[0].full_address;
+      const fullAddr = exactAddrRows[0].full_address;
+      // Append savivaldybė from WFS props or nearest lithuanian_addresses entry
+      let savivaldybe = props.sav_pavadinimas || "";
+      if (!savivaldybe && centroidLat !== null && centroidLon !== null) {
+        try {
+          const { data: litRows } = await supabase.rpc("find_nearest_savivaldybe", {
+            p_lat: centroidLat, p_lon: centroidLon
+          });
+          if (litRows && litRows.length > 0) {
+            savivaldybe = litRows[0].savivaldybe || "";
+          }
+        } catch {}
+      }
+      props.exactAddress = savivaldybe ? `${fullAddr}, ${savivaldybe}` : fullAddr;
       console.log(`Exact address found: ${props.exactAddress}`);
     }
     // 2. Fallback to nearest address
