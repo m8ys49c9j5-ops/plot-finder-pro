@@ -601,6 +601,7 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   const realReportData: ReportData | null = parcel ? {
     ...parcelToReportData(parcel),
     ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
+    ...(valuationDate ? { vertinimoData: valuationDate } : {}),
   } : null;
   const displayCadastralNr = parcel?.cadastralNumber || "—";
 
