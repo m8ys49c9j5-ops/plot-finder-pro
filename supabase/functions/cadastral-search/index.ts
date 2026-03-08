@@ -38,10 +38,28 @@ serve(async (req) => {
 // ---------- Search ----------
 
 async function searchByCadastralNumber(cadastralNumber: string) {
-  const cleaned = cadastralNumber.trim();
+  let cleaned = cadastralNumber.trim();
+
+  // 1. Auto-pad missing zeroes if the input contains a colon (e.g., 1234/5678:12 -> 1234/5678:0012)
+  if (cleaned.includes(':')) {
+    const parts = cleaned.split(':');
+    if (parts.length === 2 && parts[1].length > 0 && parts[1].length < 4) {
+      parts[1] = parts[1].padStart(4, '0');
+      cleaned = parts.join(':');
+    }
+  } else {
+    // 2. Auto-pad missing zeroes if the input is purely digits and between 9-11 characters
+    const pureDigits = cleaned.replace(/\D/g, "");
+    if (pureDigits.length > 8 && pureDigits.length < 12) {
+      const base = pureDigits.substring(0, 8);
+      const tail = pureDigits.substring(8).padStart(4, '0');
+      cleaned = base + tail;
+    }
+  }
+
   const digitsOnly = cleaned.replace(/\D/g, "");
 
-  console.log(`Searching for: "${cleaned}" | digits: "${digitsOnly}"`);
+  console.log(`Searching for normalized: "${cleaned}" | digits: "${digitsOnly}"`);
 
   // Check cache first
   if (cache.has(cleaned)) {
