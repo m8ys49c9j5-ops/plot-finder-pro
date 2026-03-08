@@ -69,7 +69,7 @@ function parcelToReportData(parcel: ParcelFromRoute): ReportData {
     unikalusNr: parcel.unikalusNr || "",
     area: parcel.area ? `${parcel.area} ha` : "",
     purpose: parcel.purpose || "",
-    address: parcel.address || "",
+    address: parcel.address || "Nėra registruoto adreso",
     formavimoData: parcel.formavimoData || "",
     coordinates: parcel.lat && parcel.lng ? `${parcel.lat.toFixed(6)}, ${parcel.lng.toFixed(6)}` : "",
     vidutineRinkosVerte: "",

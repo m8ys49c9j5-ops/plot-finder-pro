@@ -47,6 +47,24 @@ export type Database = {
         }
         Relationships: []
       }
+      official_addresses: {
+        Row: {
+          aob_kodas: string
+          full_address: string | null
+          geom: unknown
+        }
+        Insert: {
+          aob_kodas: string
+          full_address?: string | null
+          geom?: unknown
+        }
+        Update: {
+          aob_kodas?: string
+          full_address?: string | null
+          geom?: unknown
+        }
+        Relationships: []
+      }
       parcels: {
         Row: {
           bbox_max_x: number | null
@@ -80,6 +98,63 @@ export type Database = {
           kadastro_nr?: string | null
           sav_kodas?: string | null
           unikalus_nr?: string | null
+        }
+        Relationships: []
+      }
+      raw_addresses: {
+        Row: {
+          aob_kodas: string
+          gat_kodas: string | null
+          nr: string | null
+        }
+        Insert: {
+          aob_kodas: string
+          gat_kodas?: string | null
+          nr?: string | null
+        }
+        Update: {
+          aob_kodas?: string
+          gat_kodas?: string | null
+          nr?: string | null
+        }
+        Relationships: []
+      }
+      raw_points: {
+        Row: {
+          aob_kodas: string
+          x_koord: number | null
+          y_koord: number | null
+        }
+        Insert: {
+          aob_kodas: string
+          x_koord?: number | null
+          y_koord?: number | null
+        }
+        Update: {
+          aob_kodas?: string
+          x_koord?: number | null
+          y_koord?: number | null
+        }
+        Relationships: []
+      }
+      raw_streets: {
+        Row: {
+          gat_kodas: string
+          tipas: string | null
+          tipo_santrumpa: string | null
+          vardas_k: string | null
+        }
+        Insert: {
+          gat_kodas: string
+          tipas?: string | null
+          tipo_santrumpa?: string | null
+          vardas_k?: string | null
+        }
+        Update: {
+          gat_kodas?: string
+          tipas?: string | null
+          tipo_santrumpa?: string | null
+          vardas_k?: string | null
         }
         Relationships: []
       }
@@ -329,6 +404,7 @@ export type Database = {
             }
             Returns: string
           }
+      build_official_addresses: { Args: never; Returns: undefined }
       deduct_credit: { Args: { p_user_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -363,6 +439,12 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      find_exact_address_in_parcel: {
+        Args: { p_kadastro: string }
+        Returns: {
+          full_address: string
+        }[]
+      }
       find_nearest_address: {
         Args: { p_lat: number; p_lon: number }
         Returns: {
