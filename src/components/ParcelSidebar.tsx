@@ -197,10 +197,14 @@ const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport, isUnlocked 
           {onGoToReport && (
             <button
               onClick={onGoToReport}
-              className="w-full premium-gradient text-primary-foreground font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm"
+              className={`w-full font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm ${
+                isUnlocked
+                  ? "premium-gradient text-primary-foreground"
+                  : "bg-muted border border-border text-foreground hover:bg-muted/80"
+              }`}
             >
               <FileText className="h-4 w-4" />
-              📄 Atidaryti išsamią ataskaitą
+              {isUnlocked ? "📄 Atidaryti išsamią ataskaitą" : "🔒 Peržiūrėti ataskaitą"}
             </button>
           )}
 
