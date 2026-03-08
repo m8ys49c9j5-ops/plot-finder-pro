@@ -1,4 +1,4 @@
-import { X, MapPin, Ruler, Target, FileText, Globe } from "lucide-react";
+import { X, MapPin, Ruler, Target, FileText, Globe, Lock } from "lucide-react";
 
 // WGS84 to LKS94 (EPSG:3346) approximate conversion using Transverse Mercator projection
 const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
@@ -169,9 +169,96 @@ const PURPOSE_MAP: Record<string, string> = {
   "999": "Tarpinė",
 };
 
+const LockedInfoRow = ({ icon, label, placeholder }: { icon: React.ReactNode; label: string; placeholder: string }) => (
+  <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-3 relative">
+    <div className="text-muted-foreground/50 mt-0.5">{icon}</div>
+    <div className="min-w-0 flex-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2 mt-0.5">
+        <p className="text-sm font-medium text-foreground/60 blur-[5px] select-none pointer-events-none">{placeholder}</p>
+        <Lock className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+      </div>
+    </div>
+  </div>
+);
+
 const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport, isUnlocked = false }: ParcelSidebarProps) => {
   if (!parcel) return null;
 
+  // LOCKED sidebar view
+  if (!isUnlocked) {
+    return (
+      <div className="fixed top-0 right-0 h-full w-full sm:w-[400px] z-[1000] animate-slide-in-right">
+        <div className="h-full bg-card border-l border-border shadow-2xl flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-5 border-b border-border">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sklypas</p>
+              <h2 className="text-lg font-display font-bold text-foreground mt-1">
+                {searchInput || parcel.cadastralNumber}
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-6">
+            {/* Visible: cadastral number */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-6 w-6 rounded-md premium-gradient flex items-center justify-center">
+                  <FileText className="h-3.5 w-3.5 text-primary-foreground" />
+                </div>
+                <h3 className="font-display font-semibold text-foreground">Sklypo duomenys</h3>
+              </div>
+
+              <div className="space-y-3">
+                {/* Cadastral number is always visible */}
+                <InfoRow icon={<Target className="h-4 w-4" />} label="Kadastrinis Nr." value={parcel.cadastralNumber} />
+
+                {/* Locked / blurred fields */}
+                <LockedInfoRow icon={<Target className="h-4 w-4" />} label="Unikalus Nr." placeholder="4400-0285-7193" />
+                <LockedInfoRow icon={<Ruler className="h-4 w-4" />} label="Juridinis sklypo plotas" placeholder="0,2450 ha." />
+                <LockedInfoRow icon={<FileText className="h-4 w-4" />} label="Paskirtis" placeholder="Vienbučių gyvenamųjų" />
+                <LockedInfoRow icon={<Globe className="h-4 w-4" />} label="Koordinatės" placeholder="54.68920, 25.27140" />
+                <LockedInfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" placeholder="Vilniaus m. sav. Pavyzdžio g. 1" />
+                <LockedInfoRow icon={<FileText className="h-4 w-4" />} label="Duomenų data" placeholder="2024-01-15" />
+              </div>
+            </div>
+
+            {/* Lock notice */}
+            <div className="bg-muted/50 rounded-xl p-4 text-center space-y-2 border border-border">
+              <Lock className="h-6 w-6 text-muted-foreground mx-auto" />
+              <p className="text-sm font-medium text-foreground">Duomenys užrakinti</p>
+              <p className="text-xs text-muted-foreground">
+                Atrakinkite pilną ataskaitą ir gaukite visą sklypo informaciją
+              </p>
+            </div>
+          </div>
+
+          {/* CTA button at bottom */}
+          {onGoToReport && (
+            <div className="p-5 border-t border-border">
+              <button
+                onClick={onGoToReport}
+                className="w-full premium-gradient text-primary-foreground font-semibold rounded-xl py-3.5 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm shadow-lg"
+              >
+                <Lock className="h-4 w-4" />
+                🔒 Atrakinti pilną ataskaitą
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // UNLOCKED sidebar view — full data
   return (
     <div className="fixed top-0 right-0 h-full w-full sm:w-[400px] z-[1000] animate-slide-in-right">
       <div className="h-full bg-card border-l border-border shadow-2xl flex flex-col">
@@ -197,24 +284,20 @@ const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport, isUnlocked 
           {onGoToReport && (
             <button
               onClick={onGoToReport}
-              className={`w-full font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm ${
-                isUnlocked
-                  ? "premium-gradient text-primary-foreground"
-                  : "bg-muted border border-border text-foreground hover:bg-muted/80"
-              }`}
+              className="w-full premium-gradient text-primary-foreground font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm"
             >
               <FileText className="h-4 w-4" />
-              {isUnlocked ? "📄 Atidaryti išsamią ataskaitą" : "🔒 Peržiūrėti ataskaitą"}
+              📄 Atidaryti išsamią ataskaitą
             </button>
           )}
 
-          {/* Free Section */}
+          {/* Full data */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="h-6 w-6 rounded-md premium-gradient flex items-center justify-center">
                 <FileText className="h-3.5 w-3.5 text-primary-foreground" />
               </div>
-              <h3 className="font-display font-semibold text-foreground">Nemokama informacija</h3>
+              <h3 className="font-display font-semibold text-foreground">Sklypo informacija</h3>
             </div>
 
             <div className="space-y-3">
