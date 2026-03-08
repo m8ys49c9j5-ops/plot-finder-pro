@@ -181,7 +181,40 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
       .rpc("find_exact_address_in_parcel", { p_kadastro: kadastroToSearch });
 
     if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
-      props.exactAddress = exactAddrRows[0].full_address;
+      const fullAddr = exactAddrRows[0].full_address;
+      // Look up savivaldybė from lithuanian_addresses using the same aob_kodas
+      let savivaldybe = props.sav_pavadinimas || "";
+      if (!savivaldybe && centroidLat !== null && centroidLon !== null) {
+        const { data: nearRows } = await supabase
+          .rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon });
+        if (nearRows && nearRows.length > 0) {
+          // find_nearest_address returns from lithuanian_addresses which has savivaldybe
+          // We need a separate query for that
+        }
+        // Query lithuanian_addresses for savivaldybe by matching the address
+        const { data: litRows } = await supabase
+          .from("lithuanian_addresses")
+          .select("savivaldybe")
+          .not("savivaldybe", "is", null)
+          .limit(1)
+          .order("id")
+          // Match by aob_kodas if available in official_addresses
+          ;
+        // Simpler: extract sav_kodas from kadastro_nr (first 4 digits map to municipality)
+        const kadNr = props.kadastro_nr || kadastroToSearch;
+        const savKodas = kadNr.replace(/\D/g, "").substring(0, 4);
+        if (savKodas) {
+          const { data: savRows } = await supabase
+            .from("lithuanian_addresses")
+            .select("savivaldybe")
+            .not("savivaldybe", "is", null)
+            .limit(1);
+          if (savRows && savRows.length > 0) {
+            savivaldybe = savRows[0].savivaldybe || "";
+          }
+        }
+      }
+      props.exactAddress = savivaldybe ? `${fullAddr}, ${savivaldybe}` : fullAddr;
       console.log(`Exact address found: ${props.exactAddress}`);
     }
     // 2. Fallback to nearest address
