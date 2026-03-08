@@ -181,22 +181,8 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
       .rpc("find_exact_address_in_parcel", { p_kadastro: kadastroToSearch });
 
     if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
-      let fullAddr = exactAddrRows[0].full_address;
-      // Append savivaldybė from nearest lithuanian_addresses entry
-      if (centroidLat !== null && centroidLon !== null) {
-        const { data: nearRows } = await supabase
-          .rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon });
-        // find_nearest_address uses lithuanian_addresses which has savivaldybe
-        // But it doesn't return savivaldybe directly, so query it separately
-        const { data: savRows } = await supabase
-          .from("lithuanian_addresses")
-          .select("savivaldybe")
-          .not("savivaldybe", "is", null)
-          .order("geom")  // This won't sort by distance; use RPC instead
-          .limit(1);
-      }
-      // Better approach: use sav_pavadinimas from WFS props if available, 
-      // otherwise get from lithuanian_addresses via nearest point
+      const fullAddr = exactAddrRows[0].full_address;
+      // Append savivaldybė from WFS props or nearest lithuanian_addresses entry
       let savivaldybe = props.sav_pavadinimas || "";
       if (!savivaldybe && centroidLat !== null && centroidLon !== null) {
         try {
