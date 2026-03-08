@@ -6,6 +6,7 @@ import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import PricingModal from "@/components/PricingModal";
 import Report1 from "@/pages/Report1";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [parcelUnlocked, setParcelUnlocked] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -67,10 +69,12 @@ const Index = () => {
   const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
     setSelectedParcel(parcel);
     if (feature) setSelectedFeature(feature);
+    setParcelUnlocked(false); // Reset — Report1 will verify from DB
     setActiveView("report");
   }, []);
 
-  const handleGoToMap = useCallback((shouldHighlight = true) => {
+  const handleGoToMap = useCallback((shouldHighlight = false) => {
+    setParcelUnlocked(shouldHighlight);
     setActiveView("map");
     if (shouldHighlight && selectedParcel && mapViewRef.current) {
       setTimeout(() => {
@@ -84,6 +88,23 @@ const Index = () => {
   const handleGoToReport = useCallback(() => {
     setActiveView("report");
   }, []);
+
+  // Check unlock status when parcel is selected and we're on map view
+  useEffect(() => {
+    if (!selectedParcel?.cadastralNumber || !user) {
+      setParcelUnlocked(false);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("search_history")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cadastral_number", selectedParcel.cadastralNumber)
+        .limit(1);
+      setParcelUnlocked(!!(data && data.length > 0));
+    })();
+  }, [selectedParcel?.cadastralNumber, user]);
 
   // Report view
   if (activeView === "report" && selectedParcel) {
@@ -186,6 +207,7 @@ const Index = () => {
         onClose={() => setSelectedParcel(null)}
         searchInput={lastSearchInput}
         onGoToReport={selectedParcel ? handleGoToReport : undefined}
+        isUnlocked={parcelUnlocked}
       />
 
       {selectedParcel && (
