@@ -69,6 +69,7 @@ const Index = () => {
   const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
     setSelectedParcel(parcel);
     if (feature) setSelectedFeature(feature);
+    setParcelUnlocked(false); // Reset — Report1 will verify from DB
     setActiveView("report");
   }, []);
 
