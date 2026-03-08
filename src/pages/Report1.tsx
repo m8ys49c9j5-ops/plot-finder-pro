@@ -185,7 +185,7 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
   );
 }
 
-function ReportContent({ data, isSample = false, onGoToMap, parcelLat, parcelLng, feature }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; parcelLat?: number; parcelLng?: number; feature?: any }) {
+function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parcelLat, parcelLng, feature }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; onGoToMapOrtho?: () => void; parcelLat?: number; parcelLng?: number; feature?: any }) {
   const kadastroMapRef = useRef<HTMLDivElement>(null);
   const orthoMapRef = useRef<HTMLDivElement>(null);
 
