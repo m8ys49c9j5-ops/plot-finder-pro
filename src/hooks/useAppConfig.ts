@@ -4,24 +4,39 @@ import { supabase } from "@/integrations/supabase/client";
 // ── Types ──────────────────────────────────────────────────────────────────────
 export interface AppConfig {
   // Field locks
-  lock_market_value: boolean;
-  lock_exact_address: boolean;
+  lock_cadastral_number: boolean;
+  lock_unique_number: boolean;
+  lock_address: boolean;
+  lock_coordinates: boolean;
   lock_area: boolean;
   lock_purpose: boolean;
-  lock_unique_number: boolean;
-  lock_coordinates: boolean;
-  lock_map: boolean;
-  lock_ortho: boolean;
+  lock_formation_date: boolean;
+  lock_market_value: boolean;
+  lock_valuation_date: boolean;
+  lock_measurement_type: boolean;
+  lock_productivity: boolean;
+  lock_special_conditions: boolean;
+  lock_cadastral_map: boolean;
+  lock_ortho_map: boolean;
+  lock_interactive_map: boolean;
   // Feature flags
+  feature_landing_page: boolean;
   feature_cadastral_search: boolean;
   feature_map_identify: boolean;
   feature_ortho_layer: boolean;
   feature_pricing_modal: boolean;
-  feature_landing_page: boolean;
+  feature_apple_signin: boolean;
+  feature_sample_report: boolean;
+  feature_report_page: boolean;
+  feature_map_attribution: boolean;
   maintenance_mode: boolean;
   // Settings
   free_credits_on_signup: number;
   report_sections_order: string[];
+  support_email: string;
+  credits_per_unlock: number;
+  // Dynamic keys (buttons, content, pricing, pages)
+  [key: string]: any;
 }
 
 export interface AppConfigRow {
