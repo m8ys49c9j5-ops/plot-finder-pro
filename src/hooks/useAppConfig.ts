@@ -1,27 +1,27 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export interface AppConfig {
   // Field locks
-  lock_market_value:   boolean;
-  lock_exact_address:  boolean;
-  lock_area:           boolean;
-  lock_purpose:        boolean;
-  lock_unique_number:  boolean;
-  lock_coordinates:    boolean;
-  lock_map:            boolean;
-  lock_ortho:          boolean;
+  lock_market_value: boolean;
+  lock_exact_address: boolean;
+  lock_area: boolean;
+  lock_purpose: boolean;
+  lock_unique_number: boolean;
+  lock_coordinates: boolean;
+  lock_map: boolean;
+  lock_ortho: boolean;
   // Feature flags
   feature_cadastral_search: boolean;
-  feature_map_identify:     boolean;
-  feature_ortho_layer:      boolean;
-  feature_pricing_modal:    boolean;
-  feature_landing_page:     boolean;
-  maintenance_mode:         boolean;
+  feature_map_identify: boolean;
+  feature_ortho_layer: boolean;
+  feature_pricing_modal: boolean;
+  feature_landing_page: boolean;
+  maintenance_mode: boolean;
   // Settings
   free_credits_on_signup: number;
-  report_sections_order:  string[];
+  report_sections_order: string[];
 }
 
 export interface AppConfigRow {
@@ -34,22 +34,22 @@ export interface AppConfigRow {
 }
 
 const DEFAULTS: AppConfig = {
-  lock_market_value:   true,
-  lock_exact_address:  false,
-  lock_area:           false,
-  lock_purpose:        false,
-  lock_unique_number:  false,
-  lock_coordinates:    false,
-  lock_map:            true,
-  lock_ortho:          true,
+  lock_market_value: true,
+  lock_exact_address: false,
+  lock_area: false,
+  lock_purpose: false,
+  lock_unique_number: false,
+  lock_coordinates: false,
+  lock_map: true,
+  lock_ortho: true,
   feature_cadastral_search: true,
-  feature_map_identify:     true,
-  feature_ortho_layer:      true,
-  feature_pricing_modal:    true,
-  feature_landing_page:     true,
-  maintenance_mode:         false,
-  free_credits_on_signup:   0,
-  report_sections_order:    ["found_banner", "map", "basic_info", "market_value", "technical", "address"],
+  feature_map_identify: true,
+  feature_ortho_layer: true,
+  feature_pricing_modal: true,
+  feature_landing_page: true,
+  maintenance_mode: false,
+  free_credits_on_signup: 0,
+  report_sections_order: ["found_banner", "map", "basic_info", "market_value", "technical", "address"],
 };
 
 // ── Context ────────────────────────────────────────────────────────────────────
@@ -89,15 +89,11 @@ function parseRows(rows: AppConfigRow[]): AppConfig {
 // ── Provider ───────────────────────────────────────────────────────────────────
 export function AppConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AppConfig>(DEFAULTS);
-  const [rows, setRows]     = useState<AppConfigRow[]>([]);
+  const [rows, setRows] = useState<AppConfigRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("app_config")
-      .select("*")
-      .order("group_name")
-      .order("key");
+    const { data, error } = await supabase.from("app_config").select("*").order("group_name").order("key");
 
     if (!error && data) {
       setRows(data as AppConfigRow[]);
@@ -106,12 +102,11 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  const isLocked = useCallback(
-    (field: keyof AppConfig) => Boolean(config[field]),
-    [config]
-  );
+  const isLocked = useCallback((field: keyof AppConfig) => Boolean(config[field]), [config]);
 
   return (
     <AppConfigContext.Provider value={{ config, rows, loading, refresh, isLocked }}>
