@@ -39,6 +39,22 @@ export interface AppConfig {
   [key: string]: any;
 }
 
+export interface ButtonConfig {
+  label: string;
+  href: string;
+  enabled: boolean;
+}
+
+export interface PricingTier {
+  name: string;
+  credits: number;
+  price: string;
+  perSearch: string;
+  popular: boolean;
+  save: string;
+  enabled: boolean;
+}
+
 export interface AppConfigRow {
   key: string;
   value: any;
