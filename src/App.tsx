@@ -13,7 +13,6 @@ import ParcelAudit2 from "./pages/ParcelAudit2";
 import NotFound from "./pages/NotFound";
 import AdminImportAddresses from "./pages/AdminImportAddresses";
 import AdminPanel from "./pages/AdminPanel";
-import login from "./pages/login";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +27,6 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/map" element={<Index />} />
-              <Route path="/login" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auditas" element={<ParcelAudit />} />
               <Route path="/auditas2" element={<ParcelAudit2 />} />
