@@ -11,8 +11,8 @@ import Landing from "./pages/Landing";
 import ParcelAudit from "./pages/ParcelAudit";
 import ParcelAudit2 from "./pages/ParcelAudit2";
 import NotFound from "./pages/NotFound";
-import AdminImportAddresses from "./pages/AdminImportAddresses";
 import AdminPanel from "./pages/AdminPanel";
+import Login from "./pages/login";
 
 const queryClient = new QueryClient();
 
