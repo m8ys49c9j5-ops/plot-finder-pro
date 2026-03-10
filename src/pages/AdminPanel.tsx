@@ -120,7 +120,7 @@ function EditText({ initial, onSave, multiline = false, mono = false }: {
 
 // ─── Section card ─────────────────────────────────────────────────────────────
 function Section({ title, subtitle, children, action }: {
-  title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode;
+  title: string; subtitle?: string; children?: React.ReactNode; action?: React.ReactNode;
 }) {
   return React.createElement("div", {
     style: {
@@ -477,7 +477,7 @@ export default function AdminPanel() {
       // Maintenance
       React.createElement("div", {
         style: {
-          background: "hsl(var(--card))", borderRadius: 14, padding: "1.25rem",
+          borderRadius: 14, padding: "1.25rem",
           border: maintOn ? "1.5px solid hsl(0 84% 60% / 0.5)" : "1px solid hsl(var(--border))",
           background: maintOn ? "hsl(0 84% 60% / 0.04)" : "hsl(var(--card))",
           boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
