@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          description: string | null
+          group_name: string | null
+          key: string
+          label: string | null
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          group_name?: string | null
+          key: string
+          label?: string | null
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          group_name?: string | null
+          key?: string
+          label?: string | null
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       lithuanian_addresses: {
         Row: {
           aob_kodas: number | null
