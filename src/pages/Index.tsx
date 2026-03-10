@@ -30,7 +30,7 @@ const Index = () => {
     if (searchParams.get("payment") === "success") {
       toast.success("Mokėjimas sėkmingas! Kreditai pridėti.");
       refreshCredits();
-      
+
       const stored = localStorage.getItem("pendingParcel");
       if (stored) {
         try {
@@ -73,21 +73,24 @@ const Index = () => {
     setActiveView("report");
   }, []);
 
-  const handleGoToMap = useCallback((shouldHighlight = false, layer?: "standard" | "ortho") => {
-    setParcelUnlocked(shouldHighlight);
-    if (layer) {
-      setActiveLayer(layer);
-    }
-    setActiveView("map");
-    setTimeout(() => {
+  const handleGoToMap = useCallback(
+    (shouldHighlight = false, layer?: "standard" | "ortho") => {
+      setParcelUnlocked(shouldHighlight);
       if (layer) {
-        mapViewRef.current?.setLayerType(layer);
+        setActiveLayer(layer);
       }
-      if (shouldHighlight && selectedParcel && mapViewRef.current && selectedFeature) {
-        mapViewRef.current?.highlightAndFit(selectedFeature);
-      }
-    }, 200);
-  }, [selectedParcel, selectedFeature]);
+      setActiveView("map");
+      setTimeout(() => {
+        if (layer) {
+          mapViewRef.current?.setLayerType(layer);
+        }
+        if (shouldHighlight && selectedParcel && mapViewRef.current && selectedFeature) {
+          mapViewRef.current?.highlightAndFit(selectedFeature);
+        }
+      }, 200);
+    },
+    [selectedParcel, selectedFeature],
+  );
 
   const handleGoToReport = useCallback(() => {
     setActiveView("report");
@@ -112,13 +115,7 @@ const Index = () => {
 
   // Report view
   if (activeView === "report" && selectedParcel) {
-    return (
-      <Report1
-        parcel={selectedParcel}
-        onGoToMap={handleGoToMap}
-        feature={selectedFeature}
-      />
-    );
+    return <Report1 parcel={selectedParcel} onGoToMap={handleGoToMap} feature={selectedFeature} />;
   }
 
   return (
@@ -181,7 +178,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <button
-                    onClick={() => navigate("/auth")}
+                    onClick={() => navigate("/login")}
                     className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
                   >
                     <User className="h-4 w-4 text-primary" />
