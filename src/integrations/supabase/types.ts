@@ -17,7 +17,7 @@ export type Database = {
       app_config: {
         Row: {
           description: string | null
-          group_name: string | null
+          group_name: string
           key: string
           label: string | null
           updated_at: string | null
@@ -25,7 +25,7 @@ export type Database = {
         }
         Insert: {
           description?: string | null
-          group_name?: string | null
+          group_name?: string
           key: string
           label?: string | null
           updated_at?: string | null
@@ -33,7 +33,7 @@ export type Database = {
         }
         Update: {
           description?: string | null
-          group_name?: string | null
+          group_name?: string
           key?: string
           label?: string | null
           updated_at?: string | null
