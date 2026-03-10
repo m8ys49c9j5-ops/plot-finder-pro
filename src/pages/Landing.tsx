@@ -981,46 +981,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── FINAL CTA ─────────────────────────────────────────────────────── */}
-      <section style={{ background: "#fff", padding: "5.5rem clamp(1.25rem, 5vw, 3rem)", textAlign: "center" }}>
-        <div style={{ maxWidth: 500, margin: "0 auto" }}>
-          <h2
-            className="font-display font-bold"
-            style={{
-              fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)",
-              letterSpacing: "-0.025em",
-              color: "hsl(var(--foreground))",
-              marginBottom: "0.9rem",
-            }}
-          >
-            Pradėkite nemokamai šiandien
-          </h2>
-          <p
-            style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.9rem", marginBottom: "2rem", lineHeight: 1.7 }}
-          >
-            Pirmą ataskaitą galite gauti per 60 sekundžių. Registracija nemokama.
-          </p>
-          <button
-            onClick={() => navigate("/map")}
-            className="premium-gradient"
-            style={{
-              border: "none",
-              color: "#fff",
-              borderRadius: 10,
-              padding: "13px 36px",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "opacity .2s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            Išbandyti nemokamai →
-          </button>
-        </div>
-      </section>
-
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer
         style={{
