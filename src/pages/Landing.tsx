@@ -3,62 +3,162 @@ import { useNavigate } from "react-router-dom";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconLayers = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-    <polyline points="2 17 12 22 22 17"/>
-    <polyline points="2 12 12 17 22 12"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+    <polyline points="2 17 12 22 22 17" />
+    <polyline points="2 12 12 17 22 12" />
   </svg>
 );
 const IconMapPin = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z"/>
-    <circle cx="12" cy="10" r="3"/>
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z" />
+    <circle cx="12" cy="10" r="3" />
   </svg>
 );
 const IconSearchBtn = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/>
-    <path d="m21 21-4.35-4.35"/>
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
   </svg>
 );
 const IconChevronDown = ({ open }: { open: boolean }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .28s ease" }}>
-    <polyline points="6 9 12 15 18 9"/>
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .28s ease" }}
+  >
+    <polyline points="6 9 12 15 18 9" />
   </svg>
 );
 const IconTarget = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" />
   </svg>
 );
 const IconRuler = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4Z"/>
-    <path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/><path d="m13.5 4.5 2 2"/><path d="m4.5 13.5 2 2"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4Z" />
+    <path d="m7.5 10.5 2 2" />
+    <path d="m10.5 7.5 2 2" />
+    <path d="m13.5 4.5 2 2" />
+    <path d="m4.5 13.5 2 2" />
   </svg>
 );
 const IconMap = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-    <line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+    <line x1="9" x2="9" y1="3" y2="18" />
+    <line x1="15" x2="15" y1="6" y2="21" />
   </svg>
 );
 const IconEuro = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 10h12"/><path d="M4 14h9"/>
-    <path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 10h12" />
+    <path d="M4 14h9" />
+    <path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2" />
   </svg>
 );
 const IconSatellite = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 7 9 3 5 7l4 4"/><path d="m17 11 4 4-4 4-4-4"/>
-    <path d="m8 12 4 4 6-6-4-4Z"/><path d="m16 8 3-3"/><path d="M9 21a6 6 0 0 0-6-6"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M13 7 9 3 5 7l4 4" />
+    <path d="m17 11 4 4-4 4-4-4" />
+    <path d="m8 12 4 4 6-6-4-4Z" />
+    <path d="m16 8 3-3" />
+    <path d="M9 21a6 6 0 0 0-6-6" />
   </svg>
 );
 const IconCheck = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
@@ -70,9 +170,7 @@ function toTileXY(lat: number, lng: number, z: number) {
   const n = Math.pow(2, z);
   const x = Math.floor(((lng + 180) / 360) * n);
   const latR = (lat * Math.PI) / 180;
-  const y = Math.floor(
-    ((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2) * n
-  );
+  const y = Math.floor(((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2) * n);
   return { x, y };
 }
 
@@ -148,26 +246,41 @@ const WHY_ITEMS = [
 ];
 
 const REPORT_FEATURES = [
-  { icon: <IconTarget />,   title: "Kadastrinis & Unikalus Nr.",  desc: "Tikslus sklypo identifikatorius iš NT registro" },
-  { icon: <IconRuler />,    title: "Juridinis plotas",            desc: "Registruotas plotas hektarais, tikslumas iki 4 ženklų" },
-  { icon: <IconMap />,      title: "Interaktyvus žemėlapis",     desc: "Tikslios sklypo ribos kadastro ir ortofoto žemėlapyje" },
-  { icon: <IconEuro />,     title: "Rinkos vertė",               desc: "Automatiškai surinkta masinė vertė iš RC registro" },
-  { icon: <IconSatellite />, title: "Ortofoto vaizdas",          desc: "Palydovinis vaizdas su sklypo kontūrais" },
-  { icon: <IconCheck />,    title: "Žemės paskirtis",            desc: "Oficiali paskirtis ir naudojimo kategorija" },
+  { icon: <IconTarget />, title: "Kadastrinis & Unikalus Nr.", desc: "Tikslus sklypo identifikatorius iš NT registro" },
+  { icon: <IconRuler />, title: "Juridinis plotas", desc: "Registruotas plotas hektarais, tikslumas iki 4 ženklų" },
+  { icon: <IconMap />, title: "Interaktyvus žemėlapis", desc: "Tikslios sklypo ribos kadastro ir ortofoto žemėlapyje" },
+  { icon: <IconEuro />, title: "Rinkos vertė", desc: "Automatiškai surinkta masinė vertė iš RC registro" },
+  { icon: <IconSatellite />, title: "Ortofoto vaizdas", desc: "Palydovinis vaizdas su sklypo kontūrais" },
+  { icon: <IconCheck />, title: "Žemės paskirtis", desc: "Oficiali paskirtis ir naudojimo kategorija" },
 ];
 
 const PRICING = [
-  { name: "Starteris",     credits: 1,  price: "€1,99",  per: "€1,99 / paieška", popular: false, save: "" },
-  { name: "Populiarus",    credits: 10, price: "€9,99",  per: "€1,00 / paieška", popular: true,  save: "−50%" },
+  { name: "Starteris", credits: 1, price: "€1,99", per: "€1,99 / paieška", popular: false, save: "" },
+  { name: "Populiarus", credits: 10, price: "€9,99", per: "€1,00 / paieška", popular: true, save: "−50%" },
   { name: "Profesionalus", credits: 30, price: "€19,99", per: "€0,67 / paieška", popular: false, save: "−66%" },
 ];
 
 const FAQ_ITEMS = [
-  { q: "Iš kur gaunami duomenys?",               a: "Visi duomenys gaunami iš oficialių Lietuvos šaltinių: INSPIRE geoportalas, Registrų centras (NT registras) ir Valstybinė žemės tarnyba. Mes juos surenkame ir pateikiame suprantamai." },
-  { q: "Ar duomenys atnaujinami?",                a: "Taip. Kiekvieną kartą pateikiame naujausius duomenis tiesiai iš šaltinio. Rinkos vertė atnaujinama pagal oficialų Registrų centro masinį vertinimą." },
-  { q: "Ar kreditai turi galiojimo datą?",        a: "Ne. Kreditai lieka jūsų sąskaitoje neribotą laiką – mokate tik kai faktiškai atrakinate ataskaitą." },
-  { q: "Ar galima naudoti verslo tikslais?",      a: "Taip. Ataskaitos skirtos tiek privatiems asmenims, tiek NT agentams, advokatams, statybų įmonėms ir investuotojams." },
-  { q: "Kaip veikia žemėlapio identifikavimas?",  a: "Spustelėkite bet kurį tašką žemėlapyje – sistema automatiškai nustato, kuriam sklypui tas taškas priklauso, ir parodo jo ribas bei duomenis." },
+  {
+    q: "Iš kur gaunami duomenys?",
+    a: "Visi duomenys gaunami iš oficialių Lietuvos šaltinių: INSPIRE geoportalas, Registrų centras (NT registras) ir Valstybinė žemės tarnyba. Mes juos surenkame ir pateikiame suprantamai.",
+  },
+  {
+    q: "Ar duomenys atnaujinami?",
+    a: "Taip. Kiekvieną kartą pateikiame naujausius duomenis tiesiai iš šaltinio. Rinkos vertė atnaujinama pagal oficialų Registrų centro masinį vertinimą.",
+  },
+  {
+    q: "Ar kreditai turi galiojimo datą?",
+    a: "Ne. Kreditai lieka jūsų sąskaitoje neribotą laiką – mokate tik kai faktiškai atrakinate ataskaitą.",
+  },
+  {
+    q: "Ar galima naudoti verslo tikslais?",
+    a: "Taip. Ataskaitos skirtos tiek privatiems asmenims, tiek NT agentams, advokatams, statybų įmonėms ir investuotojams.",
+  },
+  {
+    q: "Kaip veikia žemėlapio identifikavimas?",
+    a: "Spustelėkite bet kurį tašką žemėlapyje – sistema automatiškai nustato, kuriam sklypui tas taškas priklauso, ir parodo jo ribas bei duomenis.",
+  },
 ];
 
 function FaqRow({ q, a }: { q: string; a: string }) {
@@ -179,7 +292,9 @@ function FaqRow({ q, a }: { q: string; a: string }) {
         className="w-full flex items-center justify-between py-4 text-left text-sm font-semibold text-foreground gap-4 hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
       >
         <span>{q}</span>
-        <span className="text-primary shrink-0"><IconChevronDown open={open} /></span>
+        <span className="text-primary shrink-0">
+          <IconChevronDown open={open} />
+        </span>
       </button>
       <div style={{ maxHeight: open ? 300 : 0, overflow: "hidden", transition: "max-height .32s ease" }}>
         <p className="text-sm text-muted-foreground leading-relaxed pb-4 pr-6">{a}</p>
@@ -225,7 +340,9 @@ export default function Landing() {
       <nav
         style={{
           position: "fixed",
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           zIndex: 900,
           height: 62,
           display: "flex",
@@ -239,12 +356,22 @@ export default function Landing() {
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           style={{
-            display: "flex", alignItems: "center", gap: 7,
-            background: "none", border: "none", cursor: "pointer", padding: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
           }}
         >
-          <span className="text-primary"><IconLayers /></span>
-          <span className="font-display font-bold text-foreground" style={{ fontSize: "1.05rem", letterSpacing: "-0.01em" }}>
+          <span className="text-primary">
+            <IconLayers />
+          </span>
+          <span
+            className="font-display font-bold text-foreground"
+            style={{ fontSize: "1.05rem", letterSpacing: "-0.01em" }}
+          >
             Žemė<span className="text-gradient">Pro</span>
           </span>
         </button>
@@ -252,7 +379,7 @@ export default function Landing() {
         {/* Auth buttons — exactly like screenshot */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate("/login")}
             style={{
               background: "rgba(255,255,255,0.85)",
               backdropFilter: "blur(8px)",
@@ -266,8 +393,8 @@ export default function Landing() {
               cursor: "pointer",
               transition: "background .2s",
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
           >
             Prisijungti
           </button>
@@ -284,8 +411,8 @@ export default function Landing() {
               cursor: "pointer",
               transition: "opacity .2s",
             }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Išbandyti nemokamai
           </button>
@@ -312,7 +439,8 @@ export default function Landing() {
           style={{
             position: "absolute",
             inset: 0,
-            background: "radial-gradient(ellipse 75% 65% at 50% 40%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.30) 55%, rgba(255,255,255,0) 100%)",
+            background:
+              "radial-gradient(ellipse 75% 65% at 50% 40%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.30) 55%, rgba(255,255,255,0) 100%)",
             pointerEvents: "none",
           }}
         />
@@ -390,7 +518,9 @@ export default function Landing() {
               boxShadow: "0 2px 16px rgba(0,0,0,0.10)",
             }}
           >
-            <span className="text-primary shrink-0"><IconMapPin /></span>
+            <span className="text-primary shrink-0">
+              <IconMapPin />
+            </span>
             <input
               type="text"
               value={query}
@@ -423,8 +553,8 @@ export default function Landing() {
                 gap: 7,
                 transition: "opacity .2s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <IconSearchBtn />
               Ieškoti
@@ -448,13 +578,15 @@ export default function Landing() {
 
         {/* Attribution bottom-left */}
         <div style={{ position: "absolute", bottom: 8, left: 10, zIndex: 10 }}>
-          <span style={{
-            fontSize: "10px",
-            color: "rgba(0,0,0,0.5)",
-            background: "rgba(255,255,255,0.75)",
-            borderRadius: 4,
-            padding: "2px 7px",
-          }}>
+          <span
+            style={{
+              fontSize: "10px",
+              color: "rgba(0,0,0,0.5)",
+              background: "rgba(255,255,255,0.75)",
+              borderRadius: 4,
+              padding: "2px 7px",
+            }}
+          >
             Duomenys: Geoportal.lt · RC Kadastras
           </span>
         </div>
@@ -479,8 +611,7 @@ export default function Landing() {
               marginBottom: "2.75rem",
             }}
           >
-            Kodėl verta naudoti{" "}
-            <span className="text-gradient">ŽemėPro</span>?
+            Kodėl verta naudoti <span className="text-gradient">ŽemėPro</span>?
           </h2>
 
           <div
@@ -608,16 +739,16 @@ export default function Landing() {
                   boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
                 }}
               >
-                <div className="text-primary" style={{ marginBottom: "0.65rem" }}>{f.icon}</div>
+                <div className="text-primary" style={{ marginBottom: "0.65rem" }}>
+                  {f.icon}
+                </div>
                 <h3
                   className="font-semibold"
                   style={{ color: "hsl(var(--foreground))", fontSize: "0.875rem", marginBottom: "0.3rem" }}
                 >
                   {f.title}
                 </h3>
-                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.8rem", lineHeight: 1.6 }}>
-                  {f.desc}
-                </p>
+                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.8rem", lineHeight: 1.6 }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -636,8 +767,8 @@ export default function Landing() {
                 cursor: "pointer",
                 transition: "opacity .2s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               Išbandyti dabar →
             </button>
@@ -649,10 +780,28 @@ export default function Landing() {
       <section id="pricing" style={{ background: "#fff", padding: "5rem clamp(1.25rem, 5vw, 3rem)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "2.75rem" }}>
-            <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "hsl(var(--primary))", display: "block", marginBottom: "0.6rem" }}>
+            <span
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase" as const,
+                color: "hsl(var(--primary))",
+                display: "block",
+                marginBottom: "0.6rem",
+              }}
+            >
               Kainos
             </span>
-            <h2 className="font-display font-bold" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", letterSpacing: "-0.02em", color: "hsl(var(--foreground))", margin: "0 0 0.5rem" }}>
+            <h2
+              className="font-display font-bold"
+              style={{
+                fontSize: "clamp(1.4rem, 3vw, 2rem)",
+                letterSpacing: "-0.02em",
+                color: "hsl(var(--foreground))",
+                margin: "0 0 0.5rem",
+              }}
+            >
               Mokate tik kai naudojate
             </h2>
             <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.875rem" }}>
@@ -660,7 +809,14 @@ export default function Landing() {
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "1.25rem", alignItems: "end" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+              gap: "1.25rem",
+              alignItems: "end",
+            }}
+          >
             {PRICING.map((p) => (
               <div
                 key={p.name}
@@ -678,51 +834,82 @@ export default function Landing() {
                   <div
                     className="premium-gradient"
                     style={{
-                      position: "absolute", top: -13, left: "50%", transform: "translateX(-50%)",
-                      color: "#fff", fontSize: "0.68rem", fontWeight: 700,
-                      letterSpacing: "0.1em", textTransform: "uppercase",
-                      padding: "3px 14px", borderRadius: 999, whiteSpace: "nowrap",
+                      position: "absolute",
+                      top: -13,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      color: "#fff",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      padding: "3px 14px",
+                      borderRadius: 999,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     Populiariausias
                   </div>
                 )}
                 {p.save && !p.popular && (
-                  <div style={{
-                    position: "absolute", top: -11, right: "1.25rem",
-                    background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))",
-                    border: "1px solid hsl(var(--primary) / 0.25)",
-                    fontSize: "0.67rem", fontWeight: 700, textTransform: "uppercase",
-                    padding: "2px 9px", borderRadius: 999,
-                  }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: -11,
+                      right: "1.25rem",
+                      background: "hsl(var(--primary) / 0.1)",
+                      color: "hsl(var(--primary))",
+                      border: "1px solid hsl(var(--primary) / 0.25)",
+                      fontSize: "0.67rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      padding: "2px 9px",
+                      borderRadius: 999,
+                    }}
+                  >
                     {p.save}
                   </div>
                 )}
-                <p className="font-display font-bold" style={{ color: "hsl(var(--foreground))", fontSize: "1rem", marginBottom: "0.25rem" }}>{p.name}</p>
+                <p
+                  className="font-display font-bold"
+                  style={{ color: "hsl(var(--foreground))", fontSize: "1rem", marginBottom: "0.25rem" }}
+                >
+                  {p.name}
+                </p>
                 <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.8rem", marginBottom: "1.25rem" }}>
                   {p.credits} {p.credits === 1 ? "paieška" : "paieškų"}
                 </p>
-                <div className="font-display font-bold" style={{
-                  fontSize: "2rem", letterSpacing: "-0.03em",
-                  color: p.popular ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-                  marginBottom: "0.25rem",
-                }}>
+                <div
+                  className="font-display font-bold"
+                  style={{
+                    fontSize: "2rem",
+                    letterSpacing: "-0.03em",
+                    color: p.popular ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                    marginBottom: "0.25rem",
+                  }}
+                >
                   {p.price}
                 </div>
-                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.78rem", marginBottom: "1.5rem" }}>{p.per}</p>
+                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.78rem", marginBottom: "1.5rem" }}>
+                  {p.per}
+                </p>
                 <button
                   onClick={() => navigate("/map")}
                   className={p.popular ? "premium-gradient" : ""}
                   style={{
-                    width: "100%", borderRadius: 10, padding: "10px",
-                    fontSize: "0.875rem", fontWeight: 600,
-                    cursor: "pointer", transition: "opacity .2s, background .2s",
+                    width: "100%",
+                    borderRadius: 10,
+                    padding: "10px",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "opacity .2s, background .2s",
                     border: p.popular ? "none" : "1px solid hsl(var(--border))",
                     background: p.popular ? undefined : "hsl(var(--secondary))",
                     color: p.popular ? "#fff" : "hsl(var(--foreground))",
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                 >
                   Pradėti
                 </button>
@@ -730,25 +917,66 @@ export default function Landing() {
             ))}
           </div>
 
-          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "hsl(var(--muted-foreground) / 0.6)", fontSize: "0.76rem" }}>
+          <p
+            style={{
+              textAlign: "center",
+              marginTop: "1.5rem",
+              color: "hsl(var(--muted-foreground) / 0.6)",
+              fontSize: "0.76rem",
+            }}
+          >
             Saugus mokėjimas per Stripe · Visi pagrindiniai mokėjimo metodai
           </p>
         </div>
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
-      <section style={{ background: "hsl(var(--secondary))", borderTop: "1px solid hsl(var(--border))", padding: "5rem clamp(1.25rem, 5vw, 3rem)" }}>
+      <section
+        style={{
+          background: "hsl(var(--secondary))",
+          borderTop: "1px solid hsl(var(--border))",
+          padding: "5rem clamp(1.25rem, 5vw, 3rem)",
+        }}
+      >
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-            <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "hsl(var(--primary))", display: "block", marginBottom: "0.6rem" }}>
+            <span
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase" as const,
+                color: "hsl(var(--primary))",
+                display: "block",
+                marginBottom: "0.6rem",
+              }}
+            >
               FAQ
             </span>
-            <h2 className="font-display font-bold" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)", letterSpacing: "-0.02em", color: "hsl(var(--foreground))", margin: 0 }}>
+            <h2
+              className="font-display font-bold"
+              style={{
+                fontSize: "clamp(1.4rem, 3vw, 2rem)",
+                letterSpacing: "-0.02em",
+                color: "hsl(var(--foreground))",
+                margin: 0,
+              }}
+            >
               Dažniausiai užduodami klausimai
             </h2>
           </div>
-          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid hsl(var(--border))", padding: "0.5rem 1.5rem", boxShadow: "0 1px 8px rgba(0,0,0,0.04)" }}>
-            {FAQ_ITEMS.map((item, i) => <FaqRow key={i} q={item.q} a={item.a} />)}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              border: "1px solid hsl(var(--border))",
+              padding: "0.5rem 1.5rem",
+              boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
+            }}
+          >
+            {FAQ_ITEMS.map((item, i) => (
+              <FaqRow key={i} q={item.q} a={item.a} />
+            ))}
           </div>
         </div>
       </section>
@@ -756,22 +984,37 @@ export default function Landing() {
       {/* ── FINAL CTA ─────────────────────────────────────────────────────── */}
       <section style={{ background: "#fff", padding: "5.5rem clamp(1.25rem, 5vw, 3rem)", textAlign: "center" }}>
         <div style={{ maxWidth: 500, margin: "0 auto" }}>
-          <h2 className="font-display font-bold" style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)", letterSpacing: "-0.025em", color: "hsl(var(--foreground))", marginBottom: "0.9rem" }}>
+          <h2
+            className="font-display font-bold"
+            style={{
+              fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)",
+              letterSpacing: "-0.025em",
+              color: "hsl(var(--foreground))",
+              marginBottom: "0.9rem",
+            }}
+          >
             Pradėkite nemokamai šiandien
           </h2>
-          <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.9rem", marginBottom: "2rem", lineHeight: 1.7 }}>
+          <p
+            style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.9rem", marginBottom: "2rem", lineHeight: 1.7 }}
+          >
             Pirmą ataskaitą galite gauti per 60 sekundžių. Registracija nemokama.
           </p>
           <button
             onClick={() => navigate("/map")}
             className="premium-gradient"
             style={{
-              border: "none", color: "#fff", borderRadius: 10,
-              padding: "13px 36px", fontSize: "0.95rem", fontWeight: 600,
-              cursor: "pointer", transition: "opacity .2s",
+              border: "none",
+              color: "#fff",
+              borderRadius: 10,
+              padding: "13px 36px",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "opacity .2s",
             }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Išbandyti nemokamai →
           </button>
@@ -792,7 +1035,9 @@ export default function Landing() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span className="text-primary"><IconLayers /></span>
+          <span className="text-primary">
+            <IconLayers />
+          </span>
           <span className="font-display font-bold text-foreground" style={{ fontSize: "0.9rem" }}>
             Žemė<span className="text-gradient">Pro</span>
           </span>
