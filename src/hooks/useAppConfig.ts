@@ -108,10 +108,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
 
   const isLocked = useCallback((field: keyof AppConfig) => Boolean(config[field]), [config]);
 
-  return (
-    <AppConfigContext.Provider value={{ config, rows, loading, refresh, isLocked }}>
-      {children}
-    </AppConfigContext.Provider>
+  return React.createElement(
+    AppConfigContext.Provider,
+    { value: { config, rows, loading, refresh, isLocked } },
+    children,
   );
 }
 
