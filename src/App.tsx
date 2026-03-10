@@ -4,34 +4,39 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Landing from "./pages/Landing";
+import { AppConfigProvider } from "@/hooks/useAppConfig";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
 import ParcelAudit from "./pages/ParcelAudit";
 import ParcelAudit2 from "./pages/ParcelAudit2";
 import NotFound from "./pages/NotFound";
 import AdminImportAddresses from "./pages/AdminImportAddresses";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/map" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/auditas" element={<ParcelAudit />} />
-            <Route path="/auditas2" element={<ParcelAudit2 />} />
-            <Route path="/admin/import-addresses" element={<AdminImportAddresses />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AppConfigProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/map" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/auditas" element={<ParcelAudit />} />
+              <Route path="/auditas2" element={<ParcelAudit2 />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin/import-addresses" element={<AdminImportAddresses />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AppConfigProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
