@@ -120,7 +120,7 @@ function EditText({ initial, onSave, multiline = false, mono = false }: {
 
 // ─── Section card ─────────────────────────────────────────────────────────────
 function Section({ title, subtitle, children, action }: {
-  title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode;
+  title: string; subtitle?: string; children?: React.ReactNode; action?: React.ReactNode;
 }) {
   return React.createElement("div", {
     style: {
