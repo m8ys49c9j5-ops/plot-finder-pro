@@ -49,7 +49,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    let initialised = false;
+
+    // 1. Restore session from storage first (authoritative source)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) fetchCredits(session.user.id);
+      initialised = true;
+      setLoading(false);
+    });
+
+    // 2. Listen for subsequent changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Skip INITIAL_SESSION — getSession handles it above
+      if (!initialised) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -57,14 +71,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setCredits(0);
       }
-      setLoading(false);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchCredits(session.user.id);
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
