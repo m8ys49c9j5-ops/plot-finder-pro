@@ -1,9 +1,7 @@
-import React, { useEffect, useRef, useState, FormEvent } from "react";
+import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
-// ─── tiny inline icons (no extra deps) ───────────────────────────────────────
+// ─── Icons ────────────────────────────────────────────────────────────────────
 const IconLayers = () => (
   <svg
     width="20"
@@ -22,8 +20,8 @@ const IconLayers = () => (
 );
 const IconMapPin = () => (
   <svg
-    width="18"
-    height="18"
+    width="17"
+    height="17"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -35,10 +33,10 @@ const IconMapPin = () => (
     <circle cx="12" cy="10" r="3" />
   </svg>
 );
-const IconSearch = () => (
+const IconSearchBtn = () => (
   <svg
-    width="16"
-    height="16"
+    width="15"
+    height="15"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -50,21 +48,7 @@ const IconSearch = () => (
     <path d="m21 21-4.35-4.35" />
   </svg>
 );
-const IconCheck = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="3"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-const IconShield = () => (
+const IconChevronDown = ({ open }: { open: boolean }) => (
   <svg
     width="16"
     height="16"
@@ -74,14 +58,15 @@ const IconShield = () => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
+    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .28s ease" }}
   >
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <polyline points="6 9 12 15 18 9" />
   </svg>
 );
-const IconZap = () => (
+const IconTarget = () => (
   <svg
-    width="16"
-    height="16"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -89,13 +74,15 @@ const IconZap = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" />
   </svg>
 );
 const IconRuler = () => (
   <svg
-    width="22"
-    height="22"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -112,8 +99,8 @@ const IconRuler = () => (
 );
 const IconMap = () => (
   <svg
-    width="22"
-    height="22"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -128,8 +115,8 @@ const IconMap = () => (
 );
 const IconEuro = () => (
   <svg
-    width="22"
-    height="22"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -142,10 +129,10 @@ const IconEuro = () => (
     <path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2" />
   </svg>
 );
-const IconTarget = () => (
+const IconSatellite = () => (
   <svg
-    width="22"
-    height="22"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -153,94 +140,93 @@ const IconTarget = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <circle cx="12" cy="12" r="10" />
-    <circle cx="12" cy="12" r="6" />
-    <circle cx="12" cy="12" r="2" />
+    <path d="M13 7 9 3 5 7l4 4" />
+    <path d="m17 11 4 4-4 4-4-4" />
+    <path d="m8 12 4 4 6-6-4-4Z" />
+    <path d="m16 8 3-3" />
+    <path d="M9 21a6 6 0 0 0-6-6" />
   </svg>
 );
-const IconChevronDown = ({ open }: { open: boolean }) => (
+const IconCheck = () => (
   <svg
-    width="18"
-    height="18"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s ease" }}
   >
-    <polyline points="6 9 12 15 18 9" />
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
-// ─── Map hero background ──────────────────────────────────────────────────────
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL ?? "";
-const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
-const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
+// ─── Map tile grid (Geoportal Lithuanian topo tiles — same as app) ─────────────
+// z=12 centred on a nice rural Lithuanian area (near Kaunas/Prienai)
+const GEOPORTAL = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
 
-function HeroMap() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-
-    const map = L.map(containerRef.current, {
-      center: [55.35, 23.9],
-      zoom: 12,
-      zoomControl: false,
-      scrollWheelZoom: false,
-      dragging: false,
-      touchZoom: false,
-      doubleClickZoom: false,
-      boxZoom: false,
-      keyboard: false,
-      attributionControl: false,
-    });
-
-    // OSM base
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-    }).addTo(map);
-
-    // Geoportal overlay
-    L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
-      maxZoom: 19,
-      opacity: 0.75,
-    }).addTo(map);
-
-    // Kadastro layer via proxy
-    const buildUrl = (coords: L.Coords) => {
-      const sz = 256;
-      const nw = coords.scaleBy(new L.Point(sz, sz));
-      const se = nw.add(new L.Point(sz, sz));
-      const nwLL = map.unproject(nw, coords.z);
-      const seLL = map.unproject(se, coords.z);
-      const nwM = L.CRS.EPSG3857.project(nwLL);
-      const seM = L.CRS.EPSG3857.project(seLL);
-      const bbox = `${nwM.x},${seM.y},${seM.x},${nwM.y}`;
-      const url = `${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${sz},${sz}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`;
-      return SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}` : "";
-    };
-    const KadLayer = L.TileLayer.extend({
-      getTileUrl: function (c: L.Coords) {
-        return buildUrl(c);
-      },
-    });
-    new (KadLayer as any)("", { maxZoom: 19, opacity: 0.9 }).addTo(map);
-
-    mapRef.current = map;
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-  }, []);
-
-  return <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />;
+function toTileXY(lat: number, lng: number, z: number) {
+  const n = Math.pow(2, z);
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const latR = (lat * Math.PI) / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2) * n);
+  return { x, y };
 }
 
-// ─── DATA ─────────────────────────────────────────────────────────────────────
+function MapTileBackground() {
+  // Centre: ~54.93°N 23.95°E — rural Lithuania near Prienai (similar to screenshot)
+  const z = 12;
+  const { x: cx, y: cy } = toTileXY(54.93, 23.95, z);
+
+  const cols = 6;
+  const rows = 5;
+  const tiles: { x: number; y: number; col: number; row: number }[] = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      tiles.push({
+        x: cx - Math.floor(cols / 2) + c,
+        y: cy - Math.floor(rows / 2) + r,
+        col: c,
+        row: r,
+      });
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`,
+        overflow: "hidden",
+      }}
+    >
+      {tiles.map(({ x, y, col, row }) => (
+        <img
+          key={`${col}-${row}`}
+          // Geoportal tile URL: /tile/{z}/{y}/{x} (note: y before x)
+          src={`${GEOPORTAL}/tile/${z}/${y}/${x}`}
+          alt=""
+          draggable={false}
+          style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+          onError={(e) => {
+            // fallback to OSM if geoportal tiles fail
+            const img = e.currentTarget;
+            if (!img.src.includes("openstreetmap")) {
+              img.src = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+            }
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
 const WHY_ITEMS = [
   {
     n: "1",
@@ -259,11 +245,13 @@ const WHY_ITEMS = [
   },
 ];
 
-const FEATURES = [
+const REPORT_FEATURES = [
   { icon: <IconTarget />, title: "Kadastrinis & Unikalus Nr.", desc: "Tikslus sklypo identifikatorius iš NT registro" },
   { icon: <IconRuler />, title: "Juridinis plotas", desc: "Registruotas plotas hektarais, tikslumas iki 4 ženklų" },
   { icon: <IconMap />, title: "Interaktyvus žemėlapis", desc: "Tikslios sklypo ribos kadastro ir ortofoto žemėlapyje" },
   { icon: <IconEuro />, title: "Rinkos vertė", desc: "Automatiškai surinkta masinė vertė iš RC registro" },
+  { icon: <IconSatellite />, title: "Ortofoto vaizdas", desc: "Palydovinis vaizdas su sklypo kontūrais" },
+  { icon: <IconCheck />, title: "Žemės paskirtis", desc: "Oficiali paskirtis ir naudojimo kategorija" },
 ];
 
 const PRICING = [
@@ -275,7 +263,7 @@ const PRICING = [
 const FAQ_ITEMS = [
   {
     q: "Iš kur gaunami duomenys?",
-    a: "Visi duomenys gaunami iš oficialių Lietuvos šaltinių: INSPIRE geoportalas, Registrų centras ir Valstybinė žemės tarnyba. Mes juos surenkame ir pateikiame suprantamai.",
+    a: "Visi duomenys gaunami iš oficialių Lietuvos šaltinių: INSPIRE geoportalas, Registrų centras (NT registras) ir Valstybinė žemės tarnyba. Mes juos surenkame ir pateikiame suprantamai.",
   },
   {
     q: "Ar duomenys atnaujinami?",
@@ -295,11 +283,10 @@ const FAQ_ITEMS = [
   },
 ];
 
-// ─── FAQ row ──────────────────────────────────────────────────────────────────
 function FaqRow({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-border">
+    <div className="border-b border-border last:border-0">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between py-4 text-left text-sm font-semibold text-foreground gap-4 hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
@@ -310,125 +297,155 @@ function FaqRow({ q, a }: { q: string; a: string }) {
         </span>
       </button>
       <div style={{ maxHeight: open ? 300 : 0, overflow: "hidden", transition: "max-height .32s ease" }}>
-        <p className="text-sm text-muted-foreground leading-relaxed pb-4">{a}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed pb-4 pr-6">{a}</p>
       </div>
     </div>
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [scrollY, setScrollY] = useState(0);
-
-  useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
-    if (query.trim()) navigate(`/map?q=${encodeURIComponent(query.trim())}`);
-    else navigate("/map");
+    navigate(query.trim() ? `/map?q=${encodeURIComponent(query.trim())}` : "/map");
   };
 
-  const navSolid = scrollY > 60;
-
   return (
-    <div className="bg-background text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="bg-background text-foreground" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
-        .au1{animation:fadeUp .6s ease .05s both}
-        .au2{animation:fadeUp .6s ease .18s both}
-        .au3{animation:fadeUp .6s ease .3s both}
-        .au4{animation:fadeUp .6s ease .42s both}
-        .au5{animation:fadeUp .6s ease .54s both}
-        .hero-search:focus-within { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18), 0 4px 24px rgba(0,0,0,0.10); }
-        .feature-card:hover { border-color: hsl(var(--primary) / 0.35); transform: translateY(-2px); }
-        .feature-card { transition: border-color .2s, transform .2s, box-shadow .2s; }
-        .feature-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.07); }
-        .pricing-card { transition: transform .22s, box-shadow .22s; }
-        .pricing-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,0.10); }
+        @keyframes lp-up {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .lp1 { animation: lp-up .55s ease .0s both; }
+        .lp2 { animation: lp-up .55s ease .12s both; }
+        .lp3 { animation: lp-up .55s ease .22s both; }
+        .lp4 { animation: lp-up .55s ease .32s both; }
+        .lp5 { animation: lp-up .55s ease .42s both; }
+        .lp-search { transition: box-shadow .2s; }
+        .lp-search:focus-within {
+          box-shadow: 0 0 0 3px hsl(var(--primary) / .2), 0 4px 20px rgba(0,0,0,.12) !important;
+        }
+        .lp-card { transition: box-shadow .2s, transform .2s; }
+        .lp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.09); }
+        .lp-price { transition: transform .2s, box-shadow .2s; }
+        .lp-price:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,.1); }
       `}</style>
 
-      {/* ── NAV ─────────────────────────────────────────────────────── */}
+      {/* ── NAV ──────────────────────────────────────────────────────────── */}
+      {/* Sits on top of the map with no background, exactly like screenshot */}
       <nav
-        className="fixed top-0 left-0 right-0 z-[900] flex items-center justify-between px-6 md:px-10"
         style={{
-          height: 58,
-          background: navSolid ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
-          borderBottom: navSolid ? "1px solid hsl(var(--border))" : "1px solid transparent",
-          transition: "border-color .3s, background .3s",
-          boxShadow: navSolid ? "0 1px 8px rgba(0,0,0,0.06)" : "none",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 900,
+          height: 62,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 clamp(1.25rem, 4vw, 2.5rem)",
+          // No background — floats over the map
         }}
       >
         {/* Logo */}
-        <div
-          className="flex items-center gap-2 cursor-pointer"
+        <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
+          }}
         >
           <span className="text-primary">
             <IconLayers />
           </span>
-          <span className="font-display font-bold text-foreground text-base tracking-tight">
+          <span
+            className="font-display font-bold text-foreground"
+            style={{ fontSize: "1.05rem", letterSpacing: "-0.01em" }}
+          >
             Žemė<span className="text-gradient">Pro</span>
           </span>
-        </div>
+        </button>
 
-        {/* Nav links (desktop) */}
-        <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground font-medium">
-          <button
-            onClick={() => document.getElementById("why")?.scrollIntoView({ behavior: "smooth" })}
-            className="hover:text-foreground transition-colors bg-transparent border-none cursor-pointer p-0"
-          >
-            Kodėl ŽemėPro?
-          </button>
-          <button
-            onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
-            className="hover:text-foreground transition-colors bg-transparent border-none cursor-pointer p-0"
-          >
-            Kainos
-          </button>
-        </div>
-
-        {/* Auth buttons */}
-        <div className="flex items-center gap-2">
+        {/* Auth buttons — exactly like screenshot */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
             onClick={() => navigate("/auth")}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg px-4 py-1.5 bg-transparent cursor-pointer hover:bg-muted/50"
+            style={{
+              background: "rgba(255,255,255,0.85)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              border: "1px solid rgba(0,0,0,0.15)",
+              color: "hsl(var(--foreground))",
+              borderRadius: 8,
+              padding: "7px 18px",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "background .2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
           >
             Prisijungti
           </button>
           <button
             onClick={() => navigate("/map")}
-            className="premium-gradient text-primary-foreground text-sm font-semibold rounded-lg px-4 py-1.5 border-none cursor-pointer hover:opacity-90 transition-opacity"
+            className="premium-gradient"
+            style={{
+              border: "none",
+              color: "#fff",
+              borderRadius: 8,
+              padding: "7px 18px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "opacity .2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Išbandyti nemokamai
           </button>
         </div>
       </nav>
 
-      {/* ── HERO ─────────────────────────────────────────────────────── */}
-      <section style={{ position: "relative", height: "100vh", minHeight: 560 }}>
-        {/* Live map background */}
-        <HeroMap />
+      {/* ── HERO — full-viewport map with floating text ───────────────────── */}
+      <section
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100vh",
+          minHeight: 560,
+          maxHeight: 860,
+          overflow: "hidden",
+        }}
+      >
+        {/* Tile mosaic fills the entire hero */}
+        <MapTileBackground />
 
-        {/* Overlay gradient — lighter at top (nav), heavier in centre, fades to white at bottom */}
+        {/* Very subtle centre radial scrim — just enough to read text */}
+        {/* Matches screenshot: map is clearly visible, only light centre wash */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to bottom, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.55) 35%, rgba(255,255,255,0.82) 65%, rgba(255,255,255,1) 100%)",
+              "radial-gradient(ellipse 75% 65% at 50% 40%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.30) 55%, rgba(255,255,255,0) 100%)",
             pointerEvents: "none",
           }}
         />
 
-        {/* Content */}
+        {/* Floating content — upper-centre like screenshot */}
         <div
           style={{
             position: "absolute",
@@ -437,32 +454,49 @@ export default function Landing() {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: "0 1.25rem",
-            paddingTop: 64,
+            padding: "0 clamp(1rem, 5vw, 3rem)",
+            paddingTop: 40,
+            paddingBottom: 80,
           }}
         >
+          {/* Title */}
           <h1
-            className="au1 font-display font-bold text-foreground text-center"
+            className="lp1 font-display font-bold text-center"
             style={{
-              fontSize: "clamp(1.7rem, 4.5vw, 3rem)",
+              fontSize: "clamp(1.75rem, 4.2vw, 2.9rem)",
               letterSpacing: "-0.025em",
               lineHeight: 1.15,
-              maxWidth: 680,
-              marginBottom: "0.6rem",
+              color: "hsl(var(--foreground))",
+              margin: "0 0 0.55rem",
+              textShadow: "0 1px 4px rgba(255,255,255,0.6)",
             }}
           >
             Sklypų patikra – <span className="text-gradient">ŽemėPro</span>
           </h1>
 
+          {/* Subtitle 1 */}
           <p
-            className="au2 text-center text-muted-foreground"
-            style={{ fontSize: "clamp(0.9rem,2vw,1.05rem)", marginBottom: "0.5rem" }}
+            className="lp2 text-center"
+            style={{
+              fontSize: "clamp(0.88rem, 1.8vw, 1.05rem)",
+              color: "hsl(var(--muted-foreground))",
+              margin: "0 0 0.35rem",
+              textShadow: "0 1px 3px rgba(255,255,255,0.7)",
+            }}
           >
             Greita ir patogi informacija apie bet kurį Lietuvos sklypą.
           </p>
+
+          {/* Subtitle 2 — bold, slightly larger */}
           <p
-            className="au3 text-center font-semibold text-foreground"
-            style={{ fontSize: "clamp(0.85rem,1.8vw,1rem)", marginBottom: "1.75rem" }}
+            className="lp3 text-center font-semibold"
+            style={{
+              fontSize: "clamp(0.85rem, 1.6vw, 1rem)",
+              color: "hsl(var(--foreground))",
+              maxWidth: 600,
+              margin: "0 0 1.6rem",
+              textShadow: "0 1px 4px rgba(255,255,255,0.7)",
+            }}
           >
             Patikrinkite vietą, pagrindinius duomenis ir svarbiausią informaciją per kelias sekundes.
           </p>
@@ -470,8 +504,19 @@ export default function Landing() {
           {/* Search bar */}
           <form
             onSubmit={handleSearch}
-            className="au4 hero-search bg-card rounded-xl shadow-lg flex items-center gap-2 px-4 py-3 w-full border border-border"
-            style={{ maxWidth: 600, transition: "box-shadow .2s" }}
+            className="lp4 lp-search"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#fff",
+              border: "1px solid rgba(0,0,0,0.10)",
+              borderRadius: 12,
+              padding: "10px 10px 10px 14px",
+              width: "100%",
+              maxWidth: 600,
+              boxShadow: "0 2px 16px rgba(0,0,0,0.10)",
+            }}
           >
             <span className="text-primary shrink-0">
               <IconMapPin />
@@ -481,104 +526,249 @@ export default function Landing() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Įveskite adresą, kadastro numerį arba pažymėkite sklypą žemėlapyje"
-              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-sm"
-              style={{ minWidth: 0 }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                fontSize: "0.875rem",
+                color: "hsl(var(--foreground))",
+              }}
             />
             <button
               type="submit"
-              className="premium-gradient text-primary-foreground rounded-lg px-5 py-2 text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity border-none cursor-pointer shrink-0"
+              className="premium-gradient"
+              style={{
+                border: "none",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "9px 22px",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                transition: "opacity .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              <IconSearch />
+              <IconSearchBtn />
               Ieškoti
             </button>
           </form>
 
-          {/* Trust pills */}
-          <div className="au5 flex items-center gap-3 mt-4 flex-wrap justify-center">
-            {[
-              { icon: <IconShield />, label: "Oficialūs duomenys" },
-              { icon: <IconZap />, label: "Momentinis atsakymas" },
-              { icon: <IconCheck />, label: "Saugus mokėjimas" },
-            ].map(({ icon, label }) => (
-              <span key={label} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <span className="text-primary">{icon}</span>
-                {label}
-              </span>
-            ))}
-            <span className="text-muted-foreground/40 text-xs select-none">·</span>
-            <span className="text-xs text-muted-foreground">Patogu</span>
-            <span className="text-muted-foreground/40 text-xs select-none">·</span>
-            <span className="text-xs text-muted-foreground">Greita</span>
-            <span className="text-muted-foreground/40 text-xs select-none">·</span>
-            <span className="text-xs text-muted-foreground">Prieinama</span>
-          </div>
+          {/* Patogu · Greita · Prieinama — exactly like screenshot */}
+          <p
+            className="lp5"
+            style={{
+              fontSize: "0.85rem",
+              color: "hsl(var(--muted-foreground))",
+              marginTop: "0.9rem",
+              textShadow: "0 1px 3px rgba(255,255,255,0.8)",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Patogu&nbsp;&nbsp;•&nbsp;&nbsp;Greita&nbsp;&nbsp;•&nbsp;&nbsp;Prieinama
+          </p>
         </div>
 
-        {/* Attribution */}
-        <div className="absolute bottom-2 left-3 z-10">
-          <span className="text-[10px] text-muted-foreground/70 bg-card/70 rounded px-2 py-0.5 backdrop-blur-sm">
+        {/* Attribution bottom-left */}
+        <div style={{ position: "absolute", bottom: 8, left: 10, zIndex: 10 }}>
+          <span
+            style={{
+              fontSize: "10px",
+              color: "rgba(0,0,0,0.5)",
+              background: "rgba(255,255,255,0.75)",
+              borderRadius: 4,
+              padding: "2px 7px",
+            }}
+          >
             Duomenys: Geoportal.lt · RC Kadastras
           </span>
         </div>
       </section>
 
-      {/* ── WHY ──────────────────────────────────────────────────────── */}
-      <section id="why" className="bg-background py-20 px-5">
+      {/* ── WHY ŽEMĖPRO — white section directly below map ────────────────── */}
+      {/* No border/shadow separator — exactly like screenshot */}
+      <section
+        id="why"
+        style={{
+          background: "#fff",
+          padding: "4.5rem clamp(1.25rem, 5vw, 3rem) 5rem",
+        }}
+      >
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <h2
-            className="font-display font-bold text-foreground text-center mb-12"
-            style={{ fontSize: "clamp(1.4rem,3.5vw,2.2rem)", letterSpacing: "-0.02em" }}
+            className="font-display font-bold text-center"
+            style={{
+              fontSize: "clamp(1.4rem, 3vw, 2rem)",
+              letterSpacing: "-0.02em",
+              color: "hsl(var(--foreground))",
+              marginBottom: "2.75rem",
+            }}
           >
             Kodėl verta naudoti <span className="text-gradient">ŽemėPro</span>?
           </h2>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1.5rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: "1.5rem",
+            }}
+          >
             {WHY_ITEMS.map((item) => (
-              <div key={item.n} className="bg-card rounded-xl border border-border p-6 feature-card">
-                <div className="flex items-center gap-3 mb-3">
+              <div
+                key={item.n}
+                className="lp-card"
+                style={{
+                  background: "#fff",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 14,
+                  padding: "1.6rem",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                  {/* Green circle badge — exactly like screenshot */}
                   <div
-                    className="premium-gradient text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                    style={{ width: 32, height: 32 }}
+                    className="premium-gradient"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      color: "#fff",
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                    }}
                   >
                     {item.n}
                   </div>
-                  <h3 className="font-display font-bold text-foreground text-base leading-tight">{item.title}</h3>
+                  <h3
+                    className="font-display font-bold"
+                    style={{
+                      color: "hsl(var(--foreground))",
+                      fontSize: "1rem",
+                      lineHeight: 1.3,
+                      marginTop: 4,
+                    }}
+                  >
+                    {item.title}
+                  </h3>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                <p
+                  style={{
+                    color: "hsl(var(--muted-foreground))",
+                    fontSize: "0.875rem",
+                    lineHeight: 1.65,
+                    paddingLeft: 44,
+                  }}
+                >
+                  {item.desc}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── WHAT'S IN THE REPORT ─────────────────────────────────────── */}
-      <section className="py-20 px-5" style={{ background: "hsl(var(--secondary))" }}>
+      {/* ── WHAT'S IN THE REPORT ──────────────────────────────────────────── */}
+      <section
+        style={{
+          background: "hsl(var(--secondary))",
+          borderTop: "1px solid hsl(var(--border))",
+          borderBottom: "1px solid hsl(var(--border))",
+          padding: "5rem clamp(1.25rem, 5vw, 3rem)",
+        }}
+      >
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-primary block mb-2">Ataskaita</span>
+          <div style={{ textAlign: "center", marginBottom: "2.75rem" }}>
+            <span
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "hsl(var(--primary))",
+                display: "block",
+                marginBottom: "0.6rem",
+              }}
+            >
+              Ataskaita
+            </span>
             <h2
-              className="font-display font-bold text-foreground"
-              style={{ fontSize: "clamp(1.4rem,3.5vw,2.2rem)", letterSpacing: "-0.02em" }}
+              className="font-display font-bold"
+              style={{
+                fontSize: "clamp(1.4rem, 3vw, 2rem)",
+                letterSpacing: "-0.02em",
+                color: "hsl(var(--foreground))",
+                margin: "0 0 0.5rem",
+              }}
             >
               Viskas vienoje ataskaitoje
             </h2>
-            <p className="text-sm text-muted-foreground mt-2">Surenkame duomenis iš kelių oficialių registrų</p>
+            <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.875rem" }}>
+              Surenkame duomenis iš kelių oficialių registrų
+            </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: "1rem" }}>
-            {FEATURES.map((f, i) => (
-              <div key={i} className="bg-card rounded-xl border border-border p-5 feature-card">
-                <div className="text-primary mb-3">{f.icon}</div>
-                <h3 className="font-semibold text-foreground text-sm mb-1">{f.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            {REPORT_FEATURES.map((f, i) => (
+              <div
+                key={i}
+                className="lp-card"
+                style={{
+                  background: "#fff",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 12,
+                  padding: "1.25rem",
+                  boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div className="text-primary" style={{ marginBottom: "0.65rem" }}>
+                  {f.icon}
+                </div>
+                <h3
+                  className="font-semibold"
+                  style={{ color: "hsl(var(--foreground))", fontSize: "0.875rem", marginBottom: "0.3rem" }}
+                >
+                  {f.title}
+                </h3>
+                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.8rem", lineHeight: 1.6 }}>{f.desc}</p>
               </div>
             ))}
           </div>
 
-          <div className="text-center mt-10">
+          <div style={{ textAlign: "center", marginTop: "2.5rem" }}>
             <button
               onClick={() => navigate("/map")}
-              className="premium-gradient text-primary-foreground font-semibold rounded-xl px-8 py-3 border-none cursor-pointer hover:opacity-90 transition-opacity text-sm"
+              className="premium-gradient"
+              style={{
+                border: "none",
+                color: "#fff",
+                borderRadius: 10,
+                padding: "11px 32px",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "opacity .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               Išbandyti dabar →
             </button>
@@ -586,18 +776,35 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── PRICING ──────────────────────────────────────────────────── */}
-      <section id="pricing" className="bg-background py-20 px-5">
+      {/* ── PRICING ───────────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ background: "#fff", padding: "5rem clamp(1.25rem, 5vw, 3rem)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-primary block mb-2">Kainos</span>
+          <div style={{ textAlign: "center", marginBottom: "2.75rem" }}>
+            <span
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase" as const,
+                color: "hsl(var(--primary))",
+                display: "block",
+                marginBottom: "0.6rem",
+              }}
+            >
+              Kainos
+            </span>
             <h2
-              className="font-display font-bold text-foreground"
-              style={{ fontSize: "clamp(1.4rem,3.5vw,2.2rem)", letterSpacing: "-0.02em" }}
+              className="font-display font-bold"
+              style={{
+                fontSize: "clamp(1.4rem, 3vw, 2rem)",
+                letterSpacing: "-0.02em",
+                color: "hsl(var(--foreground))",
+                margin: "0 0 0.5rem",
+              }}
             >
               Mokate tik kai naudojate
             </h2>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.875rem" }}>
               Jokių prenumeratų · Jokių mėnesinių mokesčių · Kreditai negalioja
             </p>
           </div>
@@ -605,7 +812,7 @@ export default function Landing() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
               gap: "1.25rem",
               alignItems: "end",
             }}
@@ -613,40 +820,96 @@ export default function Landing() {
             {PRICING.map((p) => (
               <div
                 key={p.name}
-                className={`bg-card rounded-2xl border pricing-card relative ${p.popular ? "border-primary/40 shadow-lg" : "border-border"}`}
-                style={{ padding: p.popular ? "2.25rem 1.75rem" : "1.75rem" }}
+                className="lp-price"
+                style={{
+                  background: "#fff",
+                  border: p.popular ? "1.5px solid hsl(var(--primary) / 0.5)" : "1px solid hsl(var(--border))",
+                  borderRadius: 16,
+                  padding: p.popular ? "2.25rem 1.75rem" : "1.75rem",
+                  position: "relative",
+                  boxShadow: p.popular ? "0 4px 24px rgba(0,0,0,0.08)" : "0 1px 6px rgba(0,0,0,0.04)",
+                }}
               >
                 {p.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 premium-gradient text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap">
+                  <div
+                    className="premium-gradient"
+                    style={{
+                      position: "absolute",
+                      top: -13,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      color: "#fff",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      padding: "3px 14px",
+                      borderRadius: 999,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     Populiariausias
                   </div>
                 )}
                 {p.save && !p.popular && (
-                  <div className="absolute -top-2.5 right-4 bg-primary/10 text-primary border border-primary/25 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: -11,
+                      right: "1.25rem",
+                      background: "hsl(var(--primary) / 0.1)",
+                      color: "hsl(var(--primary))",
+                      border: "1px solid hsl(var(--primary) / 0.25)",
+                      fontSize: "0.67rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      padding: "2px 9px",
+                      borderRadius: 999,
+                    }}
+                  >
                     {p.save}
                   </div>
                 )}
-
-                <p className="font-display font-bold text-foreground text-base mb-1">{p.name}</p>
-                <p className="text-xs text-muted-foreground mb-4">
+                <p
+                  className="font-display font-bold"
+                  style={{ color: "hsl(var(--foreground))", fontSize: "1rem", marginBottom: "0.25rem" }}
+                >
+                  {p.name}
+                </p>
+                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.8rem", marginBottom: "1.25rem" }}>
                   {p.credits} {p.credits === 1 ? "paieška" : "paieškų"}
                 </p>
-
                 <div
-                  className="font-display font-bold text-foreground mb-1"
+                  className="font-display font-bold"
                   style={{
-                    fontSize: "2.1rem",
+                    fontSize: "2rem",
                     letterSpacing: "-0.03em",
-                    color: p.popular ? "hsl(var(--primary))" : undefined,
+                    color: p.popular ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                    marginBottom: "0.25rem",
                   }}
                 >
                   {p.price}
                 </div>
-                <p className="text-xs text-muted-foreground mb-6">{p.per}</p>
-
+                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.78rem", marginBottom: "1.5rem" }}>
+                  {p.per}
+                </p>
                 <button
                   onClick={() => navigate("/map")}
-                  className={`w-full rounded-xl py-2.5 text-sm font-semibold border-none cursor-pointer transition-opacity ${p.popular ? "premium-gradient text-primary-foreground hover:opacity-90" : "bg-muted text-foreground hover:bg-muted/70"}`}
+                  className={p.popular ? "premium-gradient" : ""}
+                  style={{
+                    width: "100%",
+                    borderRadius: 10,
+                    padding: "10px",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "opacity .2s, background .2s",
+                    border: p.popular ? "none" : "1px solid hsl(var(--border))",
+                    background: p.popular ? undefined : "hsl(var(--secondary))",
+                    color: p.popular ? "#fff" : "hsl(var(--foreground))",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                 >
                   Pradėti
                 </button>
@@ -654,25 +917,63 @@ export default function Landing() {
             ))}
           </div>
 
-          <p className="text-center text-xs text-muted-foreground/60 mt-5">
+          <p
+            style={{
+              textAlign: "center",
+              marginTop: "1.5rem",
+              color: "hsl(var(--muted-foreground) / 0.6)",
+              fontSize: "0.76rem",
+            }}
+          >
             Saugus mokėjimas per Stripe · Visi pagrindiniai mokėjimo metodai
           </p>
         </div>
       </section>
 
-      {/* ── FAQ ──────────────────────────────────────────────────────── */}
-      <section className="py-20 px-5" style={{ background: "hsl(var(--secondary))" }}>
+      {/* ── FAQ ───────────────────────────────────────────────────────────── */}
+      <section
+        style={{
+          background: "hsl(var(--secondary))",
+          borderTop: "1px solid hsl(var(--border))",
+          padding: "5rem clamp(1.25rem, 5vw, 3rem)",
+        }}
+      >
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <div className="text-center mb-10">
-            <span className="text-xs font-bold uppercase tracking-widest text-primary block mb-2">FAQ</span>
+          <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+            <span
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase" as const,
+                color: "hsl(var(--primary))",
+                display: "block",
+                marginBottom: "0.6rem",
+              }}
+            >
+              FAQ
+            </span>
             <h2
-              className="font-display font-bold text-foreground"
-              style={{ fontSize: "clamp(1.4rem,3.5vw,2.2rem)", letterSpacing: "-0.02em" }}
+              className="font-display font-bold"
+              style={{
+                fontSize: "clamp(1.4rem, 3vw, 2rem)",
+                letterSpacing: "-0.02em",
+                color: "hsl(var(--foreground))",
+                margin: 0,
+              }}
             >
               Dažniausiai užduodami klausimai
             </h2>
           </div>
-          <div className="bg-card rounded-2xl border border-border px-6 divide-y divide-border">
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              border: "1px solid hsl(var(--border))",
+              padding: "0.5rem 1.5rem",
+              boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
+            }}
+          >
             {FAQ_ITEMS.map((item, i) => (
               <FaqRow key={i} q={item.q} a={item.a} />
             ))}
@@ -680,41 +981,73 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── FINAL CTA ────────────────────────────────────────────────── */}
-      <section className="bg-background py-20 px-5 text-center">
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+      {/* ── FINAL CTA ─────────────────────────────────────────────────────── */}
+      <section style={{ background: "#fff", padding: "5.5rem clamp(1.25rem, 5vw, 3rem)", textAlign: "center" }}>
+        <div style={{ maxWidth: 500, margin: "0 auto" }}>
           <h2
-            className="font-display font-bold text-foreground mb-4"
-            style={{ fontSize: "clamp(1.5rem,4vw,2.4rem)", letterSpacing: "-0.025em" }}
+            className="font-display font-bold"
+            style={{
+              fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)",
+              letterSpacing: "-0.025em",
+              color: "hsl(var(--foreground))",
+              marginBottom: "0.9rem",
+            }}
           >
             Pradėkite nemokamai šiandien
           </h2>
-          <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-            Pirmą ataskaitą galite gauti per 60 sekundžių.
-            <br />
-            Registracija nemokama.
+          <p
+            style={{ color: "hsl(var(--muted-foreground))", fontSize: "0.9rem", marginBottom: "2rem", lineHeight: 1.7 }}
+          >
+            Pirmą ataskaitą galite gauti per 60 sekundžių. Registracija nemokama.
           </p>
           <button
             onClick={() => navigate("/map")}
-            className="premium-gradient text-primary-foreground font-bold rounded-xl px-10 py-3.5 border-none cursor-pointer hover:opacity-90 transition-opacity text-base"
+            className="premium-gradient"
+            style={{
+              border: "none",
+              color: "#fff",
+              borderRadius: 10,
+              padding: "13px 36px",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "opacity .2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Išbandyti nemokamai →
           </button>
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-background px-6 md:px-10 py-5 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2">
+      {/* ── FOOTER ────────────────────────────────────────────────────────── */}
+      <footer
+        style={{
+          background: "#fff",
+          borderTop: "1px solid hsl(var(--border))",
+          padding: "1.5rem clamp(1.25rem, 5vw, 2.5rem)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <span className="text-primary">
             <IconLayers />
           </span>
-          <span className="font-display font-bold text-foreground text-sm">
+          <span className="font-display font-bold text-foreground" style={{ fontSize: "0.9rem" }}>
             Žemė<span className="text-gradient">Pro</span>
           </span>
         </div>
-        <p className="text-xs text-muted-foreground/60">Duomenys: Geoportal.lt · Registrų centras · VŽT</p>
-        <p className="text-xs text-muted-foreground/60">© {new Date().getFullYear()} ŽemėPro</p>
+        <p style={{ color: "hsl(var(--muted-foreground) / 0.6)", fontSize: "0.74rem", margin: 0 }}>
+          Duomenys: Geoportal.lt · Registrų centras · VŽT
+        </p>
+        <p style={{ color: "hsl(var(--muted-foreground) / 0.6)", fontSize: "0.74rem", margin: 0 }}>
+          © {new Date().getFullYear()} ŽemėPro
+        </p>
       </footer>
     </div>
   );
