@@ -101,14 +101,20 @@ const AppConfigContext = createContext<AppConfigContextType>({
 function parseRows(rows: AppConfigRow[]): AppConfig {
   const cfg: AppConfig = { ...DEFAULTS };
   for (const row of rows) {
-    const k = row.key as keyof AppConfig;
+    const k = row.key;
     const v = row.value;
-    if (typeof DEFAULTS[k] === "boolean") {
-      (cfg as any)[k] = v === true || v === "true";
-    } else if (typeof DEFAULTS[k] === "number") {
-      (cfg as any)[k] = Number(v);
-    } else if (Array.isArray(DEFAULTS[k])) {
-      (cfg as any)[k] = Array.isArray(v) ? v : JSON.parse(String(v));
+    const def = DEFAULTS[k];
+    if (typeof def === "boolean") {
+      cfg[k] = v === true || v === "true";
+    } else if (typeof def === "number") {
+      cfg[k] = Number(v);
+    } else if (Array.isArray(def)) {
+      cfg[k] = Array.isArray(v) ? v : JSON.parse(String(v));
+    } else if (typeof def === "string") {
+      cfg[k] = typeof v === "string" ? v : String(v);
+    } else {
+      // Dynamic keys (buttons, content, pricing, pages) — store raw value
+      cfg[k] = v;
     }
   }
   return cfg;
