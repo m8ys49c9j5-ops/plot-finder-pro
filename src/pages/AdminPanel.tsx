@@ -6,7 +6,7 @@ import { useAppConfig, type AppConfigRow, type ButtonConfig, type PricingTier } 
 import { toast } from "sonner";
 
 // ─── CHANGE THIS to your admin email ─────────────────────────────────────────
-const ADMIN_EMAILS: string[] = ["your@email.com"];
+const ADMIN_EMAILS: string[] = ["aidasaleksonis@gmail.com"];
 
 // ─── Inline SVG icons (no lucide dep issues) ──────────────────────────────────
 type IcoProps = { d?: string; size?: number; children?: React.ReactNode };
