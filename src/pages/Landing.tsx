@@ -343,8 +343,7 @@ export default function Landing() {
               textShadow: "0 1px 4px rgba(255,255,255,0.6)",
             }}
           >
-            Sklypų patikra –{" "}
-            <span className="text-gradient">ŽemėPro</span>
+            Žemė<span className="text-gradient">Pro</span>
           </h1>
 
           {/* Subtitle 1 */}
@@ -593,7 +592,7 @@ export default function Landing() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap: "1rem",
             }}
           >
