@@ -776,7 +776,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── PRICING ───────────────────────────────────────────────────────── */}
+      {/*  ── PRICING ───────────────────────────────────────────────────────── 
       <section id="pricing" style={{ background: "#fff", padding: "5rem clamp(1.25rem, 5vw, 3rem)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "2.75rem" }}>
@@ -928,7 +928,7 @@ export default function Landing() {
             Saugus mokėjimas per Stripe · Visi pagrindiniai mokėjimo metodai
           </p>
         </div>
-      </section>
+      </section> */}
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section
