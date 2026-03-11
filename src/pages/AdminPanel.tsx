@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAppConfig, type AppConfigRow, type ButtonConfig, type PricingTier } from "@/hooks/useAppConfig";
+import { useAppConfig, applyThemeToCss, type AppConfigRow, type ButtonConfig, type PricingTier } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
 
 // ─── CHANGE THIS to your admin email ─────────────────────────────────────────
@@ -342,7 +342,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-type PageId = "dashboard" | "pages" | "buttons" | "content" | "fields" | "features" | "pricing" | "settings";
+type PageId = "dashboard" | "pages" | "buttons" | "content" | "fields" | "features" | "pricing" | "settings" | "theme" | "map" | "users";
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -353,8 +353,51 @@ export default function AdminPanel() {
   const [pricingLocal, setPricingLocal] = useState(config.pricing);
   const [sectionOrder, setSectionOrder] = useState(config.report_sections_order);
 
+  // Theme local state (live preview before save)
+  const [themeLocal, setThemeLocal] = useState({
+    theme_primary_hsl:    config.theme_primary_hsl,
+    theme_primary_fg:     config.theme_primary_fg,
+    theme_background_hsl: config.theme_background_hsl,
+    theme_card_hsl:       config.theme_card_hsl,
+    theme_muted_hsl:      config.theme_muted_hsl,
+    theme_border_hsl:     config.theme_border_hsl,
+    theme_foreground_hsl: config.theme_foreground_hsl,
+  });
+
+  // Map local state
+  const [mapLocal, setMapLocal] = useState({
+    map_default_lat:   config.map_default_lat,
+    map_default_lng:   config.map_default_lng,
+    map_default_zoom:  config.map_default_zoom,
+    map_default_layer: config.map_default_layer,
+  });
+
+  // Users list for user management tab
+  const [users, setUsers] = useState<{ id: string; email: string; credits: number; role: string }[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [creditEdits, setCreditEdits] = useState<Record<string, number>>({});
+
   useEffect(() => { setPricingLocal(config.pricing); }, [config.pricing]);
   useEffect(() => { setSectionOrder(config.report_sections_order); }, [config.report_sections_order]);
+  useEffect(() => {
+    setThemeLocal({
+      theme_primary_hsl:    config.theme_primary_hsl,
+      theme_primary_fg:     config.theme_primary_fg,
+      theme_background_hsl: config.theme_background_hsl,
+      theme_card_hsl:       config.theme_card_hsl,
+      theme_muted_hsl:      config.theme_muted_hsl,
+      theme_border_hsl:     config.theme_border_hsl,
+      theme_foreground_hsl: config.theme_foreground_hsl,
+    });
+  }, [config.theme_primary_hsl, config.theme_primary_fg, config.theme_background_hsl, config.theme_card_hsl, config.theme_muted_hsl, config.theme_border_hsl, config.theme_foreground_hsl]);
+  useEffect(() => {
+    setMapLocal({
+      map_default_lat:   config.map_default_lat,
+      map_default_lng:   config.map_default_lng,
+      map_default_zoom:  config.map_default_zoom,
+      map_default_layer: config.map_default_layer,
+    });
+  }, [config.map_default_lat, config.map_default_lng, config.map_default_zoom, config.map_default_layer]);
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email ?? "");
 
@@ -429,13 +472,16 @@ export default function AdminPanel() {
 
   // ── NAV items ──
   const navItems: { id: PageId; label: string; icon: () => React.ReactElement }[] = [
-    { id: "dashboard", label: "Dashboard",     icon: icons.dashboard },
-    { id: "pages",     label: "Pages & Flow",  icon: icons.pages },
+    { id: "dashboard", label: "Dashboard",      icon: icons.dashboard },
+    { id: "pages",     label: "Pages & Flow",   icon: icons.pages },
     { id: "buttons",   label: "Buttons & Links", icon: icons.buttons },
     { id: "content",   label: "Content & Text", icon: icons.content },
     { id: "fields",    label: "Report Fields",  icon: icons.lock },
     { id: "features",  label: "Features",       icon: icons.features },
     { id: "pricing",   label: "Pricing Tiers",  icon: icons.pricing },
+    { id: "theme",     label: "Theme & Colors", icon: icons.settings },
+    { id: "map",       label: "Map Defaults",   icon: icons.pages },
+    { id: "users",     label: "Users",          icon: icons.dashboard },
     { id: "settings",  label: "Settings",       icon: icons.settings },
   ];
 
@@ -1023,7 +1069,439 @@ export default function AdminPanel() {
     features:  renderFeatures,
     pricing:   renderPricing,
     settings:  renderSettings,
+    theme:     renderTheme,
+    map:       renderMap,
+    users:     renderUsers,
   };
+
+  // ─── THEME RENDERER ───────────────────────────────────────────────────────────
+  function renderTheme(): React.ReactNode[] {
+    const THEME_FIELDS: { key: keyof typeof themeLocal; label: string; hint: string }[] = [
+      { key: "theme_primary_hsl",    label: "Primary Color",        hint: "Main brand color. HSL without wrapper e.g. 160 84% 39%" },
+      { key: "theme_primary_fg",     label: "Primary Foreground",   hint: "Text on primary buttons. HSL e.g. 0 0% 100%" },
+      { key: "theme_background_hsl", label: "Page Background",      hint: "Overall page background. HSL e.g. 220 20% 97%" },
+      { key: "theme_card_hsl",       label: "Card Background",      hint: "Cards and sidebars. HSL e.g. 0 0% 100%" },
+      { key: "theme_muted_hsl",      label: "Muted Surface",        hint: "Subtle background areas. HSL e.g. 210 20% 96%" },
+      { key: "theme_border_hsl",     label: "Border Color",         hint: "Lines and dividers. HSL e.g. 214 20% 90%" },
+      { key: "theme_foreground_hsl", label: "Text (Foreground)",    hint: "Primary body text. HSL e.g. 222 47% 11%" },
+    ];
+
+    const hslToHex = (hsl: string): string => {
+      const parts = hsl.trim().split(/\s+/);
+      if (parts.length < 3) return "#888888";
+      const h = parseFloat(parts[0]) / 360;
+      const s = parseFloat(parts[1]) / 100;
+      const l = parseFloat(parts[2]) / 100;
+      const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1; if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q-p)*6*t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q-p)*(2/3-t)*6;
+        return p;
+      };
+      let r, g, b;
+      if (s === 0) { r = g = b = l; } else {
+        const q2 = l < 0.5 ? l*(1+s) : l+s-l*s;
+        const p2 = 2*l-q2;
+        r = hue2rgb(p2,q2,h+1/3); g = hue2rgb(p2,q2,h); b = hue2rgb(p2,q2,h-1/3);
+      }
+      return `#${Math.round(r*255).toString(16).padStart(2,'0')}${Math.round(g*255).toString(16).padStart(2,'0')}${Math.round(b*255).toString(16).padStart(2,'0')}`;
+    };
+
+    const hexToHsl = (hex: string): string => {
+      let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+      const max = Math.max(r,g,b), min = Math.min(r,g,b);
+      let h=0, s=0; const l=(max+min)/2;
+      if (max!==min) {
+        const d=max-min; s=l>0.5?d/(2-max-min):d/(max+min);
+        switch(max){case r:h=((g-b)/d+(g<b?6:0))/6;break;case g:h=((b-r)/d+2)/6;break;case b:h=((r-g)/d+4)/6;break;}
+      }
+      return `${Math.round(h*360)} ${Math.round(s*100)}% ${Math.round(l*100)}%`;
+    };
+
+    const setThemeField = (key: keyof typeof themeLocal, value: string) => {
+      const next = { ...themeLocal, [key]: value };
+      setThemeLocal(next);
+      // Live preview
+      applyThemeToCss({ ...config, ...next });
+    };
+
+    const saveAllTheme = async () => {
+      setSaving("theme_all");
+      try {
+        for (const [k, v] of Object.entries(themeLocal)) {
+          await dbSet(k, v);
+        }
+        await refresh();
+        toast.success("Theme saved — all users will see the new colors");
+      } catch (e: any) { toast.error(e.message ?? "Error saving theme"); }
+      setSaving(null);
+    };
+
+    const themeChanged = JSON.stringify(themeLocal) !== JSON.stringify({
+      theme_primary_hsl: config.theme_primary_hsl, theme_primary_fg: config.theme_primary_fg,
+      theme_background_hsl: config.theme_background_hsl, theme_card_hsl: config.theme_card_hsl,
+      theme_muted_hsl: config.theme_muted_hsl, theme_border_hsl: config.theme_border_hsl,
+      theme_foreground_hsl: config.theme_foreground_hsl,
+    });
+
+    return [
+      React.createElement(Section, {
+        key: "theme-info",
+        title: "Theme & Brand Colors",
+        subtitle: "Enter values as HSL without the hsl() wrapper — e.g. 160 84% 39%. Changes preview live in this tab before saving.",
+      },
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.25rem" } },
+          THEME_FIELDS.map(field =>
+            React.createElement("div", { key: field.key },
+              React.createElement("label", { style: { display: "block", fontWeight: 600, fontSize: "0.85rem", marginBottom: 4 } }, field.label),
+              React.createElement("p", { style: { fontSize: "0.72rem", color: "hsl(var(--muted-foreground))", marginBottom: 8 } }, field.hint),
+              React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+                React.createElement("input", {
+                  type: "color",
+                  value: hslToHex(themeLocal[field.key]),
+                  onChange: (e: any) => setThemeField(field.key, hexToHsl(e.target.value)),
+                  style: { width: 40, height: 40, borderRadius: 8, border: "1px solid hsl(var(--border))", cursor: "pointer", padding: 2 },
+                }),
+                React.createElement("input", {
+                  type: "text",
+                  value: themeLocal[field.key],
+                  onChange: (e: any) => setThemeField(field.key, e.target.value),
+                  placeholder: "e.g. 160 84% 39%",
+                  style: {
+                    flex: 1, border: "1px solid hsl(var(--border))", borderRadius: 8,
+                    padding: "9px 12px", fontSize: "0.875rem", fontFamily: "monospace",
+                    background: "hsl(var(--background))", color: "hsl(var(--foreground))", outline: "none",
+                  },
+                }),
+                React.createElement("div", {
+                  style: { width: 36, height: 36, borderRadius: 8, border: "1px solid hsl(var(--border))", background: `hsl(${themeLocal[field.key]})`, flexShrink: 0 },
+                }),
+              ),
+            )
+          ),
+        ),
+
+        React.createElement("div", { style: { marginTop: "1.5rem", display: "flex", gap: 12, alignItems: "center" } },
+          React.createElement("button", {
+            onClick: saveAllTheme,
+            disabled: !themeChanged || saving === "theme_all",
+            className: themeChanged ? "premium-gradient" : "",
+            style: {
+              border: themeChanged ? "none" : "1px solid hsl(var(--border))",
+              background: themeChanged ? undefined : "hsl(var(--muted))",
+              color: themeChanged ? "#fff" : "hsl(var(--muted-foreground))",
+              borderRadius: 10, padding: "10px 28px", fontWeight: 600, cursor: themeChanged ? "pointer" : "default",
+              fontSize: "0.875rem", display: "flex", alignItems: "center", gap: 7,
+              opacity: saving === "theme_all" ? 0.7 : themeChanged ? 1 : 0.4,
+            },
+          },
+            React.createElement(icons.save, {}),
+            saving === "theme_all" ? "Saving…" : themeChanged ? "Save Theme" : "No Changes",
+          ),
+          themeChanged && React.createElement("button", {
+            onClick: () => {
+              setThemeLocal({
+                theme_primary_hsl: config.theme_primary_hsl, theme_primary_fg: config.theme_primary_fg,
+                theme_background_hsl: config.theme_background_hsl, theme_card_hsl: config.theme_card_hsl,
+                theme_muted_hsl: config.theme_muted_hsl, theme_border_hsl: config.theme_border_hsl,
+                theme_foreground_hsl: config.theme_foreground_hsl,
+              });
+              applyThemeToCss(config);
+            },
+            style: { border: "1px solid hsl(var(--border))", background: "transparent", borderRadius: 10, padding: "10px 20px", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" },
+          }, "Reset Preview"),
+        ),
+      ),
+
+      React.createElement(Section, {
+        key: "theme-tip",
+        title: "💡 How colors work",
+        subtitle: "All CSS variables are injected into :root — every Tailwind class using text-primary, bg-card etc. updates automatically",
+      },
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 } },
+          THEME_FIELDS.map(f =>
+            React.createElement("div", {
+              key: f.key,
+              style: {
+                borderRadius: 10, padding: "12px", border: "1px solid hsl(var(--border))",
+                background: `hsl(${themeLocal[f.key]})`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              },
+            },
+              React.createElement("span", {
+                style: {
+                  fontSize: "0.75rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6,
+                  background: "rgba(255,255,255,0.7)", color: "#111",
+                },
+              }, f.label),
+            )
+          ),
+        ),
+      ),
+    ];
+  }
+
+  // ─── MAP RENDERER ─────────────────────────────────────────────────────────────
+  function renderMap(): React.ReactNode[] {
+    const mapChanged = JSON.stringify(mapLocal) !== JSON.stringify({
+      map_default_lat:   config.map_default_lat,
+      map_default_lng:   config.map_default_lng,
+      map_default_zoom:  config.map_default_zoom,
+      map_default_layer: config.map_default_layer,
+    });
+
+    const saveAllMap = async () => {
+      setSaving("map_all");
+      try {
+        await dbSet("map_default_lat",   mapLocal.map_default_lat);
+        await dbSet("map_default_lng",   mapLocal.map_default_lng);
+        await dbSet("map_default_zoom",  mapLocal.map_default_zoom);
+        await dbSet("map_default_layer", mapLocal.map_default_layer);
+        await refresh();
+        toast.success("Map defaults saved — new users will see the updated view");
+      } catch (e: any) { toast.error(e.message ?? "Error saving map config"); }
+      setSaving(null);
+    };
+
+    return [
+      React.createElement(Section, {
+        key: "map-center",
+        title: "Default Map View",
+        subtitle: "These values set the initial center and zoom when users first open the map app.",
+      },
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" } },
+
+          // Latitude
+          React.createElement("div", { key: "lat" },
+            React.createElement("label", { style: { display: "block", fontWeight: 600, fontSize: "0.85rem", marginBottom: 4 } }, "Default Latitude"),
+            React.createElement("p", { style: { fontSize: "0.72rem", color: "hsl(var(--muted-foreground))", marginBottom: 8 } }, "Decimal degrees. Lithuania: ~54–57°N"),
+            React.createElement("input", {
+              type: "number", step: "0.0001", min: "-90", max: "90",
+              value: mapLocal.map_default_lat,
+              onChange: (e: any) => setMapLocal(m => ({ ...m, map_default_lat: parseFloat(e.target.value) || 0 })),
+              style: { width: "100%", border: "1px solid hsl(var(--border))", borderRadius: 8, padding: "9px 12px", fontSize: "0.875rem", background: "hsl(var(--background))", color: "hsl(var(--foreground))", outline: "none", boxSizing: "border-box" as const },
+            }),
+          ),
+
+          // Longitude
+          React.createElement("div", { key: "lng" },
+            React.createElement("label", { style: { display: "block", fontWeight: 600, fontSize: "0.85rem", marginBottom: 4 } }, "Default Longitude"),
+            React.createElement("p", { style: { fontSize: "0.72rem", color: "hsl(var(--muted-foreground))", marginBottom: 8 } }, "Decimal degrees. Lithuania: ~21–27°E"),
+            React.createElement("input", {
+              type: "number", step: "0.0001", min: "-180", max: "180",
+              value: mapLocal.map_default_lng,
+              onChange: (e: any) => setMapLocal(m => ({ ...m, map_default_lng: parseFloat(e.target.value) || 0 })),
+              style: { width: "100%", border: "1px solid hsl(var(--border))", borderRadius: 8, padding: "9px 12px", fontSize: "0.875rem", background: "hsl(var(--background))", color: "hsl(var(--foreground))", outline: "none", boxSizing: "border-box" as const },
+            }),
+          ),
+
+          // Zoom
+          React.createElement("div", { key: "zoom" },
+            React.createElement("label", { style: { display: "block", fontWeight: 600, fontSize: "0.85rem", marginBottom: 4 } }, `Default Zoom: ${mapLocal.map_default_zoom}`),
+            React.createElement("p", { style: { fontSize: "0.72rem", color: "hsl(var(--muted-foreground))", marginBottom: 8 } }, "1 = world · 8 = country · 13 = city · 18 = street"),
+            React.createElement("input", {
+              type: "range", min: "1", max: "18", step: "1",
+              value: mapLocal.map_default_zoom,
+              onChange: (e: any) => setMapLocal(m => ({ ...m, map_default_zoom: parseInt(e.target.value, 10) })),
+              style: { width: "100%", accentColor: "hsl(var(--primary))", marginBottom: 6 },
+            }),
+            React.createElement("input", {
+              type: "number", min: "1", max: "18",
+              value: mapLocal.map_default_zoom,
+              onChange: (e: any) => setMapLocal(m => ({ ...m, map_default_zoom: parseInt(e.target.value, 10) || 8 })),
+              style: { width: "80px", border: "1px solid hsl(var(--border))", borderRadius: 8, padding: "7px 10px", fontSize: "0.875rem", background: "hsl(var(--background))", color: "hsl(var(--foreground))", outline: "none" },
+            }),
+          ),
+
+          // Default layer
+          React.createElement("div", { key: "layer" },
+            React.createElement("label", { style: { display: "block", fontWeight: 600, fontSize: "0.85rem", marginBottom: 4 } }, "Default Base Layer"),
+            React.createElement("p", { style: { fontSize: "0.72rem", color: "hsl(var(--muted-foreground))", marginBottom: 8 } }, "Layer shown when map first loads"),
+            React.createElement("div", { style: { display: "flex", gap: 8 } },
+              ["standard", "ortho"].map(opt =>
+                React.createElement("button", {
+                  key: opt,
+                  onClick: () => setMapLocal(m => ({ ...m, map_default_layer: opt as "standard" | "ortho" })),
+                  style: {
+                    flex: 1, borderRadius: 8, padding: "9px", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer",
+                    border: mapLocal.map_default_layer === opt ? "2px solid hsl(var(--primary))" : "1px solid hsl(var(--border))",
+                    background: mapLocal.map_default_layer === opt ? "hsl(var(--primary) / 0.08)" : "hsl(var(--background))",
+                    color: mapLocal.map_default_layer === opt ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                  },
+                }, opt === "standard" ? "🗺️ Standard" : "🛰️ Ortho/Satellite")
+              ),
+            ),
+          ),
+        ),
+
+        // Preview + Save
+        React.createElement("div", { style: { marginTop: "1.5rem", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" } },
+          React.createElement("button", {
+            onClick: saveAllMap,
+            disabled: !mapChanged || saving === "map_all",
+            className: mapChanged ? "premium-gradient" : "",
+            style: {
+              border: mapChanged ? "none" : "1px solid hsl(var(--border))",
+              background: mapChanged ? undefined : "hsl(var(--muted))",
+              color: mapChanged ? "#fff" : "hsl(var(--muted-foreground))",
+              borderRadius: 10, padding: "10px 28px", fontWeight: 600, cursor: mapChanged ? "pointer" : "default",
+              fontSize: "0.875rem", display: "flex", alignItems: "center", gap: 7,
+              opacity: saving === "map_all" ? 0.7 : mapChanged ? 1 : 0.4,
+            },
+          },
+            React.createElement(icons.save, {}),
+            saving === "map_all" ? "Saving…" : mapChanged ? "Save Map Defaults" : "No Changes",
+          ),
+          React.createElement("a", {
+            href: `https://www.openstreetmap.org/#map=${mapLocal.map_default_zoom}/${mapLocal.map_default_lat}/${mapLocal.map_default_lng}`,
+            target: "_blank", rel: "noreferrer",
+            style: { fontSize: "0.82rem", color: "hsl(var(--primary))", textDecoration: "underline", cursor: "pointer" },
+          }, `Preview on OSM → ${mapLocal.map_default_lat.toFixed(4)}, ${mapLocal.map_default_lng.toFixed(4)} z${mapLocal.map_default_zoom}`),
+        ),
+      ),
+    ];
+  }
+
+  // ─── USERS RENDERER ───────────────────────────────────────────────────────────
+  function renderUsers(): React.ReactNode[] {
+    const loadUsers = async () => {
+      setUsersLoading(true);
+      try {
+        const { data: creditsData } = await supabase.from("user_credits").select("user_id, credits");
+        const { data: rolesData }   = await supabase.from("user_roles").select("user_id, role");
+
+        const creditsMap: Record<string, number> = {};
+        creditsData?.forEach(c => { creditsMap[c.user_id] = c.credits; });
+        const rolesMap: Record<string, string> = {};
+        rolesData?.forEach(r => { rolesMap[r.user_id] = r.role; });
+
+        const allIds = Array.from(new Set([
+          ...(creditsData?.map(c => c.user_id) ?? []),
+          ...(rolesData?.map(r => r.user_id) ?? []),
+        ]));
+
+        const list = allIds.map(id => ({
+          id,
+          email: id.slice(0, 8) + "…" + id.slice(-4),
+          credits: creditsMap[id] ?? 0,
+          role: rolesMap[id] ?? "user",
+        }));
+        setUsers(list);
+
+        const edits: Record<string, number> = {};
+        allIds.forEach(id => { edits[id] = creditsMap[id] ?? 0; });
+        setCreditEdits(edits);
+      } finally { setUsersLoading(false); }
+    };
+
+    const saveCredits = async (userId: string) => {
+      const { error } = await supabase.from("user_credits")
+        .upsert({ user_id: userId, credits: creditEdits[userId] }, { onConflict: "user_id" });
+      if (error) { toast.error("Error updating credits"); return; }
+      toast.success("Credits updated");
+      setUsers(us => us.map(u => u.id === userId ? { ...u, credits: creditEdits[userId] } : u));
+    };
+
+    const toggleRole = async (userId: string, currentRole: string) => {
+      const newRole = currentRole === "admin" ? "user" : "admin";
+      const { error } = await supabase.from("user_roles")
+        .upsert({ user_id: userId, role: newRole }, { onConflict: "user_id" });
+      if (error) { toast.error("Error changing role"); return; }
+      toast.success(`Role changed to "${newRole}"`);
+      setUsers(us => us.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    };
+
+    if (users.length === 0 && !usersLoading) {
+      return [React.createElement(Section, { key: "users-empty", title: "User Management", subtitle: "View users, adjust credits, grant admin access" },
+        React.createElement("div", { style: { textAlign: "center", padding: "2rem 0" } },
+          React.createElement("button", {
+            onClick: loadUsers,
+            className: "premium-gradient",
+            style: { border: "none", color: "#fff", borderRadius: 10, padding: "10px 28px", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" },
+          }, "Load Users"),
+          React.createElement("p", { style: { marginTop: 10, fontSize: "0.78rem", color: "hsl(var(--muted-foreground))" } },
+            "Queries user_credits and user_roles tables. Only loads on demand.",
+          ),
+        ),
+      )];
+    }
+
+    return [
+      React.createElement(Section, {
+        key: "users-table",
+        title: `User Management — ${users.length} users`,
+        subtitle: "Adjust credits and admin roles. Use the Supabase dashboard for full user details.",
+        action: React.createElement("button", {
+          onClick: loadUsers, disabled: usersLoading,
+          style: { border: "1px solid hsl(var(--border))", background: "transparent", borderRadius: 8, padding: "5px 12px", fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 },
+        }, usersLoading ? "Loading…" : "↻ Refresh"),
+      },
+        usersLoading
+          ? React.createElement("div", { style: { textAlign: "center", padding: "2rem", color: "hsl(var(--muted-foreground))" } }, "Loading…")
+          : React.createElement("div", { style: { overflowX: "auto" } },
+              React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" } },
+                React.createElement("thead", {},
+                  React.createElement("tr", { style: { borderBottom: "1px solid hsl(var(--border))" } },
+                    ["User ID", "Role", "Credits", "Actions"].map(h =>
+                      React.createElement("th", { key: h, style: { textAlign: "left", padding: "8px 12px", fontWeight: 700, color: "hsl(var(--muted-foreground))", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" } }, h)
+                    )
+                  )
+                ),
+                React.createElement("tbody", {},
+                  users.map((u, i) =>
+                    React.createElement("tr", {
+                      key: u.id,
+                      style: { borderBottom: "1px solid hsl(var(--border) / 0.5)", background: i % 2 === 0 ? "transparent" : "hsl(var(--muted) / 0.3)" },
+                    },
+                      // ID
+                      React.createElement("td", { style: { padding: "10px 12px", fontFamily: "monospace", fontSize: "0.78rem", color: "hsl(var(--muted-foreground))" } },
+                        u.id.slice(0,8), "…", u.id.slice(-4),
+                      ),
+                      // Role
+                      React.createElement("td", { style: { padding: "10px 12px" } },
+                        React.createElement(Badge, {
+                          color: u.role === "admin" ? "blue" : "gray",
+                          label: u.role,
+                        }),
+                      ),
+                      // Credits
+                      React.createElement("td", { style: { padding: "10px 12px" } },
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                          React.createElement("input", {
+                            type: "number", min: "0",
+                            value: creditEdits[u.id] ?? u.credits,
+                            onChange: (e: any) => setCreditEdits(prev => ({ ...prev, [u.id]: parseInt(e.target.value,10) || 0 })),
+                            style: { width: 72, border: "1px solid hsl(var(--border))", borderRadius: 7, padding: "5px 8px", fontSize: "0.85rem", background: "hsl(var(--background))", color: "hsl(var(--foreground))", outline: "none" },
+                          }),
+                          (creditEdits[u.id] ?? u.credits) !== u.credits &&
+                            React.createElement("button", {
+                              onClick: () => saveCredits(u.id),
+                              className: "premium-gradient",
+                              style: { border: "none", color: "#fff", borderRadius: 7, padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" },
+                            }, "Save"),
+                        ),
+                      ),
+                      // Actions
+                      React.createElement("td", { style: { padding: "10px 12px" } },
+                        React.createElement("button", {
+                          onClick: () => toggleRole(u.id, u.role),
+                          style: {
+                            border: `1px solid ${u.role === "admin" ? "hsl(0 84% 60% / 0.4)" : "hsl(217 91% 60% / 0.4)"}`,
+                            background: u.role === "admin" ? "hsl(0 84% 60% / 0.06)" : "hsl(217 91% 60% / 0.06)",
+                            color: u.role === "admin" ? "hsl(0 72% 45%)" : "hsl(217 91% 40%)",
+                            borderRadius: 8, padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer",
+                          },
+                        }, u.role === "admin" ? "Revoke Admin" : "Make Admin"),
+                      ),
+                    )
+                  )
+                ),
+              ),
+            ),
+      ),
+    ];
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
