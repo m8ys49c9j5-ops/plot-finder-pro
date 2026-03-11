@@ -602,8 +602,19 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     }
   }, []);
 
+  // In FREE_MODE, fetch market value immediately
+  useEffect(() => {
+    if (FREE_MODE && parcel?.unikalusNr) {
+      fetchMarketValue(parcel.unikalusNr);
+    }
+  }, [parcel?.unikalusNr, fetchMarketValue]);
+
   // Check if parcel is already unlocked in search_history
   useEffect(() => {
+    if (FREE_MODE) {
+      setCheckingUnlock(false);
+      return;
+    }
     if (!user || !parcel?.cadastralNumber) {
       setCheckingUnlock(false);
       return;
@@ -618,7 +629,6 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
           .limit(1);
         if (data && data.length > 0) {
           setIsUnlocked(true);
-          // Fetch market value for already unlocked parcels
           if (parcel.unikalusNr) {
             fetchMarketValue(parcel.unikalusNr);
           }
