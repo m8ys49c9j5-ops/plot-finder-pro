@@ -417,7 +417,7 @@ export default function Landing() {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {btnSignin.enabled !== false && (
           <button
-            onClick={() => navigate(btnSignin.href ?? "/login")}
+            onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
             style={{
               background: "rgba(255,255,255,0.85)",
               backdropFilter: "blur(8px)",
