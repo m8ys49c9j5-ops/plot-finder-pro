@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
@@ -69,6 +70,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
   const orthoLayerRef = useRef<L.TileLayer | null>(null);
   const kadastroLayerRef = useRef<L.TileLayer | null>(null);
   const { user, credits, refreshCredits } = useAuth();
+  const { config } = useAppConfig();
 
   useImperativeHandle(ref, () => ({
     setLayerType: (type: MapLayerType) => {
@@ -111,7 +113,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { center: [55.1694, 23.8813], zoom: 8, zoomControl: false });
+    const map = L.map(containerRef.current, {
+      center: [config.map_default_lat ?? 55.1694, config.map_default_lng ?? 23.8813],
+      zoom: config.map_default_zoom ?? 8,
+      zoomControl: false,
+    });
     L.control.zoom({ position: "topleft" }).addTo(map);
     baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19,
