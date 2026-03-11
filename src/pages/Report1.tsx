@@ -689,6 +689,48 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   const handleGoToMapOrtho = useCallback(() => handleGoToMap("ortho"), [handleGoToMap]);
   const handleGoToMapDefault = useCallback(() => handleGoToMap(), [handleGoToMap]);
 
+  // FREE_MODE: skip all lock checks, show report immediately
+  if (FREE_MODE) {
+    if (!parcel) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
+          <p className="text-muted-foreground">Nėra paieškos duomenų.</p>
+          <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-primary hover:underline">
+            <ArrowLeft className="h-4 w-4" /> Grįžti į žemėlapį
+          </button>
+        </div>
+      );
+    }
+    const freeReportData: ReportData = {
+      ...parcelToReportData(parcel),
+      ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
+      ...(valuationDate ? { vertinimoData: valuationDate } : {}),
+    };
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border bg-card">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
+              <Layers className="h-5 w-5 text-primary" />
+              <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
+            </button>
+            {user && (
+              <div className="flex items-center gap-2">
+                <button onClick={signOut} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Atsijungti">
+                  <LogOut className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto p-4 mt-4">
+          <ReportContent data={freeReportData} onGoToMap={handleGoToMapStandard} onGoToMapOrtho={handleGoToMapOrtho} parcelLat={parcel.lat} parcelLng={parcel.lng} feature={feature} />
+        </div>
+      </div>
+    );
+  }
+
   // Still checking unlock status
   if (checkingUnlock) {
     return (

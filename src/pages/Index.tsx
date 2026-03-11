@@ -218,7 +218,6 @@ const Index = () => {
         onClose={() => setSelectedParcel(null)}
         searchInput={lastSearchInput}
         onGoToReport={selectedParcel ? handleGoToReport : undefined}
-        isUnlocked={parcelUnlocked}
       />
 
       {selectedParcel && (
