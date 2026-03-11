@@ -1,15 +1,19 @@
 import React, { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mail, Lock as LockIcon, Loader2, ArrowLeft, Layers } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
-  const[password, setPassword] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Read the return URL from navigation state
+  const returnTo = (location.state as any)?.from || "/map";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -23,7 +27,7 @@ export default function Login() {
         });
         if (error) throw error;
         toast.success("Sėkmingai prisijungėte!");
-        navigate("/"); // Redirect to home/map after login
+        navigate(returnTo);
       } else {
         const { error } = await supabase.auth.signUp({
           email, 
@@ -35,10 +39,9 @@ export default function Login() {
         if (error) throw error;
         toast.success("Registracija sėkminga! Patikrinkite savo el. paštą.");
         if (!supabase.auth.getSession()) {
-            // If email confirmation is required, keep them here
             setIsLogin(true);
         } else {
-            navigate("/");
+            navigate(returnTo);
         }
       }
     } catch (error: any) {

@@ -25,6 +25,16 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { user, credits, loading, signOut, refreshCredits } = useAuth();
 
+  // Auto-search from ?q= parameter (e.g. from Landing page)
+  const qParam = searchParams.get("q");
+  useEffect(() => {
+    if (qParam) {
+      handleSearch(qParam);
+      // Clear the URL param so it doesn't re-trigger
+      window.history.replaceState({}, "", "/map");
+    }
+  }, [qParam]);
+
   // Recover parcel + feature from localStorage after Stripe redirect
   useEffect(() => {
     if (searchParams.get("payment") === "success") {
@@ -178,7 +188,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => navigate("/login", { state: { from: "/map" + window.location.search } })}
                     className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
                   >
                     <User className="h-4 w-4 text-primary" />
@@ -208,7 +218,6 @@ const Index = () => {
         onClose={() => setSelectedParcel(null)}
         searchInput={lastSearchInput}
         onGoToReport={selectedParcel ? handleGoToReport : undefined}
-        isUnlocked={parcelUnlocked}
       />
 
       {selectedParcel && (
