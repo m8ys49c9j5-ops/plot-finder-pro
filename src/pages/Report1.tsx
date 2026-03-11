@@ -539,6 +539,11 @@ function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; f
   );
 }
 
+// --- FREE MODE TOGGLE ---
+// Set to true to bypass the locked/payment screen and show reports directly.
+// Set to false to restore the original locked/payment UI.
+const FREE_MODE = true;
+
 // --- MAIN COMPONENT ---
 interface Report1Props {
   parcel?: ParcelFromRoute;
