@@ -188,7 +188,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => navigate("/login", { state: { from: "/map" + window.location.search } })}
                     className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
                   >
                     <User className="h-4 w-4 text-primary" />
