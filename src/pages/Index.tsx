@@ -25,6 +25,16 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { user, credits, loading, signOut, refreshCredits } = useAuth();
 
+  // Auto-search from ?q= parameter (e.g. from Landing page)
+  const qParam = searchParams.get("q");
+  useEffect(() => {
+    if (qParam) {
+      handleSearch(qParam);
+      // Clear the URL param so it doesn't re-trigger
+      window.history.replaceState({}, "", "/map");
+    }
+  }, [qParam]);
+
   // Recover parcel + feature from localStorage after Stripe redirect
   useEffect(() => {
     if (searchParams.get("payment") === "success") {
