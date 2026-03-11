@@ -8,10 +8,33 @@ import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  CheckCircle2, Lock, Map, FileText, MapPin, Maximize, Calendar, Info,
-  ShieldCheck, Unlock, Shield, Image as ImageIcon, Euro, Ruler, AlertTriangle,
-  ArrowLeft, Mail, Lock as LockIcon, Search, Zap, Crown, Loader2, Check, Coins,
-  LogOut, Layers, ExternalLink,
+  CheckCircle2,
+  Lock,
+  Map,
+  FileText,
+  MapPin,
+  Maximize,
+  Calendar,
+  Info,
+  ShieldCheck,
+  Unlock,
+  Shield,
+  Image as ImageIcon,
+  Euro,
+  Ruler,
+  AlertTriangle,
+  ArrowLeft,
+  Mail,
+  Lock as LockIcon,
+  Search,
+  Zap,
+  Crown,
+  Loader2,
+  Check,
+  Coins,
+  LogOut,
+  Layers,
+  ExternalLink,
 } from "lucide-react";
 
 // --- SAMPLE DATA for preview ---
@@ -32,8 +55,26 @@ const SAMPLE_REPORT_DATA = {
 
 const PRICING_TIERS = [
   { id: "tier1", name: "Starteris", credits: 1, price: "€1,99", perSearch: "€1,99", icon: Search, popular: false },
-  { id: "tier2", name: "Populiarus", credits: 10, price: "€9,99", perSearch: "€1,00", icon: Zap, popular: true, save: "50%" },
-  { id: "tier3", name: "Profesionalus", credits: 30, price: "€19,99", perSearch: "€0,67", icon: Crown, popular: false, save: "66%" },
+  {
+    id: "tier2",
+    name: "Populiarus",
+    credits: 10,
+    price: "€9,99",
+    perSearch: "€1,00",
+    icon: Zap,
+    popular: true,
+    save: "50%",
+  },
+  {
+    id: "tier3",
+    name: "Profesionalus",
+    credits: 30,
+    price: "€19,99",
+    perSearch: "€0,67",
+    icon: Crown,
+    popular: false,
+    save: "66%",
+  },
 ];
 
 // --- Types ---
@@ -82,8 +123,18 @@ function parcelToReportData(parcel: ParcelFromRoute): ReportData {
 }
 
 // --- HELPER COMPONENTS ---
-function DataRow({ icon, label, value, isMono = false, highlight = false }: {
-  icon: React.ReactNode; label: string; value: string; isMono?: boolean; highlight?: boolean;
+function DataRow({
+  icon,
+  label,
+  value,
+  isMono = false,
+  highlight = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  isMono?: boolean;
+  highlight?: boolean;
 }) {
   return (
     <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 hover:bg-muted/40 transition-colors">
@@ -91,7 +142,9 @@ function DataRow({ icon, label, value, isMono = false, highlight = false }: {
         <div className="w-4 h-4 opacity-70">{icon}</div>
         {label}
       </div>
-      <div className={`sm:w-3/5 ${isMono ? "font-mono text-sm" : "font-medium"} ${highlight ? "text-emerald-600 font-bold text-lg" : "text-foreground"}`}>
+      <div
+        className={`sm:w-3/5 ${isMono ? "font-mono text-sm" : "font-medium"} ${highlight ? "text-emerald-600 font-bold text-lg" : "text-foreground"}`}
+      >
         {value || "Nėra duomenų"}
       </div>
     </div>
@@ -152,7 +205,8 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
     baseTile.addTo(map);
 
     const kadTile = L.tileLayer("", { tileSize: 256 });
-    (kadTile as any).getTileUrl = (coords: L.Coords) => buildTileUrl(KADASTRAS_BASE, coords, "png32", true, "show:15,21,27,33");
+    (kadTile as any).getTileUrl = (coords: L.Coords) =>
+      buildTileUrl(KADASTRAS_BASE, coords, "png32", true, "show:15,21,27,33");
     kadTile.addTo(map);
 
     // Highlight parcel polygon
@@ -186,7 +240,23 @@ function ReportInteractiveMap({ lat, lng, feature }: { lat: number; lng: number;
   );
 }
 
-function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parcelLat, parcelLng, feature }: { data: ReportData; isSample?: boolean; onGoToMap?: () => void; onGoToMapOrtho?: () => void; parcelLat?: number; parcelLng?: number; feature?: any }) {
+function ReportContent({
+  data,
+  isSample = false,
+  onGoToMap,
+  onGoToMapOrtho,
+  parcelLat,
+  parcelLng,
+  feature,
+}: {
+  data: ReportData;
+  isSample?: boolean;
+  onGoToMap?: () => void;
+  onGoToMapOrtho?: () => void;
+  parcelLat?: number;
+  parcelLng?: number;
+  feature?: any;
+}) {
   const kadastroMapRef = useRef<HTMLDivElement>(null);
   const orthoMapRef = useRef<HTMLDivElement>(null);
 
@@ -200,8 +270,8 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
 
     // Convert lat/lng to EPSG:3857 (Web Mercator)
     const toMerc = (lat: number, lng: number) => {
-      const x = lng * 20037508.34 / 180;
-      const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180) * 20037508.34 / 180;
+      const x = (lng * 20037508.34) / 180;
+      const y = ((Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180)) * 20037508.34) / 180;
       return { x, y };
     };
 
@@ -213,7 +283,7 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
     // Kadastro map: base + cadastre overlay
     const baseUrl = `${GEOPORTAL_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=jpg&transparent=false&f=image`;
     const kadUrl = `${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`;
-    
+
     if (kadastroMapRef.current) {
       kadastroMapRef.current.style.backgroundImage = `url(${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(kadUrl)}), url(${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(baseUrl)})`;
       kadastroMapRef.current.style.backgroundSize = "cover";
@@ -252,7 +322,6 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
           <p className="text-lg font-mono font-bold text-primary">{data.cadastralNumber}</p>
         </div>
       </div>
-
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
         <div
@@ -314,7 +383,7 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
               </div>
               <div className="divide-y divide-border">
                 <DataRow icon={<Maximize />} label="Registruotas plotas" value={data.area} />
-                <DataRow icon={<Info />} label="Žemės paskirtis" value={data.purpose} />
+                <DataRow icon={<Info />} label="Žemės paskirtis" value={parcel.purpose} />
                 <DataRow icon={<Calendar />} label="Formavimo data" value={data.formavimoData} />
               </div>
             </div>
@@ -325,7 +394,8 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
           <DataRow icon={<Euro />} label="Vidutinė rinkos vertė" value={data.vidutineRinkosVerte} highlight />
           <DataRow icon={<Calendar />} label="Vertinimo data" value={data.vertinimoData} />
           <div className="p-4 bg-muted/30 text-xs text-muted-foreground">
-            * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės vertės.
+            * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės
+            vertės.
           </div>
         </DataCard>
 
@@ -361,7 +431,8 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
         toast.success("Sėkmingai prisijungėte!");
       } else {
         const { error } = await supabase.auth.signUp({
-          email, password,
+          email,
+          password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
@@ -378,9 +449,7 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h3 className="text-lg font-bold text-foreground">
-          {isLogin ? "Prisijunkite" : "Sukurkite paskyrą"}
-        </h3>
+        <h3 className="text-lg font-bold text-foreground">{isLogin ? "Prisijunkite" : "Sukurkite paskyrą"}</h3>
         <p className="text-sm text-muted-foreground mt-1">
           {isLogin ? "Prisijunkite, kad galėtumėte atrakinti ataskaitą" : "Registruokitės ir gaukite prieigą"}
         </p>
@@ -392,7 +461,10 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-input text-foreground text-sm focus:ring-2 focus:ring-primary/40 outline-none"
               placeholder="jusu@pastas.lt"
             />
@@ -403,14 +475,19 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
           <div className="relative">
             <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-input text-foreground text-sm focus:ring-2 focus:ring-primary/40 outline-none"
               placeholder="••••••••"
             />
           </div>
         </div>
         <button
-          type="submit" disabled={loading}
+          type="submit"
+          disabled={loading}
           className="w-full premium-gradient text-primary-foreground font-semibold rounded-lg py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -437,14 +514,18 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
           className="w-full flex items-center justify-center gap-2 rounded-lg border border-input bg-background py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
           </svg>
           Prisijungti su Apple
         </button>
 
         <p className="text-center text-sm text-muted-foreground">
           {isLogin ? "Neturite paskyros?" : "Jau turite paskyrą?"}{" "}
-          <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary font-medium hover:underline">
+          <button
+            type="button"
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-primary font-medium hover:underline"
+          >
             {isLogin ? "Registruotis" : "Prisijungti"}
           </button>
         </p>
@@ -508,9 +589,11 @@ function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; f
                 </span>
               )}
               <div className="flex items-center gap-4">
-                <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  tier.popular ? "premium-gradient" : "bg-muted"
-                }`}>
+                <div
+                  className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
+                    tier.popular ? "premium-gradient" : "bg-muted"
+                  }`}
+                >
                   <Icon className={`h-5 w-5 ${tier.popular ? "text-primary-foreground" : "text-foreground"}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -539,11 +622,6 @@ function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; f
   );
 }
 
-// --- FREE MODE TOGGLE ---
-// Set to true to bypass the locked/payment screen and show reports directly.
-// Set to false to restore the original locked/payment UI.
-const FREE_MODE = true;
-
 // --- MAIN COMPONENT ---
 interface Report1Props {
   parcel?: ParcelFromRoute;
@@ -558,16 +636,20 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
   // Recover parcel + feature from localStorage if not passed as prop (e.g., after Stripe redirect)
   const [recoveredParcel, setRecoveredParcel] = useState<ParcelFromRoute | null>(null);
   const [recoveredFeature, setRecoveredFeature] = useState<any>(null);
-  
+
   useEffect(() => {
     if (!parcelProp) {
       const stored = localStorage.getItem("pendingParcel");
       if (stored) {
-        try { setRecoveredParcel(JSON.parse(stored)); } catch {}
+        try {
+          setRecoveredParcel(JSON.parse(stored));
+        } catch {}
       }
       const storedFeature = localStorage.getItem("pendingFeature");
       if (storedFeature) {
-        try { setRecoveredFeature(JSON.parse(storedFeature)); } catch {}
+        try {
+          setRecoveredFeature(JSON.parse(storedFeature));
+        } catch {}
       }
     } else {
       localStorage.removeItem("pendingParcel");
@@ -602,19 +684,8 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     }
   }, []);
 
-  // In FREE_MODE, fetch market value immediately
-  useEffect(() => {
-    if (FREE_MODE && parcel?.unikalusNr) {
-      fetchMarketValue(parcel.unikalusNr);
-    }
-  }, [parcel?.unikalusNr, fetchMarketValue]);
-
   // Check if parcel is already unlocked in search_history
   useEffect(() => {
-    if (FREE_MODE) {
-      setCheckingUnlock(false);
-      return;
-    }
     if (!user || !parcel?.cadastralNumber) {
       setCheckingUnlock(false);
       return;
@@ -629,22 +700,26 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
           .limit(1);
         if (data && data.length > 0) {
           setIsUnlocked(true);
+          // Fetch market value for already unlocked parcels
           if (parcel.unikalusNr) {
             fetchMarketValue(parcel.unikalusNr);
           }
         }
-      } catch {} finally {
+      } catch {
+      } finally {
         setCheckingUnlock(false);
       }
     })();
   }, [user, parcel?.cadastralNumber, parcel?.unikalusNr, fetchMarketValue]);
 
   // Build report data from real parcel, with market value overlay
-  const realReportData: ReportData | null = parcel ? {
-    ...parcelToReportData(parcel),
-    ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
-    ...(valuationDate ? { vertinimoData: valuationDate } : {}),
-  } : null;
+  const realReportData: ReportData | null = parcel
+    ? {
+        ...parcelToReportData(parcel),
+        ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
+        ...(valuationDate ? { vertinimoData: valuationDate } : {}),
+      }
+    : null;
   const displayCadastralNr = parcel?.cadastralNumber || "—";
 
   const handleUnlock = async () => {
@@ -685,61 +760,22 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleGoToMap = useCallback((layer?: "standard" | "ortho") => {
-    if (onGoToMap) {
-      onGoToMap(isUnlocked, layer);
-    } else if (isUnlocked && feature?.geometry) {
-      navigate("/", { state: { highlightFeature: feature, centerLat: parcel?.lat, centerLng: parcel?.lng } });
-    } else {
-      navigate("/");
-    }
-  }, [onGoToMap, isUnlocked, feature, parcel, navigate]);
+  const handleGoToMap = useCallback(
+    (layer?: "standard" | "ortho") => {
+      if (onGoToMap) {
+        onGoToMap(isUnlocked, layer);
+      } else if (isUnlocked && feature?.geometry) {
+        navigate("/", { state: { highlightFeature: feature, centerLat: parcel?.lat, centerLng: parcel?.lng } });
+      } else {
+        navigate("/");
+      }
+    },
+    [onGoToMap, isUnlocked, feature, parcel, navigate],
+  );
 
   const handleGoToMapStandard = useCallback(() => handleGoToMap("standard"), [handleGoToMap]);
   const handleGoToMapOrtho = useCallback(() => handleGoToMap("ortho"), [handleGoToMap]);
   const handleGoToMapDefault = useCallback(() => handleGoToMap(), [handleGoToMap]);
-
-  // FREE_MODE: skip all lock checks, show report immediately
-  if (FREE_MODE) {
-    if (!parcel) {
-      return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
-          <p className="text-muted-foreground">Nėra paieškos duomenų.</p>
-          <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-primary hover:underline">
-            <ArrowLeft className="h-4 w-4" /> Grįžti į žemėlapį
-          </button>
-        </div>
-      );
-    }
-    const freeReportData: ReportData = {
-      ...parcelToReportData(parcel),
-      ...(marketValue ? { vidutineRinkosVerte: marketValue } : {}),
-      ...(valuationDate ? { vertinimoData: valuationDate } : {}),
-    };
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b border-border bg-card">
-          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-              <Layers className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
-            </button>
-            {user && (
-              <div className="flex items-center gap-2">
-                <button onClick={signOut} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Atsijungti">
-                  <LogOut className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="max-w-4xl mx-auto p-4 mt-4">
-          <ReportContent data={freeReportData} onGoToMap={handleGoToMapStandard} onGoToMapOrtho={handleGoToMapOrtho} parcelLat={parcel.lat} parcelLng={parcel.lng} feature={feature} />
-        </div>
-      </div>
-    );
-  }
 
   // Still checking unlock status
   if (checkingUnlock) {
@@ -768,10 +804,15 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
         {/* Header */}
         <div className="border-b border-border bg-card">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <button
+              onClick={handleGoToMapDefault}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
               <ArrowLeft className="h-4 w-4" />
               <Layers className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
+              <span className="font-display font-bold text-foreground">
+                Žemė<span className="text-gradient">Pro</span>
+              </span>
             </button>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -785,7 +826,14 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
           </div>
         </div>
         <div className="max-w-4xl mx-auto p-4 mt-4">
-          <ReportContent data={realReportData} onGoToMap={handleGoToMapStandard} onGoToMapOrtho={handleGoToMapOrtho} parcelLat={parcel.lat} parcelLng={parcel.lng} feature={feature} />
+          <ReportContent
+            data={realReportData}
+            onGoToMap={handleGoToMapStandard}
+            onGoToMapOrtho={handleGoToMapOrtho}
+            parcelLat={parcel.lat}
+            parcelLng={parcel.lng}
+            feature={feature}
+          />
         </div>
       </div>
     );
@@ -800,10 +848,15 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       {/* Header */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={handleGoToMapDefault} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <button
+            onClick={handleGoToMapDefault}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" />
             <Layers className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold text-foreground">Žemė<span className="text-gradient">Pro</span></span>
+            <span className="font-display font-bold text-foreground">
+              Žemė<span className="text-gradient">Pro</span>
+            </span>
           </button>
           {user && (
             <div className="flex items-center gap-2">
@@ -828,7 +881,8 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
             </div>
             <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">Žemės sklypas rastas!</h2>
             <p className="text-emerald-700 dark:text-emerald-300 font-medium">
-              Įrašas rastas Nekilnojamojo turto registre pagal kadastrą: <span className="font-bold">{displayCadastralNr}</span>
+              Įrašas rastas Nekilnojamojo turto registre pagal kadastrą:{" "}
+              <span className="font-bold">{displayCadastralNr}</span>
             </p>
           </div>
 
@@ -861,10 +915,19 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
               <Lock className="w-8 h-8 text-muted-foreground mb-3" />
               <h4 className="text-lg font-bold text-foreground mb-2">Atrakinti pilną sklypo ataskaitą</h4>
               <ul className="text-sm text-muted-foreground mb-5 space-y-1.5 text-left inline-block">
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Tikslūs interaktyvaus žemėlapio kontūrai</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Registruota žemės paskirtis ir plotas</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Tikslus adresas ir koordinatės</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Unikalus turto numeris</li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Tikslūs interaktyvaus žemėlapio
+                  kontūrai
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Registruota žemės paskirtis ir plotas
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Tikslus adresas ir koordinatės
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Unikalus turto numeris
+                </li>
               </ul>
 
               {/* Conditional: Auth, Pricing, or Unlock */}
@@ -892,7 +955,9 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
                       </>
                     )}
                   </button>
-                  <p className="text-xs text-muted-foreground mt-3">Jums liko {credits} {credits === 1 ? "kreditas" : "kreditų"}.</p>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Jums liko {credits} {credits === 1 ? "kreditas" : "kreditų"}.
+                  </p>
                 </>
               )}
             </div>
@@ -902,7 +967,9 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
         {/* Divider */}
         <div className="flex items-center gap-4">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">👇 Žiūrėkite, ką gausite pilnoje ataskaitoje 👇</span>
+          <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">
+            👇 Žiūrėkite, ką gausite pilnoje ataskaitoje 👇
+          </span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
