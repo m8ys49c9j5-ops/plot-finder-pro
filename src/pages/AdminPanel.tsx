@@ -37,7 +37,11 @@ const icons = {
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 async function dbSet(key: string, value: any) {
-  const { error } = await supabase.from("app_config").update({ value }).eq("key", key);
+  // upsert is safer than update — update silently affects 0 rows if RLS blocks it
+  const { error, count } = await supabase
+    .from("app_config")
+    .upsert({ key, value }, { onConflict: "key" })
+    .select();
   if (error) throw error;
 }
 
