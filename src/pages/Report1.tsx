@@ -390,19 +390,18 @@ function ReportContent({
           <DataCard title="Pagrindinė informacija" icon={<Info className="w-5 h-5 text-primary" />}>
             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
               <div className="divide-y divide-border">
-              <DataRow icon={<FileText />} label="Unikalus numeris" value={data.unikalusNr} />
-              <DataRow icon={<MapPin />} label="Tikslus adresas" value={data.address} />
-              <DataRow icon={<Info />} label="Žemės paskirtis" value={data.purpose} />
+                <DataRow icon={<FileText />} label="Unikalus numeris" value={data.unikalusNr} />
+                <DataRow icon={<MapPin />} label="Tikslus adresas" value={data.address} />
+                <DataRow icon={<Info />} label="Žemės paskirtis" value={data.purpose} />
+              </div>
+              <div className="divide-y divide-border">
+                <DataRow icon={<Maximize />} label="Registruotas plotas" value={data.area} />
+                <DataRow icon={<Calendar />} label="Formavimo data" value={data.formavimoData} />
+              </div>
             </div>
-            <div className="divide-y divide-border">
-              <DataRow icon={<Maximize />} label="Registruotas plotas" value={data.area} />
-              <DataRow icon={<Calendar />} label="Formavimo data" value={data.formavimoData} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
-            <DataRow icon={<Globe />} label="WGS84 koordinatės" value={data.coordinatesWgs} isMono />
-            <DataRow icon={<Globe />} label="LKS94 koordinatės" value={data.coordinatesLks} isMono />
-          </div>
+            <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
+              <DataRow icon={<Globe />} label="WGS84 koordinatės" value={data.coordinatesWgs} isMono />
+              <DataRow icon={<Globe />} label="LKS94 koordinatės" value={data.coordinatesLks} isMono />
             </div>
           </DataCard>
         </div>
