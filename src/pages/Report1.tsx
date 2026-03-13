@@ -67,14 +67,23 @@ interface ParcelFromRoute {
 
 // Convert route parcel data to report format
 function parcelToReportData(parcel: ParcelFromRoute): ReportData {
+  let coordinatesWgs = "";
+  let coordinatesLks = "";
+  if (parcel.lat && parcel.lng) {
+    coordinatesWgs = `${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`;
+    const lks = wgs84ToLks94(parcel.lat, parcel.lng);
+    coordinatesLks = `${Math.round(lks.x)}, ${Math.round(lks.y)}`;
+  }
+  const purposeLabel = parcel.purpose ? (PURPOSE_MAP[parcel.purpose] || parcel.purpose) : "";
   return {
     cadastralNumber: parcel.cadastralNumber || "",
     unikalusNr: parcel.unikalusNr || "",
     area: parcel.area ? `${parcel.area} ha` : "",
-    purpose: parcel.purpose || "",
+    purpose: purposeLabel,
     address: parcel.address || "Nėra registruoto adreso",
     formavimoData: parcel.formavimoData || "",
-    coordinates: parcel.lat && parcel.lng ? `${parcel.lat.toFixed(6)}, ${parcel.lng.toFixed(6)}` : "",
+    coordinatesWgs,
+    coordinatesLks,
     vidutineRinkosVerte: "",
     vertinimoData: "",
     matavimuTipas: "",
