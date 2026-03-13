@@ -322,7 +322,8 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
               <div className="divide-y divide-border">
                 <DataRow icon={<FileText />} label="Unikalus numeris" value={data.unikalusNr} />
                 <DataRow icon={<MapPin />} label="Tikslus adresas" value={data.address} />
-                <DataRow icon={<Map />} label="Centro koordinatės" value={data.coordinates} isMono />
+                <DataRow icon={<Globe />} label="WGS84 koordinatės" value={data.coordinatesWgs} isMono />
+                <DataRow icon={<Globe />} label="LKS94 koordinatės" value={data.coordinatesLks} isMono />
               </div>
               <div className="divide-y divide-border">
                 <DataRow icon={<Maximize />} label="Registruotas plotas" value={data.area} />

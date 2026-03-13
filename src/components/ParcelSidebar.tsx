@@ -77,7 +77,7 @@ interface ParcelSidebarProps {
 }
 
 // Land use purpose code to Lithuanian description mapping
-const PURPOSE_MAP: Record<string, string> = {
+export const PURPOSE_MAP: Record<string, string> = {
   "110": "Vienbučių",
   "120": "Dvibučių",
   "140": "Daugiabučių",
