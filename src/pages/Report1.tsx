@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ParcelData } from "@/components/ParcelSidebar";
+import { PURPOSE_MAP, wgs84ToLks94 } from "@/components/ParcelSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +12,7 @@ import {
   CheckCircle2, Lock, Map, FileText, MapPin, Maximize, Calendar, Info,
   ShieldCheck, Unlock, Shield, Image as ImageIcon, Euro, Ruler, AlertTriangle,
   ArrowLeft, Mail, Lock as LockIcon, Search, Zap, Crown, Loader2, Check, Coins,
-  LogOut, Layers, ExternalLink,
+  LogOut, Layers, ExternalLink, Globe,
 } from "lucide-react";
 
 // --- SAMPLE DATA for preview ---
@@ -22,7 +23,8 @@ const SAMPLE_REPORT_DATA = {
   purpose: "Namų valda (Vienbučių gyvenamųjų pastatų teritorijos)",
   address: "Pavyzdžio g. 1, Vilniaus m. sav.",
   formavimoData: "2020-03-15",
-  coordinates: "54.689200, 25.271400",
+  coordinatesWgs: "54.68920, 25.27140",
+  coordinatesLks: "583940, 6063680",
   vidutineRinkosVerte: "45 200 €",
   vertinimoData: "2024-01-10",
   matavimuTipas: "Preliminarūs matavimai",
@@ -44,7 +46,8 @@ interface ReportData {
   purpose: string;
   address: string;
   formavimoData: string;
-  coordinates: string;
+  coordinatesWgs: string;
+  coordinatesLks: string;
   vidutineRinkosVerte: string;
   vertinimoData: string;
   matavimuTipas: string;
@@ -65,14 +68,23 @@ interface ParcelFromRoute {
 
 // Convert route parcel data to report format
 function parcelToReportData(parcel: ParcelFromRoute): ReportData {
+  let coordinatesWgs = "";
+  let coordinatesLks = "";
+  if (parcel.lat && parcel.lng) {
+    coordinatesWgs = `${parcel.lat.toFixed(5)}, ${parcel.lng.toFixed(5)}`;
+    const lks = wgs84ToLks94(parcel.lat, parcel.lng);
+    coordinatesLks = `${Math.round(lks.x)}, ${Math.round(lks.y)}`;
+  }
+  const purposeLabel = parcel.purpose ? (PURPOSE_MAP[parcel.purpose] || parcel.purpose) : "";
   return {
     cadastralNumber: parcel.cadastralNumber || "",
     unikalusNr: parcel.unikalusNr || "",
     area: parcel.area ? `${parcel.area} ha` : "",
-    purpose: parcel.purpose || "",
+    purpose: purposeLabel,
     address: parcel.address || "Nėra registruoto adreso",
     formavimoData: parcel.formavimoData || "",
-    coordinates: parcel.lat && parcel.lng ? `${parcel.lat.toFixed(6)}, ${parcel.lng.toFixed(6)}` : "",
+    coordinatesWgs,
+    coordinatesLks,
     vidutineRinkosVerte: "",
     vertinimoData: "",
     matavimuTipas: "",
@@ -310,7 +322,8 @@ function ReportContent({ data, isSample = false, onGoToMap, onGoToMapOrtho, parc
               <div className="divide-y divide-border">
                 <DataRow icon={<FileText />} label="Unikalus numeris" value={data.unikalusNr} />
                 <DataRow icon={<MapPin />} label="Tikslus adresas" value={data.address} />
-                <DataRow icon={<Map />} label="Centro koordinatės" value={data.coordinates} isMono />
+                <DataRow icon={<Globe />} label="WGS84 koordinatės" value={data.coordinatesWgs} isMono />
+                <DataRow icon={<Globe />} label="LKS94 koordinatės" value={data.coordinatesLks} isMono />
               </div>
               <div className="divide-y divide-border">
                 <DataRow icon={<Maximize />} label="Registruotas plotas" value={data.area} />
