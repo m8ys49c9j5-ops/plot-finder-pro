@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ParcelData } from "@/components/ParcelSidebar";
+import { PURPOSE_MAP, wgs84ToLks94 } from "@/components/ParcelSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/contexts/AuthContext";
