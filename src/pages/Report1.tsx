@@ -45,7 +45,8 @@ interface ReportData {
   purpose: string;
   address: string;
   formavimoData: string;
-  coordinates: string;
+  coordinatesWgs: string;
+  coordinatesLks: string;
   vidutineRinkosVerte: string;
   vertinimoData: string;
   matavimuTipas: string;
