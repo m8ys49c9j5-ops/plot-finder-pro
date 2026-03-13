@@ -1,7 +1,7 @@
 import { X, MapPin, Ruler, Target, FileText, Globe, Euro, Calendar } from "lucide-react";
 
 // WGS84 to LKS94 (EPSG:3346) approximate conversion using Transverse Mercator projection
-const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
+export const wgs84ToLks94 = (lat: number, lng: number): { x: number; y: number } => {
   const a = 6378137.0;
   const f = 1 / 298.257222101;
   const lat0 = 0;
