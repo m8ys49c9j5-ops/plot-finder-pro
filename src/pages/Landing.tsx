@@ -994,7 +994,7 @@ export default function Landing() {
                 marginBottom: "0.6rem",
               }}
             >
-              FAQ
+              D.U.K.
             </span>
             <h2
               className="font-display font-bold"
