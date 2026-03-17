@@ -26,6 +26,16 @@ const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/
 const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
+// Fire-and-forget analytics insert
+const logSearchAnalytics = (queryInput: string, searchType: string, isSuccessful: boolean, userId?: string) => {
+  supabase.from("search_analytics").insert({
+    query_input: queryInput,
+    search_type: searchType,
+    is_successful: isSuccessful,
+    user_id: userId || null,
+  }).then(() => {});
+};
+
 const buildExportProxyUrl = (
   baseUrl: string,
   coords: L.Coords,
@@ -169,8 +179,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
     setIsLoading(true);
     try {
       const data = await callEdgeFunction({ action: "identify", lat: latlng.lat, lng: latlng.lng });
+      const success = !!(data?.features && data.features.length > 0);
 
-      if (data?.features && data.features.length > 0) {
+      // Log analytics (fire and forget)
+      logSearchAnalytics(`${latlng.lat.toFixed(5)},${latlng.lng.toFixed(5)}`, "map_click", success, user?.id);
+
+      if (success) {
         const feature = data.features[0];
         const props = feature.properties || {};
 
@@ -193,12 +207,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.areaValue || props.PLOTAS_J,
           purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
-          address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
+          address: props.exactAddress || props.fullAddress || props.label || props.adresas || props.ADRESAS ||
+            [props.gatve_namo_nr, props.kaimas_miestas, props.seniunija ? `${props.seniunija} sen.` : null, props.rajonas ? `${props.rajonas} r. sav.` : null]
+              .filter(Boolean).join(", ") ||
             [props.sav_pavadinimas, props.seniunijos_pavad ? `${props.seniunijos_pavad} sen.` : null, props.apskritis ? `${props.apskritis} apskr.` : null]
               .filter(Boolean).join(", ") || undefined,
+          postalCode: props.postalCode || props.pasto_kodas || undefined,
           lat: latlng.lat, lng: latlng.lng,
           coordinates: feature.geometry?.coordinates,
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
+          vidutineRinkosVerte: props.vidutineRinkosVerte || props.vid_rinkos_verte || undefined,
+          vertinimoData: props.vertinimoData || props.vertinimo_data || undefined,
         };
         if (feature.geometry) highlightGeoJSON(feature);
         onParcelSelect(parcel, feature);
@@ -207,6 +226,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       }
     } catch (error) {
       console.error("Identify error:", error);
+      logSearchAnalytics(`${latlng.lat.toFixed(5)},${latlng.lng.toFixed(5)}`, "map_click", false, user?.id);
       toast.error("Paieškos klaida. Pabandykite vėliau.");
     } finally {
       setIsLoading(false);
@@ -217,8 +237,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
     setIsLoading(true);
     try {
       const data = await callEdgeFunction({ action: "search", cadastralNumber: query.trim() });
+      const success = !!(data?.features && data.features.length > 0);
 
-      if (data?.features && data.features.length > 0) {
+      // Log analytics (fire and forget)
+      logSearchAnalytics(query.trim(), "text_search", success, user?.id);
+
+      if (success) {
         const feature = data.features[0];
         const props = feature.properties || {};
 
@@ -229,11 +253,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
           unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
           area: props.skl_plotas || props.areaValue || props.PLOTAS_J,
           purpose: props.pask_tipas || props.currentUse || props.PASKIRTIS,
-          address: props.exactAddress || props.label || props.adresas || props.ADRESAS ||
+          address: props.exactAddress || props.fullAddress || props.label || props.adresas || props.ADRESAS ||
+            [props.gatve_namo_nr, props.kaimas_miestas, props.seniunija ? `${props.seniunija} sen.` : null, props.rajonas ? `${props.rajonas} r. sav.` : null]
+              .filter(Boolean).join(", ") ||
             [props.sav_pavadinimas, props.seniunijos_pavad ? `${props.seniunijos_pavad} sen.` : null, props.apskritis ? `${props.apskritis} apskr.` : null]
               .filter(Boolean).join(", ") || undefined,
+          postalCode: props.postalCode || props.pasto_kodas || undefined,
           coordinates: feature.geometry?.coordinates,
           formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
+          vidutineRinkosVerte: props.vidutineRinkosVerte || props.vid_rinkos_verte || undefined,
+          vertinimoData: props.vertinimoData || props.vertinimo_data || undefined,
         };
 
         if (feature.geometry && mapRef.current) {
@@ -251,6 +280,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onParcelSelect, searc
       }
     } catch (error) {
       console.error("Search error:", error);
+      logSearchAnalytics(query.trim(), "text_search", false, user?.id);
       toast.error("Paieškos klaida. Pabandykite vėliau.");
     } finally {
       setIsLoading(false);

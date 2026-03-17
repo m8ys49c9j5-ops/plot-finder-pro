@@ -60,6 +60,7 @@ export interface ParcelData {
   area?: number;
   purpose?: string;
   address?: string;
+  postalCode?: string;
   lat?: number;
   lng?: number;
   coordinates?: number[][][] | number[][][][];
@@ -171,7 +172,7 @@ export const PURPOSE_MAP: Record<string, string> = {
   "999": "Tarpinė",
 };
 
-const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSidebarProps) => {
+const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => {
   if (!parcel) return null;
 
   return (
@@ -195,26 +196,8 @@ const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSid
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* Go to report button */}
-          {onGoToReport && (
-            <button
-              onClick={onGoToReport}
-              className="w-full premium-gradient text-primary-foreground font-semibold rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-sm"
-            >
-              <FileText className="h-4 w-4" />
-              📄 Atidaryti išsamią ataskaitą
-            </button>
-          )}
-
-          {/* Full data */}
+          {/* Data rows — no header, no report button */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-6 w-6 rounded-md premium-gradient flex items-center justify-center">
-                <FileText className="h-3.5 w-3.5 text-primary-foreground" />
-              </div>
-              <h3 className="font-display font-semibold text-foreground">Sklypo informacija</h3>
-            </div>
-
             <div className="space-y-3">
               <InfoRow icon={<Target className="h-4 w-4" />} label="Unikalus Nr." value={parcel.unikalusNr || "—"} />
               <InfoRow icon={<Target className="h-4 w-4" />} label="Kadastrinis Nr." value={parcel.cadastralNumber} />
@@ -256,6 +239,9 @@ const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSid
               {parcel.address && (
                 <InfoRow icon={<MapPin className="h-4 w-4" />} label="Adresas" value={parcel.address} />
               )}
+              {parcel.postalCode && (
+                <InfoRow icon={<MapPin className="h-4 w-4" />} label="Pašto kodas" value={parcel.postalCode} />
+              )}
               {parcel.formavimoData && (
                 <InfoRow icon={<FileText className="h-4 w-4" />} label="Duomenų data" value={parcel.formavimoData} />
               )}
@@ -285,6 +271,9 @@ const ParcelSidebar = ({ parcel, onClose, searchInput, onGoToReport }: ParcelSid
                   <InfoRow icon={<Calendar className="h-4 w-4" />} label="Vertinimo data" value={parcel.vertinimoData} />
                 )}
               </div>
+              <p className="text-xs text-muted-foreground mt-3 italic">
+                * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės vertės.
+              </p>
             </div>
           )}
         </div>

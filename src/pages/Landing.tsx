@@ -253,6 +253,8 @@ const REPORT_FEATURES = [
   { icon: <IconEuro />, title: "Rinkos vertė", desc: "Automatiškai surinkta masinė vertė iš RC registro" },
   { icon: <IconSatellite />, title: "Ortofoto vaizdas", desc: "Palydovinis vaizdas su sklypo kontūrais" },
   { icon: <IconCheck />, title: "Žemės paskirtis", desc: "Oficiali paskirtis ir naudojimo kategorija" },
+  { icon: <IconMapPin />, title: "Sklypo adresas", desc: "" },
+  { icon: <IconTarget />, title: "Koordinatės", desc: "Nurodomos sklypo centro koordinatės" },
 ];
 
 const PRICING = [
