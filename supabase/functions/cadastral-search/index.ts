@@ -185,8 +185,8 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // ── Step A: Always fetch nearest-address data for postal code + components ──
-    // This runs regardless of which address path wins below.
+    // ── Step A: Try DB address table for postal code + components ──
+    let dbHadData = false;
     if (centroidLat !== null && centroidLon !== null) {
       try {
         const { data: nearRows } = await supabase.rpc("find_nearest_address", {
@@ -195,26 +195,66 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
         });
         if (nearRows && nearRows.length > 0) {
           const nr = nearRows[0];
-          // Postal code — always set if available
           if (nr.pasto_kodas) {
             props.postalCode = nr.pasto_kodas;
-            console.log(`Postal code: ${nr.pasto_kodas}`);
+            console.log(`Postal code from DB: ${nr.pasto_kodas}`);
           }
-          // Individual address components for hierarchical display
           if (nr.gyvenviete) props.kaimas_miestas = nr.gyvenviete;
           if (nr.savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = nr.savivaldybe;
-          // Store full nearest address as fallback (used in Step B if exact fails)
           if (nr.distance_m < 100) {
             props._nearestAddress = nr.full_address;
             props._nearestDistance = nr.distance_m;
           }
+          dbHadData = true;
         }
       } catch (e) {
-        console.error("Nearest address lookup error:", e);
+        console.error("Nearest address DB lookup error:", e);
       }
     }
 
-    // ── Step B: Try to find exact address inside plot boundaries ──
+    // ── Step A2: Nominatim fallback — runs when DB table is empty ──
+    // Free OpenStreetMap reverse geocoding, no API key required.
+    if (!dbHadData && centroidLat !== null && centroidLon !== null) {
+      try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${centroidLat}&lon=${centroidLon}&format=json&addressdetails=1&accept-language=lt`;
+        const nmRes = await fetch(nominatimUrl, {
+          headers: { "User-Agent": "ZemePro/1.0 (zemepro.lt)" },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (nmRes.ok) {
+          const nm = await nmRes.json();
+          const a = nm.address || {};
+          console.log("Nominatim address:", JSON.stringify(a));
+
+          // Postal code
+          if (a.postcode && !props.postalCode) {
+            props.postalCode = a.postcode;
+            console.log(`Postal code from Nominatim: ${a.postcode}`);
+          }
+          // Town / village
+          const gyvenviete = a.village || a.town || a.city || a.hamlet || a.suburb || "";
+          if (gyvenviete && !props.kaimas_miestas) props.kaimas_miestas = gyvenviete;
+          // Municipality (seniūnija / county)
+          const seniunija = a.municipality || a.county || "";
+          if (seniunija && !props.seniunija) props.seniunija = seniunija;
+          // Savivaldybė
+          const savivaldybe = a.state_district || a.state || "";
+          if (savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = savivaldybe;
+          // Full address string from Nominatim as fallback
+          if (nm.display_name && !props._nearestAddress) {
+            // Nominatim display_name is comma-separated from specific → general;
+            // take the first 3 parts for a clean local address
+            const parts = nm.display_name.split(",").map((s: string) => s.trim());
+            props._nearestAddress = parts.slice(0, 3).join(", ");
+            props._nearestDistance = 0;
+          }
+        }
+      } catch (e) {
+        console.error("Nominatim fallback error:", e);
+      }
+    }
+
+    // ── Step B: Try to find exact address inside plot boundaries (DB) ──
     const { data: exactAddrRows, error: exactError } = await supabase.rpc("find_exact_address_in_parcel", {
       p_kadastro: kadastroToSearch,
     });
@@ -229,7 +269,7 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
     else if (props._nearestAddress) {
       props.exactAddress = props._nearestAddress;
       props.addressDistance = props._nearestDistance;
-      console.log(`Nearest address used: ${props.exactAddress} (${props._nearestDistance?.toFixed(1)}m)`);
+      console.log(`Nearest address used: ${props.exactAddress}`);
     }
 
     // Clean up internal temp props
