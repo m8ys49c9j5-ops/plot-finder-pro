@@ -247,24 +247,12 @@ const WHY_ITEMS = [
 ];
 
 const REPORT_FEATURES = [
-  {
-    icon: <IconTarget />,
-    title: "Kadastrinis & Unikalus Nr.",
-    desc: "Nurodomi sklypo kadastrinis ir unikalūs numeriai",
-  },
-  {
-    icon: <IconRuler />,
-    title: "Sklypo plotas",
-    desc: "Pateikiamas juridinis sklypo plotas hektarais, 1 kv. m tikslumu",
-  },
+  { icon: <IconTarget />, title: "Kadastrinis & Unikalus Nr.", desc: "Tikslus sklypo identifikatorius iš NT registro" },
+  { icon: <IconRuler />, title: "Juridinis plotas", desc: "Registruotas plotas hektarais, tikslumas iki 4 ženklų" },
   { icon: <IconMap />, title: "Interaktyvus žemėlapis", desc: "Tikslios sklypo ribos kadastro ir ortofoto žemėlapyje" },
-  {
-    icon: <IconEuro />,
-    title: "Sklypo vidutinė rinkos vertė",
-    desc: "Vertė nustatyta pagal masinį vertinimą, vertinimo data nurodyrta ataskaitoje",
-  },
+  { icon: <IconEuro />, title: "Rinkos vertė", desc: "Automatiškai surinkta masinė vertė iš RC registro" },
   { icon: <IconSatellite />, title: "Ortofoto vaizdas", desc: "Palydovinis vaizdas su sklypo kontūrais" },
-  { icon: <IconCheck />, title: "Esama žemės sklypo paskirtis", desc: "" },
+  { icon: <IconCheck />, title: "Žemės paskirtis", desc: "Oficiali paskirtis ir naudojimo kategorija" },
 ];
 
 const PRICING = [
@@ -330,7 +318,7 @@ export default function Landing() {
     config.content_hero_subtitle2 ??
     "Patikrinkite vietą, pagrindinius duomenis ir svarbiausią informaciją per kelias sekundes.";
   const heroTrust = config.content_hero_trust ?? "Patogu  •  Greita  •  Prieinama";
-  const searchPlaceholder = config.content_search_placeholder ?? "Įveskite sklypo kadastrinį arba unikalų numerį:";
+  const searchPlaceholder = config.content_search_placeholder ?? "Įveskite sklypo kadastrinį arba unikalų numerį";
   const whyTitle = config.content_why_title ?? "Kodėl verta naudoti ŽemėPro?";
   const footerAttrib = config.content_footer_attribution ?? "Duomenys: Geoportal.lt · Registrų centras · VŽT";
 
