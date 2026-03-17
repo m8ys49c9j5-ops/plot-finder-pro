@@ -185,6 +185,33 @@ export type Database = {
         }
         Relationships: []
       }
+      search_analytics: {
+        Row: {
+          created_at: string
+          id: string
+          is_successful: boolean
+          query_input: string
+          search_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_successful?: boolean
+          query_input: string
+          search_type?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_successful?: boolean
+          query_input?: string
+          search_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       search_history: {
         Row: {
           cadastral_number: string
