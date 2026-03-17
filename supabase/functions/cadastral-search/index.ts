@@ -7,8 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-
-
 // Create a map to cache search results
 const cache = new Map<string, any>();
 
@@ -41,18 +39,18 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   let cleaned = cadastralNumber.trim();
 
   // 1. Auto-pad missing zeroes if the input contains a colon (e.g., 1234/5678:12 -> 1234/5678:0012)
-  if (cleaned.includes(':')) {
-    const parts = cleaned.split(':');
+  if (cleaned.includes(":")) {
+    const parts = cleaned.split(":");
     if (parts.length === 2 && parts[1].length > 0 && parts[1].length < 4) {
-      parts[1] = parts[1].padStart(4, '0');
-      cleaned = parts.join(':');
+      parts[1] = parts[1].padStart(4, "0");
+      cleaned = parts.join(":");
     }
   } else {
     // 2. Auto-pad missing zeroes if the input is purely digits and between 9-11 characters
     const pureDigits = cleaned.replace(/\D/g, "");
     if (pureDigits.length > 8 && pureDigits.length < 12) {
       const base = pureDigits.substring(0, 8);
-      const tail = pureDigits.substring(8).padStart(4, '0');
+      const tail = pureDigits.substring(8).padStart(4, "0");
       cleaned = base + tail;
     }
   }
@@ -67,10 +65,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
     // --- 1. Exact match by kadastro_nr or unikalus_nr ---
     const { data: exactData, error: exactError } = await supabase
@@ -100,7 +95,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
 
       if (jsonbData && jsonbData.length > 0) {
         const match = jsonbData.find((row) => {
-          const kadDigits = (row['kadastro_nr'] ?? "").replace(/\D/g, "");
+          const kadDigits = (row["kadastro_nr"] ?? "").replace(/\D/g, "");
           const uniDigits = (row.unikalus_nr ?? "").replace(/\D/g, "");
           return kadDigits === digitsOnly || uniDigits === digitsOnly;
         });
@@ -183,50 +178,63 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
     feature.geometry = convertGeometryLKS94toWGS84(feature.geometry);
   }
 
-  props.nationalCadastralReference =
-    props.kadastro_nr || props.unikalus_nr?.toString() || searchInput;
+  props.nationalCadastralReference = props.kadastro_nr || props.unikalus_nr?.toString() || searchInput;
 
-  // Look up exact address inside parcel, then fallback to nearest
+  // Look up address and supplementary location data
   const kadastroToSearch = props.kadastro_nr || props.unikalus_nr || searchInput;
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // 1. Try to find exact address inside plot boundaries
-    const { data: exactAddrRows, error: exactError } = await supabase
-      .rpc("find_exact_address_in_parcel", { p_kadastro: kadastroToSearch });
+    // ── Step A: Always fetch nearest-address data for postal code + components ──
+    // This runs regardless of which address path wins below.
+    if (centroidLat !== null && centroidLon !== null) {
+      try {
+        const { data: nearRows } = await supabase.rpc("find_nearest_address", {
+          p_lat: centroidLat,
+          p_lon: centroidLon,
+        });
+        if (nearRows && nearRows.length > 0) {
+          const nr = nearRows[0];
+          // Postal code — always set if available
+          if (nr.pasto_kodas) {
+            props.postalCode = nr.pasto_kodas;
+            console.log(`Postal code: ${nr.pasto_kodas}`);
+          }
+          // Individual address components for hierarchical display
+          if (nr.gyvenviete) props.kaimas_miestas = nr.gyvenviete;
+          if (nr.savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = nr.savivaldybe;
+          // Store full nearest address as fallback (used in Step B if exact fails)
+          if (nr.distance_m < 100) {
+            props._nearestAddress = nr.full_address;
+            props._nearestDistance = nr.distance_m;
+          }
+        }
+      } catch (e) {
+        console.error("Nearest address lookup error:", e);
+      }
+    }
+
+    // ── Step B: Try to find exact address inside plot boundaries ──
+    const { data: exactAddrRows, error: exactError } = await supabase.rpc("find_exact_address_in_parcel", {
+      p_kadastro: kadastroToSearch,
+    });
 
     if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
       const fullAddr = exactAddrRows[0].full_address;
-      // Append savivaldybė from WFS props or nearest lithuanian_addresses entry
-      let savivaldybe = props.sav_pavadinimas || "";
-      if (!savivaldybe && centroidLat !== null && centroidLon !== null) {
-        try {
-          const { data: litRows } = await supabase.rpc("find_nearest_savivaldybe", {
-            p_lat: centroidLat, p_lon: centroidLon
-          });
-          if (litRows && litRows.length > 0) {
-            savivaldybe = litRows[0].savivaldybe || "";
-          }
-        } catch {}
-      }
+      const savivaldybe = props.sav_pavadinimas || "";
       props.exactAddress = savivaldybe ? `${fullAddr}, ${savivaldybe}` : fullAddr;
       console.log(`Exact address found: ${props.exactAddress}`);
     }
-    // 2. Fallback to nearest address
-    else if (centroidLat !== null && centroidLon !== null) {
-      const { data: nearAddrRows, error: nearError } = await supabase
-        .rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon });
-
-      if (!nearError && nearAddrRows && nearAddrRows.length > 0 && nearAddrRows[0].distance_m < 50) {
-        props.exactAddress = nearAddrRows[0].full_address;
-        props.addressDistance = nearAddrRows[0].distance_m;
-        console.log(`Nearest address: ${nearAddrRows[0].full_address} (${nearAddrRows[0].distance_m?.toFixed(1)}m)`);
-      }
-      // If no exact address found, leave exactAddress unset so frontend falls back to WFS properties
+    // ── Step C: Fall back to nearest address string ──
+    else if (props._nearestAddress) {
+      props.exactAddress = props._nearestAddress;
+      props.addressDistance = props._nearestDistance;
+      console.log(`Nearest address used: ${props.exactAddress} (${props._nearestDistance?.toFixed(1)}m)`);
     }
+
+    // Clean up internal temp props
+    delete props._nearestAddress;
+    delete props._nearestDistance;
   } catch (e) {
     console.error("Address lookup error:", e);
   }
@@ -241,7 +249,7 @@ function lks94ToWGS84(x: number, y: number): [number, number] {
   const f = 1 / 298.257223563;
   const e2 = 2 * f - f * f;
   const k0 = 0.9998;
-  const lon0 = 24.0 * Math.PI / 180;
+  const lon0 = (24.0 * Math.PI) / 180;
   const fe = 500000;
 
   const xAdj = x - fe;
@@ -255,7 +263,9 @@ function lks94ToWGS84(x: number, y: number): [number, number] {
     ((21 * e1 * e1) / 16 - (55 * e1 * e1 * e1 * e1) / 32) * Math.sin(4 * mu) +
     ((151 * e1 * e1 * e1) / 96) * Math.sin(6 * mu);
 
-  const sinP = Math.sin(phi1), cosP = Math.cos(phi1), tanP = Math.tan(phi1);
+  const sinP = Math.sin(phi1),
+    cosP = Math.cos(phi1),
+    tanP = Math.tan(phi1);
   const N1 = a / Math.sqrt(1 - e2 * sinP * sinP);
   const T1 = tanP * tanP;
   const C1 = (e2 / (1 - e2)) * cosP * cosP;
@@ -264,20 +274,16 @@ function lks94ToWGS84(x: number, y: number): [number, number] {
 
   const lat =
     phi1 -
-    (N1 * tanP / R1) *
-      (D * D / 2 -
+    ((N1 * tanP) / R1) *
+      ((D * D) / 2 -
         ((5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * (e2 / (1 - e2))) * D * D * D * D) / 24 +
-        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * (e2 / (1 - e2)) - 3 * C1 * C1) *
-          D * D * D * D * D * D) /
-          720);
+        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * (e2 / (1 - e2)) - 3 * C1 * C1) * D * D * D * D * D * D) / 720);
 
   const lon =
     lon0 +
     (D -
       ((1 + 2 * T1 + C1) * D * D * D) / 6 +
-      ((5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * (e2 / (1 - e2)) + 24 * T1 * T1) *
-        D * D * D * D * D) /
-        120) /
+      ((5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * (e2 / (1 - e2)) + 24 * T1 * T1) * D * D * D * D * D) / 120) /
       cosP;
 
   return [lon * (180 / Math.PI), lat * (180 / Math.PI)];
@@ -310,10 +316,14 @@ function convertGeometryLKS94toWGS84(geometry: any): any {
 
 function computeCentroid(geometry: any): [number, number] | null {
   const ringCentroid = (ring: number[][]): { cx: number; cy: number; area: number } => {
-    let area = 0, cx = 0, cy = 0;
+    let area = 0,
+      cx = 0,
+      cy = 0;
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const xi = ring[i][0], yi = ring[i][1];
-      const xj = ring[j][0], yj = ring[j][1];
+      const xi = ring[i][0],
+        yi = ring[i][1];
+      const xj = ring[j][0],
+        yj = ring[j][1];
       const cross = xi * yj - xj * yi;
       area += cross;
       cx += (xi + xj) * cross;
@@ -332,11 +342,12 @@ function computeCentroid(geometry: any): [number, number] | null {
 
   let rings: number[][][] = [];
   if (geometry.type === "Polygon") rings = [geometry.coordinates[0]];
-  else if (geometry.type === "MultiPolygon")
-    rings = geometry.coordinates.map((poly: number[][][]) => poly[0]);
+  else if (geometry.type === "MultiPolygon") rings = geometry.coordinates.map((poly: number[][][]) => poly[0]);
   else return null;
 
-  let totalArea = 0, sumX = 0, sumY = 0;
+  let totalArea = 0,
+    sumX = 0,
+    sumY = 0;
   for (const ring of rings) {
     const { cx, cy, area } = ringCentroid(ring);
     sumX += cx * area;
@@ -354,25 +365,40 @@ function wgs84ToLKS94(lat: number, lon: number): [number, number] {
   const f = 1 / 298.257223563;
   const e2 = 2 * f - f * f;
   const k0 = 0.9998;
-  const lon0 = 24.0 * Math.PI / 180;
+  const lon0 = (24.0 * Math.PI) / 180;
   const fe = 500000;
 
-  const phi = lat * Math.PI / 180;
-  const lam = lon * Math.PI / 180;
-  const sinP = Math.sin(phi), cosP = Math.cos(phi), tanP = Math.tan(phi);
+  const phi = (lat * Math.PI) / 180;
+  const lam = (lon * Math.PI) / 180;
+  const sinP = Math.sin(phi),
+    cosP = Math.cos(phi),
+    tanP = Math.tan(phi);
   const N = a / Math.sqrt(1 - e2 * sinP * sinP);
   const T = tanP * tanP;
   const C = (e2 / (1 - e2)) * cosP * cosP;
   const A = (lam - lon0) * cosP;
-  const M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256) * phi
-    - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 * e2 * e2 / 1024) * Math.sin(2 * phi)
-    + (15 * e2 * e2 / 256 + 45 * e2 * e2 * e2 / 1024) * Math.sin(4 * phi)
-    - (35 * e2 * e2 * e2 / 3072) * Math.sin(6 * phi));
+  const M =
+    a *
+    ((1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 * e2 * e2) / 256) * phi -
+      ((3 * e2) / 8 + (3 * e2 * e2) / 32 + (45 * e2 * e2 * e2) / 1024) * Math.sin(2 * phi) +
+      ((15 * e2 * e2) / 256 + (45 * e2 * e2 * e2) / 1024) * Math.sin(4 * phi) -
+      ((35 * e2 * e2 * e2) / 3072) * Math.sin(6 * phi));
 
-  const x = fe + k0 * N * (A + (1 - T + C) * A * A * A / 6
-    + (5 - 18 * T + T * T + 72 * C - 58 * (e2 / (1 - e2))) * A * A * A * A * A / 120);
-  const y = k0 * (M + N * tanP * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A * A * A * A / 24
-    + (61 - 58 * T + T * T + 600 * C - 330 * (e2 / (1 - e2))) * A * A * A * A * A * A / 720));
+  const x =
+    fe +
+    k0 *
+      N *
+      (A +
+        ((1 - T + C) * A * A * A) / 6 +
+        ((5 - 18 * T + T * T + 72 * C - 58 * (e2 / (1 - e2))) * A * A * A * A * A) / 120);
+  const y =
+    k0 *
+    (M +
+      N *
+        tanP *
+        ((A * A) / 2 +
+          ((5 - T + 9 * C + 4 * C * C) * A * A * A * A) / 24 +
+          ((61 - 58 * T + T * T + 600 * C - 330 * (e2 / (1 - e2))) * A * A * A * A * A * A) / 720));
 
   return [x, y];
 }
@@ -383,14 +409,10 @@ async function identifyByCoords(lat: number, lng: number, _zoom: number) {
   const [lksX, lksY] = wgs84ToLKS94(lat, lng);
   console.log(`Identify at WGS84(${lat}, ${lng}) → LKS94(${lksX.toFixed(1)}, ${lksY.toFixed(1)})`);
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
   // Fast bbox lookup using SQL function with indexed columns
-  const { data: rows, error } = await supabase
-    .rpc("find_parcel_by_bbox", { p_x: lksX, p_y: lksY });
+  const { data: rows, error } = await supabase.rpc("find_parcel_by_bbox", { p_x: lksX, p_y: lksY });
 
   if (error) {
     console.error("Bbox query error:", error);
