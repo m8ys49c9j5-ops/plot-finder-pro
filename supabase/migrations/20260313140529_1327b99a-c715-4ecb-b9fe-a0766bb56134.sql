@@ -29,7 +29,7 @@ UPDATE app_config SET value = '"Jokių prenumeratų · Jokių mėnesinių mokes�
 UPDATE app_config SET value = '"Mokate tik kai naudojate"'::jsonb WHERE key = 'content_pricing_title';
 UPDATE app_config SET value = '"Viskas vienoje ataskaitoje"'::jsonb WHERE key = 'content_report_section_title';
 UPDATE app_config SET value = '"Atrakinti pilną sklypo ataskaitą"'::jsonb WHERE key = 'content_report_unlock_title';
-UPDATE app_config SET value = '"Įveskite adresą, kadastro numerį arba pažymėkite sklypą žemėlapyje"'::jsonb WHERE key = 'content_search_placeholder';
+UPDATE app_config SET value = '"Įveskite sklypo kadastrinį arba unikalų numerį"'::jsonb WHERE key = 'content_search_placeholder';
 UPDATE app_config SET value = '"Visa svarbiausia informacija apie sklypą vienoje vietoje."'::jsonb WHERE key = 'content_why_1_desc';
 UPDATE app_config SET value = '"Taupote laiką"'::jsonb WHERE key = 'content_why_1_title';
 UPDATE app_config SET value = '"Pagrindiniai duomenys padeda greitai įvertinti sklypo potencialą."'::jsonb WHERE key = 'content_why_2_desc';

@@ -26,7 +26,7 @@ const SearchBar = ({ onSearch, isLoading }: SearchBarProps) => {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Įveskite sklypo kadastrinį arba unikalų numerį"
+        placeholder="Įveskite sklypo kadastrinį arba unikalų numerį:"
         className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-sm"
       />
       <button

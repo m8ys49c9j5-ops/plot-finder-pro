@@ -311,26 +311,40 @@ export default function Landing() {
   const { config } = useAppConfig();
 
   // ── CMS-driven content (falls back to hard-coded if key not in DB) ──────────
-  const appName      = config.content_app_name      ?? "ŽemėPro";
-  const heroTitle    = config.content_hero_title     ?? "ŽemėPro";
-  const heroSub1     = config.content_hero_subtitle1 ?? "Greita ir patogi informacija apie bet kurį Lietuvos sklypą.";
-  const heroSub2     = config.content_hero_subtitle2 ?? "Patikrinkite vietą, pagrindinius duomenis ir svarbiausią informaciją per kelias sekundes.";
-  const heroTrust    = config.content_hero_trust     ?? "Patogu  •  Greita  •  Prieinama";
-  const searchPlaceholder = config.content_search_placeholder ?? "Įveskite adresą, kadastro numerį arba pažymėkite sklypą žemėlapyje";
-  const whyTitle     = config.content_why_title      ?? "Kodėl verta naudoti ŽemėPro?";
+  const appName = config.content_app_name ?? "ŽemėPro";
+  const heroTitle = config.content_hero_title ?? "ŽemėPro";
+  const heroSub1 = config.content_hero_subtitle1 ?? "Greita ir patogi informacija apie bet kurį Lietuvos sklypą.";
+  const heroSub2 =
+    config.content_hero_subtitle2 ??
+    "Patikrinkite vietą, pagrindinius duomenis ir svarbiausią informaciją per kelias sekundes.";
+  const heroTrust = config.content_hero_trust ?? "Patogu  •  Greita  •  Prieinama";
+  const searchPlaceholder = config.content_search_placeholder ?? "Įveskite sklypo kadastrinį arba unikalų numerį:";
+  const whyTitle = config.content_why_title ?? "Kodėl verta naudoti ŽemėPro?";
   const footerAttrib = config.content_footer_attribution ?? "Duomenys: Geoportal.lt · Registrų centras · VŽT";
 
   // Why items from CMS
   const WHY_ITEMS_CMS = [
-    { n: "1", title: config.content_why_1_title ?? "Taupote laiką",             desc: config.content_why_1_desc ?? "Visa svarbiausia informacija apie sklypą vienoje vietoje." },
-    { n: "2", title: config.content_why_2_title ?? "Gaunate pirminę sklypo analizę", desc: config.content_why_2_desc ?? "Pagrindiniai duomenys padeda greitai įvertinti sklypo potencialą." },
-    { n: "3", title: config.content_why_3_title ?? "Matote tikslią sklypo vietą",    desc: config.content_why_3_desc ?? "Interaktyvus žemėlapis leidžia lengvai suprasti aplinką ir kaimynystę." },
+    {
+      n: "1",
+      title: config.content_why_1_title ?? "Taupote laiką",
+      desc: config.content_why_1_desc ?? "Visa svarbiausia informacija apie sklypą vienoje vietoje.",
+    },
+    {
+      n: "2",
+      title: config.content_why_2_title ?? "Gaunate pirminę sklypo analizę",
+      desc: config.content_why_2_desc ?? "Pagrindiniai duomenys padeda greitai įvertinti sklypo potencialą.",
+    },
+    {
+      n: "3",
+      title: config.content_why_3_title ?? "Matote tikslią sklypo vietą",
+      desc: config.content_why_3_desc ?? "Interaktyvus žemėlapis leidžia lengvai suprasti aplinką ir kaimynystę.",
+    },
   ];
 
   // Button labels / hrefs from CMS
-  const btnSignin   = config.btn_nav_signin    ?? { label: "Prisijungti",        href: "/auth", enabled: true };
-  const btnTryFree  = config.btn_nav_try_free  ?? { label: "Išbandyti nemokamai", href: "/map",  enabled: true };
-  const btnFeatCta  = config.btn_features_cta  ?? { label: "Išbandyti dabar →",  href: "/map",  enabled: true };
+  const btnSignin = config.btn_nav_signin ?? { label: "Prisijungti", href: "/auth", enabled: true };
+  const btnTryFree = config.btn_nav_try_free ?? { label: "Išbandyti nemokamai", href: "/map", enabled: true };
+  const btnFeatCta = config.btn_features_cta ?? { label: "Išbandyti dabar →", href: "/map", enabled: true };
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -341,7 +355,9 @@ export default function Landing() {
   const renderAppName = (name: string, extraClass = "") => {
     if (name.includes("Pro")) {
       const parts = name.split("Pro");
-      return React.createElement("span", { className: extraClass },
+      return React.createElement(
+        "span",
+        { className: extraClass },
         parts[0],
         React.createElement("span", { className: "text-gradient" }, "Pro"),
         parts[1] ?? "",
@@ -416,46 +432,46 @@ export default function Landing() {
         {/* Auth buttons — exactly like screenshot */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {btnSignin.enabled !== false && (
-          <button
-            onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
-            style={{
-              background: "rgba(255,255,255,0.85)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(0,0,0,0.15)",
-              color: "hsl(var(--foreground))",
-              borderRadius: 8,
-              padding: "7px 18px",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "background .2s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-          >
-            {btnSignin.label ?? "Prisijungti"}
-          </button>
+            <button
+              onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
+              style={{
+                background: "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                border: "1px solid rgba(0,0,0,0.15)",
+                color: "hsl(var(--foreground))",
+                borderRadius: 8,
+                padding: "7px 18px",
+                fontSize: "0.85rem",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+            >
+              {btnSignin.label ?? "Prisijungti"}
+            </button>
           )}
           {btnTryFree.enabled !== false && (
-          <button
-            onClick={() => navigate(btnTryFree.href ?? "/map")}
-            className="premium-gradient"
-            style={{
-              border: "none",
-              color: "#fff",
-              borderRadius: 8,
-              padding: "7px 18px",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "opacity .2s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            {btnTryFree.label ?? "Išbandyti nemokamai"}
-          </button>
+            <button
+              onClick={() => navigate(btnTryFree.href ?? "/map")}
+              className="premium-gradient"
+              style={{
+                border: "none",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "7px 18px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "opacity .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              {btnTryFree.label ?? "Išbandyti nemokamai"}
+            </button>
           )}
         </div>
       </nav>
@@ -796,24 +812,24 @@ export default function Landing() {
 
           <div style={{ textAlign: "center", marginTop: "2.5rem" }}>
             {btnFeatCta.enabled !== false && (
-            <button
-              onClick={() => navigate(btnFeatCta.href ?? "/map")}
-              className="premium-gradient"
-              style={{
-                border: "none",
-                color: "#fff",
-                borderRadius: 10,
-                padding: "11px 32px",
-                fontSize: "0.9rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "opacity .2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              {btnFeatCta.label ?? "Išbandyti dabar →"}
-            </button>
+              <button
+                onClick={() => navigate(btnFeatCta.href ?? "/map")}
+                className="premium-gradient"
+                style={{
+                  border: "none",
+                  color: "#fff",
+                  borderRadius: 10,
+                  padding: "11px 32px",
+                  fontSize: "0.9rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "opacity .2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                {btnFeatCta.label ?? "Išbandyti dabar →"}
+              </button>
             )}
           </div>
         </div>
@@ -1045,9 +1061,7 @@ export default function Landing() {
             Žemė<span className="text-gradient">Pro</span>
           </span>
         </div>
-        <p style={{ color: "hsl(var(--muted-foreground) / 0.6)", fontSize: "0.74rem", margin: 0 }}>
-          {footerAttrib}
-        </p>
+        <p style={{ color: "hsl(var(--muted-foreground) / 0.6)", fontSize: "0.74rem", margin: 0 }}>{footerAttrib}</p>
         <p style={{ color: "hsl(var(--muted-foreground) / 0.6)", fontSize: "0.74rem", margin: 0 }}>
           © {new Date().getFullYear()} ŽemėPro
         </p>
