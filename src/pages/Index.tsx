@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import PricingModal from "@/components/PricingModal";
-import Report1 from "@/pages/Report1";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
@@ -13,13 +12,11 @@ import { toast } from "sonner";
 const Index = () => {
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
-  const [activeView, setActiveView] = useState<"map" | "report">("map");
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [pricingOpen, setPricingOpen] = useState(false);
-  const [parcelUnlocked, setParcelUnlocked] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -46,7 +43,6 @@ const Index = () => {
         try {
           const parcel = JSON.parse(stored);
           setSelectedParcel(parcel);
-          setActiveView("report");
         } catch {}
       }
       const storedFeature = localStorage.getItem("pendingFeature");
@@ -55,7 +51,7 @@ const Index = () => {
           setSelectedFeature(JSON.parse(storedFeature));
         } catch {}
       }
-      window.history.replaceState({}, "", "/");
+      window.history.replaceState({}, "", "/map");
     }
   }, [searchParams, refreshCredits]);
 
@@ -76,57 +72,11 @@ const Index = () => {
     setSearchQuery(null);
   }, []);
 
+  // Stay on map — just open sidebar, don't navigate to report
   const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
     setSelectedParcel(parcel);
     if (feature) setSelectedFeature(feature);
-    setParcelUnlocked(false); // Reset — Report1 will verify from DB
-    setActiveView("report");
   }, []);
-
-  const handleGoToMap = useCallback(
-    (shouldHighlight = false, layer?: "standard" | "ortho") => {
-      setParcelUnlocked(shouldHighlight);
-      if (layer) {
-        setActiveLayer(layer);
-      }
-      setActiveView("map");
-      setTimeout(() => {
-        if (layer) {
-          mapViewRef.current?.setLayerType(layer);
-        }
-        if (shouldHighlight && selectedParcel && mapViewRef.current && selectedFeature) {
-          mapViewRef.current?.highlightAndFit(selectedFeature);
-        }
-      }, 200);
-    },
-    [selectedParcel, selectedFeature],
-  );
-
-  const handleGoToReport = useCallback(() => {
-    setActiveView("report");
-  }, []);
-
-  // Check unlock status when parcel is selected and we're on map view
-  useEffect(() => {
-    if (!selectedParcel?.cadastralNumber || !user) {
-      setParcelUnlocked(false);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from("search_history")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("cadastral_number", selectedParcel.cadastralNumber)
-        .limit(1);
-      setParcelUnlocked(!!(data && data.length > 0));
-    })();
-  }, [selectedParcel?.cadastralNumber, user]);
-
-  // Report view
-  if (activeView === "report" && selectedParcel) {
-    return <Report1 parcel={selectedParcel} onGoToMap={handleGoToMap} feature={selectedFeature} />;
-  }
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
@@ -160,12 +110,12 @@ const Index = () => {
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
         <div className="flex flex-col items-center pt-4 px-4 gap-3">
           <div className="pointer-events-auto flex items-center gap-2">
-            <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg">
+            <Link to="/" className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg hover:bg-muted/60 transition-colors no-underline">
               <Layers className="h-5 w-5 text-primary" />
               <span className="font-display font-bold text-foreground text-lg">
                 Žemė<span className="text-gradient">Pro</span>
               </span>
-            </div>
+            </Link>
 
             {!loading && (
               <>
@@ -212,12 +162,11 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Parcel sidebar on map */}
+      {/* Parcel sidebar on map — no report button */}
       <ParcelSidebar
         parcel={selectedParcel}
         onClose={() => setSelectedParcel(null)}
         searchInput={lastSearchInput}
-        onGoToReport={selectedParcel ? handleGoToReport : undefined}
       />
 
       {selectedParcel && (
