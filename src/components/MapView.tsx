@@ -168,12 +168,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
 
     const userRef = useRef(user);
     const creditsRef = useRef(credits);
-    useEffect(() => {
-      userRef.current = user;
-    }, [user]);
-    useEffect(() => {
-      creditsRef.current = credits;
-    }, [credits]);
+    useEffect(() => { userRef.current = user; }, [user]);
+    useEffect(() => { creditsRef.current = credits; }, [credits]);
 
     const bringKadastroToFront = () => {
       if (kadastroLayerRef.current && mapRef.current?.hasLayer(kadastroLayerRef.current)) {
@@ -242,12 +238,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             }
             if (!kadastroLayerRef.current) {
               kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
-                maxZoom: 19,
-                opacity: 0.85,
-                attribution: "Kadastro žemėlapis",
+                maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
               });
             }
-            kadastroLayerRef.current;
+            kadastroLayerRef.current.addTo(map);
             bringKadastroToFront();
             return true;
           }
@@ -393,9 +387,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               [
                 props.kaimas_miestas,
                 props.seniunija && String(props.seniunija).trim() ? `${props.seniunija} sen.` : null,
-                props.sav_pavadinimas && String(props.sav_pavadinimas).trim()
-                  ? `${props.sav_pavadinimas} r. sav.`
-                  : null,
+                props.sav_pavadinimas && String(props.sav_pavadinimas).trim() ? `${props.sav_pavadinimas} r. sav.` : null,
               ]
                 .filter(Boolean)
                 .join(", ") ||
