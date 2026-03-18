@@ -212,9 +212,8 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
       }
     }
 
-    // ── Step A2: Nominatim fallback — runs when DB table is empty ──
-    // Free OpenStreetMap reverse geocoding, no API key required.
-    if (!dbHadData && centroidLat !== null && centroidLon !== null) {
+    // ── Step A2: Nominatim fallback — runs when postal code or location data is missing ──
+    if (centroidLat !== null && centroidLon !== null && !props.postalCode) {
       try {
         const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${centroidLat}&lon=${centroidLon}&format=json&addressdetails=1&accept-language=lt`;
         const nmRes = await fetch(nominatimUrl, {
@@ -240,14 +239,6 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
           // Savivaldybė
           const savivaldybe = a.state_district || a.state || "";
           if (savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = savivaldybe;
-          // Full address string from Nominatim as fallback
-          if (nm.display_name && !props._nearestAddress) {
-            // Nominatim display_name is comma-separated from specific → general;
-            // take the first 3 parts for a clean local address
-            const parts = nm.display_name.split(",").map((s: string) => s.trim());
-            props._nearestAddress = parts.slice(0, 3).join(", ");
-            props._nearestDistance = 0;
-          }
         }
       } catch (e) {
         console.error("Nominatim fallback error:", e);
@@ -259,18 +250,39 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
       p_kadastro: kadastroToSearch,
     });
 
+    let streetPart = "";
     if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
-      const fullAddr = exactAddrRows[0].full_address;
-      const savivaldybe = props.sav_pavadinimas || "";
-      props.exactAddress = savivaldybe ? `${fullAddr}, ${savivaldybe}` : fullAddr;
-      console.log(`Exact address found: ${props.exactAddress}`);
+      streetPart = exactAddrRows[0].full_address || "";
+      console.log(`Exact street address found: ${streetPart}`);
+    } else if (props._nearestAddress) {
+      streetPart = props._nearestAddress;
+      console.log(`Nearest address used: ${streetPart}`);
     }
-    // ── Step C: Fall back to nearest address string ──
-    else if (props._nearestAddress) {
-      props.exactAddress = props._nearestAddress;
-      props.addressDistance = props._nearestDistance;
-      console.log(`Nearest address used: ${props.exactAddress}`);
-    }
+
+    // ── Step D: Build full hierarchical address ──
+    // Format: [gatvė ir namo nr.], [kaimas/miestas], [seniūnija sen.], [rajonas r. sav.]
+    const seniunija = props.seniunijos_pavad || props.seniunija || "";
+    const savivaldybe = props.sav_pavadinimas || "";
+    const kaimas = props.kaimas_miestas || "";
+
+    const addressParts = [
+      streetPart,
+      kaimas,
+      seniunija && !seniunija.toLowerCase().includes("sen.") ? `${seniunija} sen.` : seniunija,
+      savivaldybe && !savivaldybe.toLowerCase().includes("sav.") ? `${savivaldybe} r. sav.` : savivaldybe,
+    ].filter((p) => p && String(p).trim().length > 0);
+
+    // Deduplicate — e.g. if streetPart already contains the savivaldybė
+    const seen = new Set<string>();
+    const uniqueParts = addressParts.filter((p) => {
+      const normalized = String(p).trim().toLowerCase();
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+
+    props.exactAddress = uniqueParts.join(", ") || undefined;
+    console.log(`Full address: ${props.exactAddress}`);
 
     // Clean up internal temp props
     delete props._nearestAddress;
