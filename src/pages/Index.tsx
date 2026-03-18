@@ -1,13 +1,33 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
-import MapView, { type MapViewHandle, type MapLayerType } from "@/components/MapView";
+import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Layers, Map, Satellite, User, LogOut, Coins } from "lucide-react";
+import {
+  Layers,
+  Map,
+  Satellite,
+  User,
+  LogOut,
+  Coins,
+  Trees,
+  Droplets,
+  ShieldAlert,
+  Zap,
+  LayoutGrid,
+} from "lucide-react";
 import { toast } from "sonner";
+
+const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.ElementType }[] = [
+  { key: "parcels", label: "Sklypai", Icon: LayoutGrid },
+  { key: "forest", label: "Miškai", Icon: Trees },
+  { key: "melior", label: "Melioracija", Icon: Droplets },
+  { key: "szns", label: "SZNS", Icon: ShieldAlert },
+  { key: "energy", label: "Tinklai", Icon: Zap },
+];
 
 const Index = () => {
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
@@ -16,6 +36,13 @@ const Index = () => {
   const [lastSearchInput, setLastSearchInput] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
+  const [activeOverlays, setActiveOverlays] = useState<Record<OverlayLayerType, boolean>>({
+    parcels: true,
+    forest: false,
+    melior: false,
+    szns: false,
+    energy: false,
+  });
   const [pricingOpen, setPricingOpen] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
@@ -27,7 +54,6 @@ const Index = () => {
   useEffect(() => {
     if (qParam) {
       handleSearch(qParam);
-      // Clear the URL param so it doesn't re-trigger
       window.history.replaceState({}, "", "/map");
     }
   }, [qParam]);
@@ -61,6 +87,13 @@ const Index = () => {
     mapViewRef.current?.setLayerType(next);
   }, [activeLayer]);
 
+  const handleToggleOverlay = useCallback((key: OverlayLayerType) => {
+    const newState = mapViewRef.current?.toggleOverlay(key);
+    if (typeof newState === "boolean") {
+      setActiveOverlays((prev) => ({ ...prev, [key]: newState }));
+    }
+  }, []);
+
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
     setSearchQuery(query);
@@ -72,7 +105,6 @@ const Index = () => {
     setSearchQuery(null);
   }, []);
 
-  // Stay on map — just open sidebar, don't navigate to report
   const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
     setSelectedParcel(parcel);
     if (feature) setSelectedFeature(feature);
@@ -88,8 +120,9 @@ const Index = () => {
         initialFeature={selectedFeature}
       />
 
-      {/* Map layer toggle */}
-      <div className="absolute top-4 left-4 z-[900]">
+      {/* Map layer & overlay toggles */}
+      <div className="absolute top-4 left-4 z-[900] flex flex-col gap-1.5">
+        {/* Ortofoto toggle */}
         <button
           onClick={toggleLayer}
           className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
@@ -104,6 +137,29 @@ const Index = () => {
             {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
           </span>
         </button>
+
+        {/* Overlay toggle buttons */}
+        {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => handleToggleOverlay(key)}
+            title={label}
+            className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
+              activeOverlays[key]
+                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                : "hover:bg-muted/60"
+            }`}
+          >
+            <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
+            <span
+              className={`text-xs font-medium hidden sm:inline ${
+                activeOverlays[key] ? "text-primary" : "text-foreground"
+              }`}
+            >
+              {label}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Top overlay */}
@@ -162,7 +218,6 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Parcel sidebar on map — no report button */}
       <ParcelSidebar
         parcel={selectedParcel}
         onClose={() => setSelectedParcel(null)}

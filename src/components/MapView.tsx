@@ -8,10 +8,12 @@ import { useAppConfig } from "@/hooks/useAppConfig";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
+export type OverlayLayerType = "parcels" | "forest" | "melior" | "szns" | "energy";
 
 export interface MapViewHandle {
   setLayerType: (type: MapLayerType) => void;
   highlightAndFit: (feature: any) => void;
+  toggleOverlay: (key: OverlayLayerType) => boolean;
 }
 
 interface MapViewProps {
@@ -24,6 +26,11 @@ interface MapViewProps {
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
 const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/MapServer";
 const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
+const FOREST_BASE = "https://www.geoportal.lt/mapproxy/vmt_mkd/MapServer";
+const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer";
+const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
+const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 // Fire-and-forget analytics insert
@@ -72,6 +79,70 @@ const KadastroTileLayer = L.TileLayer.extend({
   },
 });
 
+const ForestTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildExportProxyUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
+  },
+});
+
+const MeliorTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true);
+  },
+});
+
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+  },
+});
+
+const EsoElektraTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildExportProxyUrl(ESO_ELEKTRA_BASE, coords, (this as any)._map as L.Map, "png32", true);
+  },
+});
+
+const EsoDujosTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildExportProxyUrl(ESO_DUJOS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+  },
+});
+
+// SZNS identify helper — shows a toast with matched feature names
+const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
+  try {
+    const bounds = map.getBounds();
+    const size = map.getSize();
+    const sw = L.CRS.EPSG3857.project(bounds.getSouthWest());
+    const ne = L.CRS.EPSG3857.project(bounds.getNorthEast());
+    const point = L.CRS.EPSG3857.project(latlng);
+
+    const identifyUrl =
+      `${SZNS_BASE}/identify?` +
+      `geometry=${point.x},${point.y}&geometryType=esriGeometryPoint` +
+      `&sr=3857&layers=all` +
+      `&tolerance=5&mapExtent=${sw.x},${sw.y},${ne.x},${ne.y}` +
+      `&imageDisplay=${size.x},${size.y},96` +
+      `&returnGeometry=false&f=json`;
+
+    const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
+    const resp = await fetch(proxyUrl);
+    const data = await resp.json();
+
+    if (data?.results && data.results.length > 0) {
+      const names = data.results
+        .map((r: any) => r.attributes?.PAVADINIMAS || r.attributes?.NAME || r.layerName || "Nežinomas")
+        .filter(Boolean);
+      if (names.length > 0) {
+        toast.info(`SZNS: ${[...new Set(names)].join("; ")}`, { duration: 6000 });
+      }
+    }
+  } catch (e) {
+    console.error("SZNS identify error:", e);
+  }
+};
+
 const MapView = forwardRef<MapViewHandle, MapViewProps>(
   ({ onParcelSelect, searchQuery, onSearchComplete, initialFeature }, ref) => {
     const mapRef = useRef<L.Map | null>(null);
@@ -83,18 +154,28 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     const geoportalTileRef = useRef<L.TileLayer | null>(null);
     const orthoLayerRef = useRef<L.TileLayer | null>(null);
     const kadastroLayerRef = useRef<L.TileLayer | null>(null);
+
+    // Overlay layer refs
+    const forestLayerRef = useRef<L.TileLayer | null>(null);
+    const meliorLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsLayerRef = useRef<L.TileLayer | null>(null);
+    const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
+    const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsActiveRef = useRef(false);
+
     const { user, credits, refreshCredits } = useAuth();
     const { config } = useAppConfig();
 
-    // Refs to keep auth state current for async functions without stale closure issues
     const userRef = useRef(user);
     const creditsRef = useRef(credits);
-    useEffect(() => {
-      userRef.current = user;
-    }, [user]);
-    useEffect(() => {
-      creditsRef.current = credits;
-    }, [credits]);
+    useEffect(() => { userRef.current = user; }, [user]);
+    useEffect(() => { creditsRef.current = credits; }, [credits]);
+
+    const bringKadastroToFront = () => {
+      if (kadastroLayerRef.current && mapRef.current?.hasLayer(kadastroLayerRef.current)) {
+        kadastroLayerRef.current.bringToFront();
+      }
+    };
 
     useImperativeHandle(ref, () => ({
       setLayerType: (type: MapLayerType) => {
@@ -116,14 +197,84 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             geoportalTileRef.current.addTo(mapRef.current);
           if (baseTileRef.current) baseTileRef.current.bringToBack();
         }
-        if (kadastroLayerRef.current) kadastroLayerRef.current.bringToFront();
+        bringKadastroToFront();
       },
+
       highlightAndFit: (feature: any) => {
         if (!mapRef.current || !feature?.geometry) return;
         const layer = highlightGeoJSON(feature);
         if (layer) {
           const bounds = layer.getBounds();
           mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [80, 80], maxZoom: 17 });
+        }
+      },
+
+      toggleOverlay: (key: OverlayLayerType): boolean => {
+        const map = mapRef.current;
+        if (!map) return false;
+
+        const toggle = (
+          layerRef: React.MutableRefObject<L.TileLayer | null>,
+          LayerClass: any,
+          opts?: L.TileLayerOptions,
+        ): boolean => {
+          if (layerRef.current && map.hasLayer(layerRef.current)) {
+            map.removeLayer(layerRef.current);
+            return false;
+          }
+          if (!layerRef.current) {
+            layerRef.current = new LayerClass("", { maxZoom: 19, opacity: 0.7, ...opts });
+          }
+          layerRef.current!.addTo(map);
+          bringKadastroToFront();
+          return true;
+        };
+
+        switch (key) {
+          case "parcels": {
+            if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) {
+              map.removeLayer(kadastroLayerRef.current);
+              return false;
+            }
+            if (!kadastroLayerRef.current) {
+              kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
+                maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
+              });
+            }
+            kadastroLayerRef.current.addTo(map);
+            bringKadastroToFront();
+            return true;
+          }
+          case "forest":
+            return toggle(forestLayerRef, ForestTileLayer);
+          case "melior":
+            return toggle(meliorLayerRef, MeliorTileLayer);
+          case "szns": {
+            const active = toggle(sznsLayerRef, SznsTileLayer);
+            sznsActiveRef.current = active;
+            return active;
+          }
+          case "energy": {
+            // Use elektra layer presence as indicator
+            const isOn = esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current);
+            if (isOn) {
+              if (esoElektraLayerRef.current) map.removeLayer(esoElektraLayerRef.current);
+              if (esoDujosLayerRef.current) map.removeLayer(esoDujosLayerRef.current);
+              return false;
+            }
+            if (!esoElektraLayerRef.current) {
+              esoElektraLayerRef.current = new (EsoElektraTileLayer as any)("", { maxZoom: 19, opacity: 0.7 });
+            }
+            if (!esoDujosLayerRef.current) {
+              esoDujosLayerRef.current = new (EsoDujosTileLayer as any)("", { maxZoom: 19, opacity: 0.7 });
+            }
+            esoElektraLayerRef.current.addTo(map);
+            esoDujosLayerRef.current.addTo(map);
+            bringKadastroToFront();
+            return true;
+          }
+          default:
+            return false;
         }
       },
     }));
@@ -160,6 +311,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         opacity: 0.85,
         attribution: "Kadastro žemėlapis",
       }).addTo(map);
+
+      // Map click handler — SZNS identify + normal flow
+      map.on("click", (e: L.LeafletMouseEvent) => {
+        if (sznsActiveRef.current) {
+          identifySZNS(e.latlng, map);
+        }
+      });
 
       mapRef.current = map;
       setMapReady(true);
@@ -206,7 +364,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         const data = await callEdgeFunction({ action: "search", cadastralNumber: query.trim() });
         const success = !!(data?.features && data.features.length > 0);
 
-        // Log analytics (fire and forget)
         logSearchAnalytics(query.trim(), "text_search", success, userRef.current?.id);
 
         if (success) {
@@ -249,7 +406,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               const center = bounds.getCenter();
               parcel.lat = center.lat;
               parcel.lng = center.lng;
-              // Fit map to parcel, accounting for sidebar width on large screens
               mapRef.current.fitBounds(bounds, {
                 paddingTopLeft: [80, 120],
                 paddingBottomRight: [420, 80],
@@ -260,7 +416,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           }
           onParcelSelect(parcel, feature);
 
-          // Fetch market value asynchronously — show sidebar immediately, enrich when ready
           if (parcel.unikalusNr) {
             supabase.functions
               .invoke("fetch-market-value", { body: { unikalusNr: parcel.unikalusNr } })
@@ -276,7 +431,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
                   );
                 }
               })
-              .catch(() => {}); // fire-and-forget, never block the main flow
+              .catch(() => {});
           }
         } else {
           toast.error(data?.error || "Sklypas nerastas. Patikrinkite numerį.");
