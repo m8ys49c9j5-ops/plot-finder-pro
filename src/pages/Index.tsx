@@ -37,7 +37,7 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [activeOverlays, setActiveOverlays] = useState<Record<OverlayLayerType, boolean>>({
-    parcels: false,
+    parcels: true,
     forest: false,
     melior: false,
     szns: false,
@@ -145,7 +145,9 @@ const Index = () => {
             onClick={() => handleToggleOverlay(key)}
             title={label}
             className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
-              activeOverlays[key] ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25" : "hover:bg-muted/60"
+              activeOverlays[key]
+                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                : "hover:bg-muted/60"
             }`}
           >
             <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
@@ -164,10 +166,7 @@ const Index = () => {
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
         <div className="flex flex-col items-center pt-4 px-4 gap-3">
           <div className="pointer-events-auto flex items-center gap-2">
-            <Link
-              to="/"
-              className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg hover:bg-muted/60 transition-colors no-underline"
-            >
+            <Link to="/" className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg hover:bg-muted/60 transition-colors no-underline">
               <Layers className="h-5 w-5 text-primary" />
               <span className="font-display font-bold text-foreground text-lg">
                 Žemė<span className="text-gradient">Pro</span>
@@ -219,7 +218,11 @@ const Index = () => {
         </div>
       </div>
 
-      <ParcelSidebar parcel={selectedParcel} onClose={() => setSelectedParcel(null)} searchInput={lastSearchInput} />
+      <ParcelSidebar
+        parcel={selectedParcel}
+        onClose={() => setSelectedParcel(null)}
+        searchInput={lastSearchInput}
+      />
 
       {selectedParcel && (
         <div
