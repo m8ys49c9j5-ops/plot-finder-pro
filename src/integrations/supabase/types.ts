@@ -525,6 +525,9 @@ export type Database = {
         Returns: {
           distance_m: number
           full_address: string
+          gyvenviete: string
+          pasto_kodas: string
+          savivaldybe: string
         }[]
       }
       find_nearest_savivaldybe: {

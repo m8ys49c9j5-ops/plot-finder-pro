@@ -228,19 +228,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               props.adresas ||
               props.ADRESAS ||
               [
-                props.gatve_namo_nr,
                 props.kaimas_miestas,
                 props.seniunija && String(props.seniunija).trim() ? `${props.seniunija} sen.` : null,
-                props.rajonas && String(props.rajonas).trim() ? `${props.rajonas} r. sav.` : null,
-              ]
-                .filter(Boolean)
-                .join(", ") ||
-              [
-                props.sav_pavadinimas,
-                props.seniunijos_pavad && String(props.seniunijos_pavad).trim()
-                  ? `${props.seniunijos_pavad} sen.`
-                  : null,
-                props.apskritis && String(props.apskritis).trim() ? `${props.apskritis} apskr.` : null,
+                props.sav_pavadinimas && String(props.sav_pavadinimas).trim() ? `${props.sav_pavadinimas} r. sav.` : null,
               ]
                 .filter(Boolean)
                 .join(", ") ||
