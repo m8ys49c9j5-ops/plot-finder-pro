@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId } from "@/lib/sessionId";
@@ -12,14 +11,12 @@ import {
   Map,
   Satellite,
   User,
-  LogOut,
   Coins,
   Trees,
   Droplets,
   ShieldAlert,
   Zap,
   LayoutGrid,
-  History,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,24 +42,11 @@ const Index = () => {
     szns: false,
     energy: false,
   });
-  const [pricingOpen, setPricingOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, credits, loading, signOut, refreshCredits } = useAuth();
+  const { user, credits, loading, refreshCredits } = useAuth();
 
-  // Close account dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
-        setAccountMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Auto-search from ?q= parameter (e.g. from Landing page)
   const qParam = searchParams.get("q");
@@ -213,40 +197,18 @@ const Index = () => {
             {!loading && (
               <>
                 {user ? (
-                  <div className="flex items-center gap-1.5" ref={accountMenuRef}>
-                    <button
-                      onClick={() => setPricingOpen(true)}
-                      className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
-                    >
+                  <div className="flex items-center gap-1.5">
+                    <div className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg">
                       <Coins className="h-4 w-4 text-primary" />
                       <span className="text-sm font-semibold text-foreground">{credits}</span>
-                    </button>
+                    </div>
                     <button
-                      onClick={() => setAccountMenuOpen((v) => !v)}
+                      onClick={() => navigate("/account")}
                       className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
-                      title="Paskyra"
+                      title="Paskyra ir istorija"
                     >
                       <User className="h-4 w-4 text-muted-foreground" />
                     </button>
-                    {accountMenuOpen && (
-                      <div className="absolute top-full right-0 mt-2 glass-panel rounded-xl shadow-xl overflow-hidden min-w-[180px] z-[1000]">
-                        <button
-                          onClick={() => { setAccountMenuOpen(false); navigate("/history"); }}
-                          className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/60 flex items-center gap-2"
-                        >
-                          <History className="h-4 w-4" />
-                          Mano Paieškos
-                        </button>
-                        <div className="border-t border-border" />
-                        <button
-                          onClick={() => { setAccountMenuOpen(false); signOut(); }}
-                          className="w-full text-left px-4 py-3 text-sm text-muted-foreground hover:bg-muted/60 flex items-center gap-2"
-                        >
-                          <LogOut className="h-4 w-4" />
-                          Atsijungti
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <button
@@ -287,7 +249,6 @@ const Index = () => {
         />
       )}
 
-      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </div>
   );
 };

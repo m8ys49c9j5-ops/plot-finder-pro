@@ -13,7 +13,7 @@ import ParcelAudit2 from "./pages/ParcelAudit2";
 import NotFound from "./pages/NotFound";
 import AdminPanel from "./pages/AdminPanel";
 import Login from "./pages/login";
-import UserHistory from "./pages/UserHistory";
+import Account from "./pages/Account";
 import AdminAnalytics from "./pages/AdminAnalytics";
 
 const queryClient = new QueryClient();
@@ -34,7 +34,7 @@ const App = () => (
               <Route path="/auditas2" element={<ParcelAudit2 />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/history" element={<UserHistory />} />
+              <Route path="/account" element={<Account />} />
               <Route path="/analytics" element={<AdminAnalytics />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
