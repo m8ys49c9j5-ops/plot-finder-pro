@@ -120,22 +120,67 @@ const EsoDujosTileLayer = L.TileLayer.extend({
   },
 });
 
+const wgs84ToLKS94 = (lat: number, lng: number): { x: number; y: number } => {
+  const a  = 6378137.0;
+  const f  = 1 / 298.257222101;
+  const e2 = 2 * f - f * f;
+  const k0 = 0.9998;
+  const lng0 = 24.0 * Math.PI / 180;
+  const fe = 500000;
+
+  const phi  = lat * Math.PI / 180;
+  const lam  = lng * Math.PI / 180;
+  const sinP = Math.sin(phi);
+  const cosP = Math.cos(phi);
+  const tanP = Math.tan(phi);
+
+  const N = a / Math.sqrt(1 - e2 * sinP * sinP);
+  const T = tanP * tanP;
+  const C = (e2 / (1 - e2)) * cosP * cosP;
+  const A = (lam - lng0) * cosP;
+  const M = a * (
+    (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256) * phi
+    - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024) * Math.sin(2*phi)
+    + (15*e2*e2/256 + 45*e2*e2*e2/1024) * Math.sin(4*phi)
+    - (35*e2*e2*e2/3072) * Math.sin(6*phi)
+  );
+
+  const x = fe + k0 * N * (
+    A + (1 - T + C) * A*A*A/6
+    + (5 - 18*T + T*T + 72*C - 58*(e2/(1-e2))) * A*A*A*A*A/120
+  );
+  const y = k0 * (
+    M + N * tanP * (
+      A*A/2
+      + (5 - T + 9*C + 4*C*C) * A*A*A*A/24
+      + (61 - 58*T + T*T + 600*C - 330*(e2/(1-e2))) * A*A*A*A*A*A/720
+    )
+  );
+
+  return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
+};
+
 // SZNS identify helper — shows a rich Leaflet popup
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
+    const lks = wgs84ToLKS94(latlng.lat, latlng.lng);
+
     const bounds = map.getBounds();
-    const size = map.getSize();
-    const sw = L.CRS.EPSG3857.project(bounds.getSouthWest());
-    const ne = L.CRS.EPSG3857.project(bounds.getNorthEast());
-    const point = L.CRS.EPSG3857.project(latlng);
+    const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
+    const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
+    const size  = map.getSize();
 
     const identifyUrl =
       `${SZNS_BASE}/identify?` +
-      `geometry=${point.x},${point.y}&geometryType=esriGeometryPoint` +
-      `&sr=3857&layers=all` +
-      `&tolerance=5&mapExtent=${sw.x},${sw.y},${ne.x},${ne.y}` +
+      `geometry=${lks.x},${lks.y}` +
+      `&geometryType=esriGeometryPoint` +
+      `&sr=3346` +
+      `&layers=all` +
+      `&tolerance=5` +
+      `&mapExtent=${swLks.x},${swLks.y},${neLks.x},${neLks.y}` +
       `&imageDisplay=${size.x},${size.y},96` +
-      `&returnGeometry=false&f=json`;
+      `&returnGeometry=false` +
+      `&f=json`;
 
     const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
     const resp = await fetch(proxyUrl);
@@ -143,49 +188,49 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 
     if (data?.results && data.results.length > 0) {
       const seen = new Set<string>();
-      const rows: Array<{ layer: string; pavadinimas: string; kodas: string }> = [];
+      const rows: Array<{ layer: string; kodas: string }> = [];
 
       for (const r of data.results) {
-        const attrs = r.attributes ?? {};
-        const layer = r.layerName ?? "ŠZNS";
-        const pavadinimas =
-          attrs.PAVADINIMAS || attrs.NAME || attrs.pavadinimas || attrs.name || "—";
-        const kodas =
-          attrs.KODAS || attrs.CODE || attrs.kodas || attrs.code || "";
-        const key = `${layer}|${pavadinimas}`;
+        const attrs  = r.attributes ?? {};
+        const layer  = r.layerName ?? "ŠZNS";
+        const tipas  = attrs.TIPAS || attrs.TIP_KODAS || attrs.tipas || "";
+        const key    = `${layer}|${tipas}`;
         if (!seen.has(key)) {
           seen.add(key);
-          rows.push({ layer, pavadinimas, kodas });
+          rows.push({ layer, kodas: tipas });
         }
       }
 
       const rowsHtml = rows.map(row => `
-        <div style="margin-bottom:8px;">
-          <div style="font-size:11px;color:hsl(220,10%,46%);margin-bottom:2px;">${row.layer}${row.kodas ? ` · ${row.kodas}` : ""}</div>
-          <div style="font-size:13px;font-weight:500;">${row.pavadinimas}</div>
+        <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
+          <div style="font-size:12px;font-weight:600;color:#111;">${row.layer}</div>
+          ${row.kodas ? `<div style="font-size:11px;color:#666;margin-top:2px;">Kodas: ${row.kodas}</div>` : ""}
         </div>
       `).join("");
 
       const html = `
-        <div>
-          <div style="font-weight:600;font-size:14px;margin-bottom:8px;font-family:'Space Grotesk',sans-serif;">
-            Specialiosios sąlygos
+        <div style="min-width:200px;max-width:280px;font-family:Inter,sans-serif;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">
+            Specialiosios sąlygos (${rows.length})
           </div>
           ${rowsHtml}
-          <div style="font-size:10px;color:hsl(220,10%,46%);margin-top:4px;">
-            Šaltinis: Registrų centras ŠZNS
-          </div>
+          <div style="font-size:10px;color:#aaa;margin-top:8px;">© VĮ Registrų centras</div>
         </div>
       `;
 
-      L.popup({ maxWidth: 320, className: "szns-popup" })
+      L.popup({ maxWidth: 300, className: "szns-popup" })
         .setLatLng(latlng)
         .setContent(html)
         .openOn(map);
+
     } else {
       L.popup({ maxWidth: 240 })
         .setLatLng(latlng)
-        .setContent(`<div style="font-size:13px;color:hsl(220,10%,46%);">Šiame taške ŠZNS zonų nerasta.</div>`)
+        .setContent(
+          `<div style="font-family:Inter,sans-serif;font-size:13px;color:#666;padding:4px 0;">
+            Šiame taške ŠZNS zonų nerasta.
+          </div>`
+        )
         .openOn(map);
     }
   } catch (e) {
