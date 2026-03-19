@@ -134,6 +134,11 @@ export default function AdminAnalytics() {
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
   const [topCadastral, setTopCadastral] = useState<TopCadastral[]>([]);
   const [granularity, setGranularity] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  });
 
   // User table state
   const [users, setUsers] = useState<UserRow[]>([]);
