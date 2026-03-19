@@ -250,7 +250,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const size  = map.getSize();
 
     const identifyUrl =
-      `${SZNS_BASE}/identify?` +
+      `${SZNS_IDENTIFY}?` +
       `geometry=${lks.x},${lks.y}` +
       `&geometryType=esriGeometryPoint` +
       `&sr=3346` +
