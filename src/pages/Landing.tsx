@@ -434,28 +434,58 @@ export default function Landing() {
 
         {/* Auth buttons — exactly like screenshot */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {btnSignin.enabled !== false && (
-            <button
-              onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
-              style={{
-                background: "rgba(255,255,255,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                border: "1px solid rgba(0,0,0,0.15)",
-                color: "hsl(var(--foreground))",
-                borderRadius: 8,
-                padding: "7px 18px",
-                fontSize: "0.85rem",
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "background .2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-            >
-              {btnSignin.label ?? "Prisijungti"}
-            </button>
-          )}
+          {(() => {
+            const { user } = useAuth();
+            if (user) {
+              return (
+                <button
+                  onClick={() => navigate("/account")}
+                  style={{
+                    background: "rgba(255,255,255,0.85)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    color: "hsl(var(--foreground))",
+                    borderRadius: 8,
+                    padding: "7px 18px",
+                    fontSize: "0.85rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "background .2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+                >
+                  Mano paskyra
+                </button>
+              );
+            }
+            if (btnSignin.enabled !== false) {
+              return (
+                <button
+                  onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
+                  style={{
+                    background: "rgba(255,255,255,0.85)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    color: "hsl(var(--foreground))",
+                    borderRadius: 8,
+                    padding: "7px 18px",
+                    fontSize: "0.85rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "background .2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+                >
+                  {btnSignin.label ?? "Prisijungti"}
+                </button>
+              );
+            }
+            return null;
+          })()}
           {btnTryFree.enabled !== false && (
             <button
               onClick={() => navigate(btnTryFree.href ?? "/map")}
