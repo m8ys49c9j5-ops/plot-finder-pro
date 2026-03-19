@@ -47,16 +47,6 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { user, credits, loading, signOut, refreshCredits } = useAuth();
 
-  // Close account dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
-        setAccountMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Auto-search from ?q= parameter (e.g. from Landing page)
   const qParam = searchParams.get("q");
