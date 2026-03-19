@@ -76,6 +76,27 @@ const buildExportProxyUrl = (
   return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
 };
 
+const buildDirectExportUrl = (
+  baseUrl: string,
+  coords: L.Coords,
+  map: L.Map,
+  format: "jpg" | "png32",
+  transparent = false,
+  layers?: string,
+) => {
+  const tileSize = 256;
+  const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+  const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+  const nw = map.unproject(nwPoint, coords.z);
+  const se = map.unproject(sePoint, coords.z);
+  const nwMerc = L.CRS.EPSG3857.project(nw);
+  const seMerc = L.CRS.EPSG3857.project(se);
+  const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
+  let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
+  if (layers) exportUrl += `&layers=${encodeURIComponent(layers)}`;
+  return exportUrl;
+};
+
 const OrthoTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     return buildExportProxyUrl(ORTHO_BASE, coords, (this as any)._map as L.Map, "jpg", false);
@@ -90,13 +111,13 @@ const KadastroTileLayer = L.TileLayer.extend({
 
 const ForestTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    return buildDirectExportUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
   },
 });
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
+    return buildDirectExportUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
   },
 });
 
