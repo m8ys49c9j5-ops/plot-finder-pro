@@ -310,6 +310,7 @@ function FaqRow({ q, a }: { q: string; a: string }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
   const { config } = useAppConfig();
   const { user, loading: authLoading } = useAuth();
 
