@@ -99,6 +99,23 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
+let sznsLeafLayerIdsPromise: Promise<number[]> | null = null;
+
+const getSznsLeafLayerIds = async (): Promise<number[]> => {
+  if (!sznsLeafLayerIdsPromise) {
+    const metadataUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(`${SZNS_BASE}?f=json`)}`;
+    sznsLeafLayerIdsPromise = fetch(metadataUrl)
+      .then((resp) => resp.json())
+      .then((data) =>
+        (data?.layers ?? [])
+          .filter((layer: any) => layer?.geometryType === "esriGeometryPolygon" && !layer?.subLayerIds?.length)
+          .map((layer: any) => Number(layer.id))
+      );
+  }
+
+  return sznsLeafLayerIdsPromise;
+};
+
 const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
@@ -157,163 +174,6 @@ const wgs84ToLKS94 = (lat: number, lng: number): { x: number; y: number } => {
   return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
 };
 
-// SZNS identify helper — shows a rich Leaflet popup with geometry highlight
-const sznsHighlightLayerRef = { current: null as L.GeoJSON | null };
-
-const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
-  try {
-    // Clear previous highlight
-    if (sznsHighlightLayerRef.current) {
-      map.removeLayer(sznsHighlightLayerRef.current);
-      sznsHighlightLayerRef.current = null;
-    }
-
-    const lks = wgs84ToLKS94(latlng.lat, latlng.lng);
-
-    const bounds = map.getBounds();
-    const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
-    const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
-    const size  = map.getSize();
-
-    const identifyUrl =
-      `${SZNS_BASE}/identify?` +
-      `geometry=${lks.x},${lks.y}` +
-      `&geometryType=esriGeometryPoint` +
-      `&sr=3346` +
-      `&layers=all` +
-      `&tolerance=5` +
-      `&mapExtent=${swLks.x},${swLks.y},${neLks.x},${neLks.y}` +
-      `&imageDisplay=${size.x},${size.y},96` +
-      `&returnGeometry=true` +
-      `&f=json`;
-
-    const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
-    const resp = await fetch(proxyUrl);
-    const data = await resp.json();
-
-    if (data?.results && data.results.length > 0) {
-      const seen = new Set<string>();
-      const rows: Array<{ layer: string; pavadinimas: string; nuoroda: string; unikNr: string }> = [];
-      const geojsonFeatures: any[] = [];
-
-      for (const r of data.results) {
-        const attrs  = r.attributes ?? {};
-        const layer  = r.layerName ?? "ŠZNS";
-        const pavadinimas = attrs.PAVADINIM || attrs.PAVADINIMAS || attrs.pavadinimas || "";
-        const nuoroda = attrs.NUORODA || attrs.nuoroda || "";
-        const unikNr  = attrs.UNIK_NR || attrs.unik_nr || r.value || "";
-        const key    = `${layer}|${unikNr}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          rows.push({ layer, pavadinimas, nuoroda, unikNr });
-        }
-
-        // Collect geometry for highlighting
-        if (r.geometry && r.geometryType === "esriGeometryPolygon" && r.geometry.rings) {
-          const rings = r.geometry.rings.map((ring: number[][]) =>
-            ring.map((coord: number[]) => {
-              // Convert LKS94 back to WGS84 approximately using the inverse
-              // We'll use a simplified approach via Leaflet's unproject
-              return [coord[1], coord[0]] as [number, number]; // store as [y,x] for later conversion
-            })
-          );
-          geojsonFeatures.push({
-            type: "Feature",
-            properties: { layer, unikNr },
-            geometry: { type: "Polygon", rings: r.geometry.rings },
-            _sr: r.geometry.spatialReference?.wkid || 3346,
-          });
-        }
-      }
-
-      // Try to highlight geometries on map
-      if (geojsonFeatures.length > 0) {
-        try {
-          const convertedFeatures = geojsonFeatures.map(f => {
-            if (f.geometry.rings) {
-              const coords = f.geometry.rings.map((ring: number[][]) =>
-                ring.map((pt: number[]) => {
-                  const wgs = lks94ToWGS84(pt[0], pt[1]);
-                  return [wgs.lng, wgs.lat];
-                })
-              );
-              return {
-                type: "Feature" as const,
-                properties: f.properties,
-                geometry: { type: "Polygon" as const, coordinates: coords },
-              };
-            }
-            return null;
-          }).filter(Boolean);
-
-          if (convertedFeatures.length > 0) {
-            const geojson = { type: "FeatureCollection" as const, features: convertedFeatures };
-            sznsHighlightLayerRef.current = L.geoJSON(geojson as any, {
-              style: {
-                color: "#e74c3c",
-                weight: 2,
-                fillColor: "#e74c3c",
-                fillOpacity: 0.15,
-                dashArray: "5,5",
-              },
-            }).addTo(map);
-          }
-        } catch (geoErr) {
-          console.warn("ŠZNS geometry highlight failed:", geoErr);
-        }
-      }
-
-      const rowsHtml = rows.map(row => `
-        <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
-          <div style="font-size:12px;font-weight:600;color:#111;">${row.layer}</div>
-          ${row.pavadinimas ? `<div style="font-size:11px;color:#555;margin-top:2px;">${row.pavadinimas}</div>` : ""}
-          <div style="display:flex;gap:8px;align-items:center;margin-top:3px;">
-            ${row.unikNr ? `<span style="font-size:10px;color:#888;">Nr. ${row.unikNr}</span>` : ""}
-            ${row.nuoroda ? `<a href="${row.nuoroda}" target="_blank" rel="noopener" style="font-size:10px;color:#2563eb;text-decoration:underline;">PDF</a>` : ""}
-          </div>
-        </div>
-      `).join("");
-
-      const html = `
-        <div style="min-width:220px;max-width:320px;font-family:Inter,sans-serif;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">
-            Specialiosios sąlygos (${rows.length})
-          </div>
-          ${rowsHtml}
-          <div style="font-size:10px;color:#aaa;margin-top:8px;">© VĮ Registrų centras</div>
-        </div>
-      `;
-
-      const popup = L.popup({ maxWidth: 340, className: "szns-popup" })
-        .setLatLng(latlng)
-        .setContent(html)
-        .openOn(map);
-
-      // Clean up highlight when popup closes
-      popup.on("remove", () => {
-        if (sznsHighlightLayerRef.current) {
-          map.removeLayer(sznsHighlightLayerRef.current);
-          sznsHighlightLayerRef.current = null;
-        }
-      });
-
-    } else {
-      L.popup({ maxWidth: 240 })
-        .setLatLng(latlng)
-        .setContent(
-          `<div style="font-family:Inter,sans-serif;font-size:13px;color:#666;padding:4px 0;">
-            Šiame taške ŠZNS zonų nerasta.
-          </div>`
-        )
-        .openOn(map);
-    }
-  } catch (e) {
-    console.error("ŠZNS identify error:", e);
-    toast.error("ŠZNS užklausa nepavyko");
-  }
-};
-
-// Inverse: LKS94 (EPSG:3346) → WGS84
 const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
   const a  = 6378137.0;
   const f  = 1 / 298.257222101;
@@ -356,6 +216,178 @@ const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
   return { lat: lat * 180 / Math.PI, lng: lng * 180 / Math.PI };
 };
 
+const sznsSelectedLayerRef = { current: null as L.GeoJSON | null };
+
+const sznsResultsToGeoJson = (items: any[]) => {
+  const features = items.flatMap((item) => {
+    if (!item?.geometry?.rings?.length) return [];
+
+    return [{
+      type: "Feature" as const,
+      properties: {
+        ...(item.attributes ?? {}),
+        layerName: item.layerName ?? "ŠZNS",
+      },
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: item.geometry.rings.map((ring: number[][]) =>
+          ring.map((point: number[]) => {
+            const wgs = lks94ToWGS84(point[0], point[1]);
+            return [wgs.lng, wgs.lat];
+          })
+        ),
+      },
+    }];
+  });
+
+  return {
+    type: "FeatureCollection" as const,
+    features,
+  };
+};
+
+const fetchVisibleSznsGeoJson = async (map: L.Map) => {
+  const bounds = map.getBounds();
+  const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
+  const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
+  const bbox = `${swLks.x},${swLks.y},${neLks.x},${neLks.y}`;
+  const layerIds = await getSznsLeafLayerIds();
+
+  const responses = await Promise.allSettled(
+    layerIds.map(async (layerId) => {
+      const queryUrl =
+        `${SZNS_BASE}/${layerId}/query?` +
+        `where=1%3D1` +
+        `&geometry=${bbox}` +
+        `&geometryType=esriGeometryEnvelope` +
+        `&inSR=3346` +
+        `&spatialRel=esriSpatialRelIntersects` +
+        `&returnGeometry=true` +
+        `&outFields=*` +
+        `&outSR=3346` +
+        `&returnExceededLimitFeatures=true` +
+        `&f=json`;
+
+      const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(queryUrl)}`;
+      const resp = await fetch(proxyUrl);
+      return resp.json();
+    })
+  );
+
+  const items = responses.flatMap((result, index) => {
+    if (result.status !== "fulfilled") return [];
+    const layerId = layerIds[index];
+    return (result.value?.features ?? []).map((feature: any) => ({
+      ...feature,
+      layerName: feature?.layerName ?? `ŠZNS (${layerId})`,
+    }));
+  });
+
+  return sznsResultsToGeoJson(items);
+};
+
+// SZNS identify helper — shows a rich Leaflet popup with geometry highlight
+const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
+  try {
+    if (sznsSelectedLayerRef.current) {
+      map.removeLayer(sznsSelectedLayerRef.current);
+      sznsSelectedLayerRef.current = null;
+    }
+
+    const lks = wgs84ToLKS94(latlng.lat, latlng.lng);
+    const bounds = map.getBounds();
+    const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
+    const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
+    const size  = map.getSize();
+
+    const identifyUrl =
+      `${SZNS_BASE}/identify?` +
+      `geometry=${lks.x},${lks.y}` +
+      `&geometryType=esriGeometryPoint` +
+      `&sr=3346` +
+      `&layers=all` +
+      `&tolerance=5` +
+      `&mapExtent=${swLks.x},${swLks.y},${neLks.x},${neLks.y}` +
+      `&imageDisplay=${size.x},${size.y},96` +
+      `&returnGeometry=true` +
+      `&f=json`;
+
+    const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
+    const resp = await fetch(proxyUrl);
+    const data = await resp.json();
+
+    if (data?.results && data.results.length > 0) {
+      const seen = new Set<string>();
+      const rows: Array<{ layer: string; pavadinimas: string; nuoroda: string; unikNr: string }> = [];
+
+      for (const r of data.results) {
+        const attrs = r.attributes ?? {};
+        const layer = r.layerName ?? "ŠZNS";
+        const pavadinimas = attrs.PAVADINIM || attrs.PAVADINIMAS || attrs.pavadinimas || "";
+        const nuoroda = attrs.NUORODA || attrs.nuoroda || "";
+        const unikNr = attrs.UNIK_NR || attrs.unik_nr || r.value || "";
+        const key = `${layer}|${unikNr}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          rows.push({ layer, pavadinimas, nuoroda, unikNr });
+        }
+      }
+
+      const selectedGeoJson = sznsResultsToGeoJson(data.results);
+      if (selectedGeoJson.features.length > 0) {
+        sznsSelectedLayerRef.current = L.geoJSON(selectedGeoJson as any, {
+          style: {
+            color: "#dc2626",
+            weight: 2,
+            fillColor: "#dc2626",
+            fillOpacity: 0.18,
+            dashArray: "5,5",
+          },
+        }).addTo(map);
+      }
+
+      const rowsHtml = rows.map(row => `
+        <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
+          <div style="font-size:12px;font-weight:600;color:#111;">${row.layer}</div>
+          ${row.pavadinimas ? `<div style="font-size:11px;color:#555;margin-top:2px;">${row.pavadinimas}</div>` : ""}
+          <div style="display:flex;gap:8px;align-items:center;margin-top:3px;">
+            ${row.unikNr ? `<span style="font-size:10px;color:#888;">Nr. ${row.unikNr}</span>` : ""}
+            ${row.nuoroda ? `<a href="${row.nuoroda}" target="_blank" rel="noopener" style="font-size:10px;color:#2563eb;text-decoration:underline;">PDF</a>` : ""}
+          </div>
+        </div>
+      `).join("");
+
+      const popup = L.popup({ maxWidth: 340, className: "szns-popup" })
+        .setLatLng(latlng)
+        .setContent(`
+          <div style="min-width:220px;max-width:320px;font-family:Inter,sans-serif;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">
+              Specialiosios sąlygos (${rows.length})
+            </div>
+            ${rowsHtml}
+            <div style="font-size:10px;color:#aaa;margin-top:8px;">© VĮ Registrų centras</div>
+          </div>
+        `)
+        .openOn(map);
+
+      popup.on("remove", () => {
+        if (sznsSelectedLayerRef.current) {
+          map.removeLayer(sznsSelectedLayerRef.current);
+          sznsSelectedLayerRef.current = null;
+        }
+      });
+    } else {
+      L.popup({ maxWidth: 240 })
+        .setLatLng(latlng)
+        .setContent(`<div style="font-family:Inter,sans-serif;font-size:13px;color:#666;padding:4px 0;">Šiame taške ŠZNS zonų nerasta.</div>`)
+        .openOn(map);
+    }
+  } catch (e) {
+    console.error("ŠZNS identify error:", e);
+    toast.error("ŠZNS užklausa nepavyko");
+  }
+};
+
 const MapView = forwardRef<MapViewHandle, MapViewProps>(
   ({ onParcelSelect, searchQuery, onSearchComplete, initialFeature, onLogSearch }, ref) => {
     const mapRef = useRef<L.Map | null>(null);
@@ -371,7 +403,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsLayerRef = useRef<L.GeoJSON | null>(null);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveRef = useRef(false);
@@ -471,14 +503,40 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-            if (nowActive) {
-              if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+
+            const refreshSznsOverlay = async () => {
+              if (!map || !sznsActiveRef.current) return;
+              try {
+                const geojson = await fetchVisibleSznsGeoJson(map);
+                if (sznsLayerRef.current) {
+                  map.removeLayer(sznsLayerRef.current);
+                  sznsLayerRef.current = null;
+                }
+                sznsLayerRef.current = L.geoJSON(geojson as any, {
+                  style: {
+                    color: "#f97316",
+                    weight: 1.5,
+                    fillColor: "#fb923c",
+                    fillOpacity: 0.14,
+                  },
+                }).addTo(map);
+                bringKadastroToFront();
+              } catch (error) {
+                console.error("SZNS overlay refresh failed:", error);
               }
-              sznsLayerRef.current.addTo(map);
-              bringKadastroToFront();
+            };
+
+            if (nowActive) {
+              void refreshSznsOverlay();
             } else {
-              if (sznsLayerRef.current) map.removeLayer(sznsLayerRef.current);
+              if (sznsLayerRef.current) {
+                map.removeLayer(sznsLayerRef.current);
+                sznsLayerRef.current = null;
+              }
+              if (sznsSelectedLayerRef.current) {
+                map.removeLayer(sznsSelectedLayerRef.current);
+                sznsSelectedLayerRef.current = null;
+              }
               map.closePopup();
             }
             return nowActive;
@@ -539,16 +597,42 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       }).addTo(map);
       // Don't add kadastro by default — user toggles it on via Sklypai button
 
-      // Map click handler — SZNS identify only
+      // Map click handler — SZNS details
       map.on("click", (e: L.LeafletMouseEvent) => {
         if (sznsActiveRef.current) {
           identifySZNS(e.latlng, map);
         }
       });
 
+      const refreshVisibleSzns = async () => {
+        if (!sznsActiveRef.current) return;
+        try {
+          const geojson = await fetchVisibleSznsGeoJson(map);
+          if (sznsLayerRef.current) {
+            map.removeLayer(sznsLayerRef.current);
+          }
+          sznsLayerRef.current = L.geoJSON(geojson as any, {
+            style: {
+              color: "#f97316",
+              weight: 1.5,
+              fillColor: "#fb923c",
+              fillOpacity: 0.14,
+            },
+          }).addTo(map);
+          bringKadastroToFront();
+        } catch (error) {
+          console.error("SZNS visible overlay refresh failed:", error);
+        }
+      };
+
+      map.on("moveend zoomend", () => {
+        void refreshVisibleSzns();
+      });
+
       mapRef.current = map;
       setMapReady(true);
       return () => {
+        map.off("moveend zoomend");
         map.remove();
         mapRef.current = null;
         setMapReady(false);
