@@ -621,6 +621,41 @@ export type Database = {
           search_count: number
         }[]
       }
+      admin_user_list: {
+        Args: {
+          p_filter_purchased?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_search_email?: string
+          p_sort_by?: string
+        }
+        Returns: {
+          credits_remaining: number
+          email: string
+          ever_purchased: boolean
+          last_active: string
+          registered_at: string
+          searches_last_30d: number
+          total_count: number
+          total_searches: number
+          total_spent: number
+          user_id: string
+        }[]
+      }
+      admin_user_searches: {
+        Args: { p_limit?: number; p_offset?: number; p_user_id: string }
+        Returns: {
+          address: string
+          cadastral_number: string
+          created_at: string
+          id: string
+          is_unlocked: boolean
+          lat: number
+          lng: number
+          search_method: string
+          total_count: number
+        }[]
+      }
       build_official_addresses: { Args: never; Returns: undefined }
       deduct_credit: { Args: { p_user_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
@@ -823,6 +858,15 @@ export type Database = {
       mark_search_unlocked: {
         Args: { p_cadastral_number: string; p_user_id: string }
         Returns: undefined
+      }
+      my_account_summary: {
+        Args: { p_user_id: string }
+        Returns: {
+          credits_remaining: number
+          email: string
+          registered_at: string
+          total_searches: number
+        }[]
       }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
