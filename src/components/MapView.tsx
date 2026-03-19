@@ -99,29 +99,6 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-let sznsLeafLayerIdsPromise: Promise<number[]> | null = null;
-
-const getSznsLeafLayerIds = async (): Promise<number[]> => {
-  if (!sznsLeafLayerIdsPromise) {
-    const metadataUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(`${SZNS_BASE}?f=json`)}`;
-    sznsLeafLayerIdsPromise = fetch(metadataUrl)
-      .then((resp) => resp.json())
-      .then((data) =>
-        (data?.layers ?? [])
-          .filter((layer: any) => layer?.geometryType === "esriGeometryPolygon" && !layer?.subLayerIds?.length)
-          .map((layer: any) => Number(layer.id))
-      );
-  }
-
-  return sznsLeafLayerIdsPromise;
-};
-
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
-  },
-});
-
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     return buildExportProxyUrl(ESO_ELEKTRA_BASE, coords, (this as any)._map as L.Map, "png32", true);
@@ -246,45 +223,7 @@ const sznsResultsToGeoJson = (items: any[]) => {
   };
 };
 
-const fetchVisibleSznsGeoJson = async (map: L.Map) => {
-  const bounds = map.getBounds();
-  const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
-  const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
-  const bbox = `${swLks.x},${swLks.y},${neLks.x},${neLks.y}`;
-  const layerIds = await getSznsLeafLayerIds();
 
-  const responses = await Promise.allSettled(
-    layerIds.map(async (layerId) => {
-      const queryUrl =
-        `${SZNS_BASE}/${layerId}/query?` +
-        `where=1%3D1` +
-        `&geometry=${bbox}` +
-        `&geometryType=esriGeometryEnvelope` +
-        `&inSR=3346` +
-        `&spatialRel=esriSpatialRelIntersects` +
-        `&returnGeometry=true` +
-        `&outFields=*` +
-        `&outSR=3346` +
-        `&returnExceededLimitFeatures=true` +
-        `&f=json`;
-
-      const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(queryUrl)}`;
-      const resp = await fetch(proxyUrl);
-      return resp.json();
-    })
-  );
-
-  const items = responses.flatMap((result, index) => {
-    if (result.status !== "fulfilled") return [];
-    const layerId = layerIds[index];
-    return (result.value?.features ?? []).map((feature: any) => ({
-      ...feature,
-      layerName: feature?.layerName ?? `ŠZNS (${layerId})`,
-    }));
-  });
-
-  return sznsResultsToGeoJson(items);
-};
 
 // SZNS identify helper — shows a rich Leaflet popup with geometry highlight
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
@@ -403,7 +342,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRef = useRef<L.GeoJSON | null>(null);
+    // SZNS uses identify-only (no tiles/overlay — server blocks query/export)
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveRef = useRef(false);
@@ -503,36 +442,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-
-            const refreshSznsOverlay = async () => {
-              if (!map || !sznsActiveRef.current) return;
-              try {
-                const geojson = await fetchVisibleSznsGeoJson(map);
-                if (sznsLayerRef.current) {
-                  map.removeLayer(sznsLayerRef.current);
-                  sznsLayerRef.current = null;
-                }
-                sznsLayerRef.current = L.geoJSON(geojson as any, {
-                  style: {
-                    color: "#f97316",
-                    weight: 1.5,
-                    fillColor: "#fb923c",
-                    fillOpacity: 0.14,
-                  },
-                }).addTo(map);
-                bringKadastroToFront();
-              } catch (error) {
-                console.error("SZNS overlay refresh failed:", error);
-              }
-            };
-
-            if (nowActive) {
-              void refreshSznsOverlay();
-            } else {
-              if (sznsLayerRef.current) {
-                map.removeLayer(sznsLayerRef.current);
-                sznsLayerRef.current = null;
-              }
+            if (!nowActive) {
               if (sznsSelectedLayerRef.current) {
                 map.removeLayer(sznsSelectedLayerRef.current);
                 sznsSelectedLayerRef.current = null;
@@ -604,35 +514,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         }
       });
 
-      const refreshVisibleSzns = async () => {
-        if (!sznsActiveRef.current) return;
-        try {
-          const geojson = await fetchVisibleSznsGeoJson(map);
-          if (sznsLayerRef.current) {
-            map.removeLayer(sznsLayerRef.current);
-          }
-          sznsLayerRef.current = L.geoJSON(geojson as any, {
-            style: {
-              color: "#f97316",
-              weight: 1.5,
-              fillColor: "#fb923c",
-              fillOpacity: 0.14,
-            },
-          }).addTo(map);
-          bringKadastroToFront();
-        } catch (error) {
-          console.error("SZNS visible overlay refresh failed:", error);
-        }
-      };
-
-      map.on("moveend zoomend", () => {
-        void refreshVisibleSzns();
-      });
 
       mapRef.current = map;
       setMapReady(true);
       return () => {
-        map.off("moveend zoomend");
         map.remove();
         mapRef.current = null;
         setMapReady(false);
