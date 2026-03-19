@@ -117,7 +117,7 @@ const EsoDujosTileLayer = L.TileLayer.extend({
   },
 });
 
-// SZNS identify helper — shows a toast with matched feature names
+// SZNS identify helper — shows a rich Leaflet popup
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
     const bounds = map.getBounds();
@@ -139,15 +139,55 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const data = await resp.json();
 
     if (data?.results && data.results.length > 0) {
-      const names = data.results
-        .map((r: any) => r.attributes?.PAVADINIMAS || r.attributes?.NAME || r.layerName || "Nežinomas")
-        .filter(Boolean);
-      if (names.length > 0) {
-        toast.info(`SZNS: ${[...new Set(names)].join("; ")}`, { duration: 6000 });
+      const seen = new Set<string>();
+      const rows: Array<{ layer: string; pavadinimas: string; kodas: string }> = [];
+
+      for (const r of data.results) {
+        const attrs = r.attributes ?? {};
+        const layer = r.layerName ?? "ŠZNS";
+        const pavadinimas =
+          attrs.PAVADINIMAS || attrs.NAME || attrs.pavadinimas || attrs.name || "—";
+        const kodas =
+          attrs.KODAS || attrs.CODE || attrs.kodas || attrs.code || "";
+        const key = `${layer}|${pavadinimas}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          rows.push({ layer, pavadinimas, kodas });
+        }
       }
+
+      const rowsHtml = rows.map(row => `
+        <div style="margin-bottom:8px;">
+          <div style="font-size:11px;color:hsl(220,10%,46%);margin-bottom:2px;">${row.layer}${row.kodas ? ` · ${row.kodas}` : ""}</div>
+          <div style="font-size:13px;font-weight:500;">${row.pavadinimas}</div>
+        </div>
+      `).join("");
+
+      const html = `
+        <div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px;font-family:'Space Grotesk',sans-serif;">
+            Specialiosios sąlygos
+          </div>
+          ${rowsHtml}
+          <div style="font-size:10px;color:hsl(220,10%,46%);margin-top:4px;">
+            Šaltinis: Registrų centras ŠZNS
+          </div>
+        </div>
+      `;
+
+      L.popup({ maxWidth: 320, className: "szns-popup" })
+        .setLatLng(latlng)
+        .setContent(html)
+        .openOn(map);
+    } else {
+      L.popup({ maxWidth: 240 })
+        .setLatLng(latlng)
+        .setContent(`<div style="font-size:13px;color:hsl(220,10%,46%);">Šiame taške ŠZNS zonų nerasta.</div>`)
+        .openOn(map);
     }
   } catch (e) {
-    console.error("SZNS identify error:", e);
+    console.error("ŠZNS identify error:", e);
+    toast.error("ŠZNS užklausa nepavyko");
   }
 };
 
