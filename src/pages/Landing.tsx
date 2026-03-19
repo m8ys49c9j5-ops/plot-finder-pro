@@ -481,7 +481,7 @@ export default function Landing() {
           {btnTryFree.enabled !== false && (
             <button
               onClick={() => navigate(btnTryFree.href ?? "/map")}
-              className="premium-gradient"
+              className="premium-gradient hidden sm:inline-flex"
               style={{
                 border: "none",
                 color: "#fff",
