@@ -300,6 +300,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const active = toggle(sznsLayerRef, SznsTileLayer);
             sznsActiveRef.current = active;
+            if (!active && map) {
+              map.closePopup();
+            }
             return active;
           }
           case "energy": {
