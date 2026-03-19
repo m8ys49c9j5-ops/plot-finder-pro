@@ -403,7 +403,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsLayerRef = useRef<L.GeoJSON | null>(null);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveRef = useRef(false);
