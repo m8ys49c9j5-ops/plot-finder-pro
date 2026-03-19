@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
-import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId } from "@/lib/sessionId";
@@ -12,14 +11,12 @@ import {
   Map,
   Satellite,
   User,
-  LogOut,
   Coins,
   Trees,
   Droplets,
   ShieldAlert,
   Zap,
   LayoutGrid,
-  History,
 } from "lucide-react";
 import { toast } from "sonner";
 
