@@ -152,7 +152,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 };
 
 const MapView = forwardRef<MapViewHandle, MapViewProps>(
-  ({ onParcelSelect, searchQuery, onSearchComplete, initialFeature }, ref) => {
+  ({ onParcelSelect, searchQuery, onSearchComplete, initialFeature, onLogSearch }, ref) => {
     const mapRef = useRef<L.Map | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const highlightLayerRef = useRef<L.GeoJSON | null>(null);
