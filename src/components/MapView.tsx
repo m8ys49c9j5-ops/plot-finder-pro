@@ -503,14 +503,40 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-            if (nowActive) {
-              if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+
+            const refreshSznsOverlay = async () => {
+              if (!map || !sznsActiveRef.current) return;
+              try {
+                const geojson = await fetchVisibleSznsGeoJson(map);
+                if (sznsLayerRef.current) {
+                  map.removeLayer(sznsLayerRef.current);
+                  sznsLayerRef.current = null;
+                }
+                sznsLayerRef.current = L.geoJSON(geojson as any, {
+                  style: {
+                    color: "#f97316",
+                    weight: 1.5,
+                    fillColor: "#fb923c",
+                    fillOpacity: 0.14,
+                  },
+                }).addTo(map);
+                bringKadastroToFront();
+              } catch (error) {
+                console.error("SZNS overlay refresh failed:", error);
               }
-              sznsLayerRef.current.addTo(map);
-              bringKadastroToFront();
+            };
+
+            if (nowActive) {
+              void refreshSznsOverlay();
             } else {
-              if (sznsLayerRef.current) map.removeLayer(sznsLayerRef.current);
+              if (sznsLayerRef.current) {
+                map.removeLayer(sznsLayerRef.current);
+                sznsLayerRef.current = null;
+              }
+              if (sznsSelectedLayerRef.current) {
+                map.removeLayer(sznsSelectedLayerRef.current);
+                sznsSelectedLayerRef.current = null;
+              }
               map.closePopup();
             }
             return nowActive;
