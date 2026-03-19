@@ -95,13 +95,16 @@ const ForestTileLayer = L.TileLayer.extend({
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    // Only show polygon layers (3-6) to exclude point/label layers (0-2)
+    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:3,4,5,6");
   },
 });
 
+// SZNS uses a fused tile cache — /export returns 500, so use /tile/{z}/{y}/{x} directly
 const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const tileUrl = `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(tileUrl)}`;
   },
 });
 
