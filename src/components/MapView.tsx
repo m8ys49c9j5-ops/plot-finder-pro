@@ -95,18 +95,13 @@ const ForestTileLayer = L.TileLayer.extend({
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    // Only show polygon layers (3-6) to exclude point/label layers (0-2)
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:3,4,5,6");
+    // Only show polygon layer 6 (Melioruoti žemės plotai) to exclude all text/point/label layers
+    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
   },
 });
 
-// SZNS uses a fused tile cache — /export returns 500, so use /tile/{z}/{y}/{x} directly
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    const tileUrl = `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
-    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(tileUrl)}`;
-  },
-});
+// SZNS MapServer only has a fused tile cache in LKS94 (EPSG:3346) —
+// tiles/export cannot be rendered in EPSG:3857. SZNS is identify-only (click popup).
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
