@@ -108,6 +108,7 @@ const Index = () => {
 
   const handleParcelSelect = useCallback((parcel: ParcelData, feature?: any) => {
     setSelectedParcel(parcel);
+    setLastParcel(parcel);
     if (feature) setSelectedFeature(feature);
   }, []);
 
