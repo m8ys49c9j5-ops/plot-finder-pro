@@ -125,6 +125,27 @@ const Index = () => {
     if (feature) setSelectedFeature(feature);
   }, []);
 
+  const handleLogSearch = useCallback(async (params: {
+    cadastralNumber: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+    searchMethod: string;
+  }) => {
+    const sessionId = getSessionId();
+    await supabase.rpc("log_search", {
+      p_user_id: user?.id ?? null,
+      p_cadastral_number: params.cadastralNumber,
+      p_address: params.address ?? null,
+      p_lat: params.lat ?? null,
+      p_lng: params.lng ?? null,
+      p_is_unlocked: false,
+      p_search_method: params.searchMethod,
+      p_is_anonymous: !user,
+      p_session_id: sessionId,
+    });
+  }, [user]);
+
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
       <MapView
@@ -133,6 +154,7 @@ const Index = () => {
         searchQuery={searchQuery}
         onSearchComplete={handleSearchComplete}
         initialFeature={selectedFeature}
+        onLogSearch={handleLogSearch}
       />
 
       {/* Map layer & overlay toggles */}
