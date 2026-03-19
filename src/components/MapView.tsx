@@ -89,15 +89,13 @@ const KadastroTileLayer = L.TileLayer.extend({
 
 const ForestTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    const url = `${FOREST_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
-    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
+    return buildExportProxyUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
   },
 });
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    const url = `${MELIOR_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
-    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
+    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
   },
 });
 
@@ -160,9 +158,17 @@ const wgs84ToLKS94 = (lat: number, lng: number): { x: number; y: number } => {
   return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
 };
 
-// SZNS identify helper — shows a rich Leaflet popup
+// SZNS identify helper — shows a rich Leaflet popup with geometry highlight
+const sznsHighlightLayerRef = { current: null as L.GeoJSON | null };
+
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
+    // Clear previous highlight
+    if (sznsHighlightLayerRef.current) {
+      map.removeLayer(sznsHighlightLayerRef.current);
+      sznsHighlightLayerRef.current = null;
+    }
+
     const lks = wgs84ToLKS94(latlng.lat, latlng.lng);
 
     const bounds = map.getBounds();
@@ -179,7 +185,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
       `&tolerance=5` +
       `&mapExtent=${swLks.x},${swLks.y},${neLks.x},${neLks.y}` +
       `&imageDisplay=${size.x},${size.y},96` +
-      `&returnGeometry=false` +
+      `&returnGeometry=true` +
       `&f=json`;
 
     const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
@@ -188,28 +194,89 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 
     if (data?.results && data.results.length > 0) {
       const seen = new Set<string>();
-      const rows: Array<{ layer: string; kodas: string }> = [];
+      const rows: Array<{ layer: string; pavadinimas: string; nuoroda: string; unikNr: string }> = [];
+      const geojsonFeatures: any[] = [];
 
       for (const r of data.results) {
         const attrs  = r.attributes ?? {};
         const layer  = r.layerName ?? "ŠZNS";
-        const tipas  = attrs.TIPAS || attrs.TIP_KODAS || attrs.tipas || "";
-        const key    = `${layer}|${tipas}`;
+        const pavadinimas = attrs.PAVADINIM || attrs.PAVADINIMAS || attrs.pavadinimas || "";
+        const nuoroda = attrs.NUORODA || attrs.nuoroda || "";
+        const unikNr  = attrs.UNIK_NR || attrs.unik_nr || r.value || "";
+        const key    = `${layer}|${unikNr}`;
         if (!seen.has(key)) {
           seen.add(key);
-          rows.push({ layer, kodas: tipas });
+          rows.push({ layer, pavadinimas, nuoroda, unikNr });
+        }
+
+        // Collect geometry for highlighting
+        if (r.geometry && r.geometryType === "esriGeometryPolygon" && r.geometry.rings) {
+          const rings = r.geometry.rings.map((ring: number[][]) =>
+            ring.map((coord: number[]) => {
+              // Convert LKS94 back to WGS84 approximately using the inverse
+              // We'll use a simplified approach via Leaflet's unproject
+              return [coord[1], coord[0]] as [number, number]; // store as [y,x] for later conversion
+            })
+          );
+          geojsonFeatures.push({
+            type: "Feature",
+            properties: { layer, unikNr },
+            geometry: { type: "Polygon", rings: r.geometry.rings },
+            _sr: r.geometry.spatialReference?.wkid || 3346,
+          });
+        }
+      }
+
+      // Try to highlight geometries on map
+      if (geojsonFeatures.length > 0) {
+        try {
+          const convertedFeatures = geojsonFeatures.map(f => {
+            if (f.geometry.rings) {
+              const coords = f.geometry.rings.map((ring: number[][]) =>
+                ring.map((pt: number[]) => {
+                  const wgs = lks94ToWGS84(pt[0], pt[1]);
+                  return [wgs.lng, wgs.lat];
+                })
+              );
+              return {
+                type: "Feature" as const,
+                properties: f.properties,
+                geometry: { type: "Polygon" as const, coordinates: coords },
+              };
+            }
+            return null;
+          }).filter(Boolean);
+
+          if (convertedFeatures.length > 0) {
+            const geojson = { type: "FeatureCollection" as const, features: convertedFeatures };
+            sznsHighlightLayerRef.current = L.geoJSON(geojson as any, {
+              style: {
+                color: "#e74c3c",
+                weight: 2,
+                fillColor: "#e74c3c",
+                fillOpacity: 0.15,
+                dashArray: "5,5",
+              },
+            }).addTo(map);
+          }
+        } catch (geoErr) {
+          console.warn("ŠZNS geometry highlight failed:", geoErr);
         }
       }
 
       const rowsHtml = rows.map(row => `
         <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
           <div style="font-size:12px;font-weight:600;color:#111;">${row.layer}</div>
-          ${row.kodas ? `<div style="font-size:11px;color:#666;margin-top:2px;">Kodas: ${row.kodas}</div>` : ""}
+          ${row.pavadinimas ? `<div style="font-size:11px;color:#555;margin-top:2px;">${row.pavadinimas}</div>` : ""}
+          <div style="display:flex;gap:8px;align-items:center;margin-top:3px;">
+            ${row.unikNr ? `<span style="font-size:10px;color:#888;">Nr. ${row.unikNr}</span>` : ""}
+            ${row.nuoroda ? `<a href="${row.nuoroda}" target="_blank" rel="noopener" style="font-size:10px;color:#2563eb;text-decoration:underline;">PDF</a>` : ""}
+          </div>
         </div>
       `).join("");
 
       const html = `
-        <div style="min-width:200px;max-width:280px;font-family:Inter,sans-serif;">
+        <div style="min-width:220px;max-width:320px;font-family:Inter,sans-serif;">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">
             Specialiosios sąlygos (${rows.length})
           </div>
@@ -218,10 +285,18 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
         </div>
       `;
 
-      L.popup({ maxWidth: 300, className: "szns-popup" })
+      const popup = L.popup({ maxWidth: 340, className: "szns-popup" })
         .setLatLng(latlng)
         .setContent(html)
         .openOn(map);
+
+      // Clean up highlight when popup closes
+      popup.on("remove", () => {
+        if (sznsHighlightLayerRef.current) {
+          map.removeLayer(sznsHighlightLayerRef.current);
+          sznsHighlightLayerRef.current = null;
+        }
+      });
 
     } else {
       L.popup({ maxWidth: 240 })
@@ -237,6 +312,49 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     console.error("ŠZNS identify error:", e);
     toast.error("ŠZNS užklausa nepavyko");
   }
+};
+
+// Inverse: LKS94 (EPSG:3346) → WGS84
+const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
+  const a  = 6378137.0;
+  const f  = 1 / 298.257222101;
+  const e2 = 2 * f - f * f;
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const k0 = 0.9998;
+  const lng0 = 24.0 * Math.PI / 180;
+  const fe = 500000;
+
+  const M = y / k0;
+  const mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+
+  const phi1 = mu
+    + (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu)
+    + (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu)
+    + (151*e1*e1*e1/96) * Math.sin(6*mu);
+
+  const sinP1 = Math.sin(phi1);
+  const cosP1 = Math.cos(phi1);
+  const tanP1 = Math.tan(phi1);
+  const N1 = a / Math.sqrt(1 - e2 * sinP1 * sinP1);
+  const T1 = tanP1 * tanP1;
+  const C1 = (e2 / (1 - e2)) * cosP1 * cosP1;
+  const R1 = a * (1 - e2) / Math.pow(1 - e2 * sinP1 * sinP1, 1.5);
+  const D  = (x - fe) / (N1 * k0);
+
+  const lat = phi1
+    - (N1 * tanP1 / R1) * (
+      D*D/2
+      - (5 + 3*T1 + 10*C1 - 4*C1*C1 - 9*(e2/(1-e2))) * D*D*D*D/24
+      + (61 + 90*T1 + 298*C1 + 45*T1*T1 - 252*(e2/(1-e2)) - 3*C1*C1) * D*D*D*D*D*D/720
+    );
+
+  const lng = lng0 + (
+    D
+    - (1 + 2*T1 + C1) * D*D*D/6
+    + (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*(e2/(1-e2)) + 24*T1*T1) * D*D*D*D*D/120
+  ) / cosP1;
+
+  return { lat: lat * 180 / Math.PI, lng: lng * 180 / Math.PI };
 };
 
 const MapView = forwardRef<MapViewHandle, MapViewProps>(
