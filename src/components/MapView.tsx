@@ -453,7 +453,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-            if (!nowActive) {
+            if (nowActive) {
+              // Show SZNS tile layer
+              if (!sznsLayerRef.current) {
+                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+              }
+              sznsLayerRef.current!.addTo(map);
+              bringKadastroToFront();
+            } else {
+              if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
+                map.removeLayer(sznsLayerRef.current);
+              }
               if (sznsSelectedLayerRef.current) {
                 map.removeLayer(sznsSelectedLayerRef.current);
                 sznsSelectedLayerRef.current = null;
