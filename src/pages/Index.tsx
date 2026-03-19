@@ -44,7 +44,7 @@ const Index = () => {
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, credits, loading, refreshCredits } = useAuth();
+  const { user, loading, refreshCredits } = useAuth();
 
 
   // Auto-search from ?q= parameter (e.g. from Landing page)
