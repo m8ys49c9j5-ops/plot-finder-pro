@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { format, differenceInDays } from "date-fns";
 import {
   LineChart,
   Line,
@@ -14,7 +15,11 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2, ChevronLeft, ChevronRight, X, Mail, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2, ChevronLeft, ChevronRight, X, Mail, CheckCircle2, XCircle, CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // ── CHANGE THIS LIST to your actual admin emails ──────────────────────────────
 const ADMIN_EMAILS = ["admin@zemepro.lt", "aidasaleksonis@gmail.com"];
@@ -129,6 +134,11 @@ export default function AdminAnalytics() {
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
   const [topCadastral, setTopCadastral] = useState<TopCadastral[]>([]);
   const [granularity, setGranularity] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  });
 
   // User table state
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -157,11 +167,12 @@ export default function AdminAnalytics() {
     if (!authorized) return;
     (async () => {
       setFetching(true);
+      const days = Math.max(1, differenceInDays(new Date(), startDate) + 1);
       const [kpiRes, searchRes, signupRes, revenueRes, tierRes, locationRes, cadastralRes] = await Promise.all([
         supabase.rpc("admin_kpi_summary"),
-        supabase.rpc("admin_daily_searches", { p_days: 30 }),
-        supabase.rpc("admin_daily_signups", { p_days: 30 }),
-        supabase.rpc("admin_daily_revenue", { p_days: 30 }),
+        supabase.rpc("admin_daily_searches", { p_days: days }),
+        supabase.rpc("admin_daily_signups", { p_days: days }),
+        supabase.rpc("admin_daily_revenue", { p_days: days }),
         supabase.rpc("admin_credits_by_tier"),
         supabase.rpc("admin_top_locations", { p_limit: 10 }),
         supabase.rpc("admin_top_cadastral", { p_limit: 10 }),
@@ -176,7 +187,7 @@ export default function AdminAnalytics() {
       if (cadastralRes.data) setTopCadastral(cadastralRes.data as TopCadastral[]);
       setFetching(false);
     })();
-  }, [authorized]);
+  }, [authorized, startDate]);
 
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true);
@@ -265,6 +276,38 @@ export default function AdminAnalytics() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Date range picker */}
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-sm font-medium text-muted-foreground">Rodyti nuo:</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[200px] justify-start text-left font-normal",
+                  !startDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(startDate, "yyyy-MM-dd")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={(d) => d && setStartDate(d)}
+                disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <span className="text-xs text-muted-foreground">
+            ({differenceInDays(new Date(), startDate)} d.)
+          </span>
+        </div>
+
         {/* KPI Cards */}
         <SectionTitle>Bendri rodikliai</SectionTitle>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
