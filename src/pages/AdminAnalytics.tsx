@@ -130,6 +130,20 @@ export default function AdminAnalytics() {
   const [topCadastral, setTopCadastral] = useState<TopCadastral[]>([]);
   const [granularity, setGranularity] = useState<"daily" | "weekly" | "monthly">("daily");
 
+  // User table state
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [userPage, setUserPage] = useState(0);
+  const [userTotal, setUserTotal] = useState(0);
+  const [userSearch, setUserSearch] = useState("");
+  const [userSearchInput, setUserSearchInput] = useState("");
+  const [userFilter, setUserFilter] = useState<boolean | null>(null);
+  const [userSort, setUserSort] = useState("last_active");
+  const [usersLoading, setUsersLoading] = useState(false);
+  // Slide-in panel state
+  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
+  const [userSearches, setUserSearches] = useState<UserSearchEntry[]>([]);
+  const [userSearchesLoading, setUserSearchesLoading] = useState(false);
+
   useEffect(() => {
     if (loading) return;
     if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
