@@ -352,7 +352,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    // SZNS uses identify-only (no tiles/overlay — server blocks query/export)
+    const sznsLayerRef = useRef<L.TileLayer | null>(null);
+    // SZNS also uses identify on click
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveRef = useRef(false);
