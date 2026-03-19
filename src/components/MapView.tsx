@@ -95,18 +95,13 @@ const ForestTileLayer = L.TileLayer.extend({
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    // Only show polygon layers (3-6) to exclude point/label layers (0-2)
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:3,4,5,6");
+    // Only show polygon layer 6 (Melioruoti žemės plotai) to exclude all text/point/label layers
+    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
   },
 });
 
-// SZNS uses a fused tile cache — /export returns 500, so use /tile/{z}/{y}/{x} directly
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    const tileUrl = `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
-    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(tileUrl)}`;
-  },
-});
+// SZNS MapServer only has a fused tile cache in LKS94 (EPSG:3346) —
+// tiles/export cannot be rendered in EPSG:3857. SZNS is identify-only (click popup).
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
@@ -209,7 +204,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRef = useRef<L.TileLayer | null>(null);
+    // sznsLayerRef removed — SZNS has no web-mercator tile support
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveRef = useRef(false);
@@ -267,6 +262,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         const map = mapRef.current;
         if (!map) return false;
 
+        const OVERLAY_ZINDEX = 200;
+        const KADASTRO_ZINDEX = 300;
+
         const toggle = (
           layerRef: React.MutableRefObject<L.TileLayer | null>,
           LayerClass: any,
@@ -277,7 +275,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             return false;
           }
           if (!layerRef.current) {
-            layerRef.current = new LayerClass("", { maxZoom: 19, opacity: 0.7, ...opts });
+            layerRef.current = new LayerClass("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX, ...opts });
           }
           layerRef.current!.addTo(map);
           bringKadastroToFront();
@@ -292,7 +290,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             }
             if (!kadastroLayerRef.current) {
               kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
-                maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
+                maxZoom: 19, opacity: 0.85, zIndex: KADASTRO_ZINDEX, attribution: "Kadastro žemėlapis",
               });
             }
             kadastroLayerRef.current.addTo(map);
@@ -304,15 +302,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "melior":
             return toggle(meliorLayerRef, MeliorTileLayer);
           case "szns": {
-            const active = toggle(sznsLayerRef, SznsTileLayer);
-            sznsActiveRef.current = active;
-            if (!active && map) {
+            // SZNS has no web-mercator tiles — toggle only controls identify-on-click
+            const nowActive = !sznsActiveRef.current;
+            sznsActiveRef.current = nowActive;
+            if (!nowActive) {
               map.closePopup();
             }
-            return active;
+            return nowActive;
           }
           case "energy": {
-            // Use elektra layer presence as indicator
             const isOn = esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current);
             if (isOn) {
               if (esoElektraLayerRef.current) map.removeLayer(esoElektraLayerRef.current);
@@ -320,10 +318,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               return false;
             }
             if (!esoElektraLayerRef.current) {
-              esoElektraLayerRef.current = new (EsoElektraTileLayer as any)("", { maxZoom: 19, opacity: 0.7 });
+              esoElektraLayerRef.current = new (EsoElektraTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
             }
             if (!esoDujosLayerRef.current) {
-              esoDujosLayerRef.current = new (EsoDujosTileLayer as any)("", { maxZoom: 19, opacity: 0.7 });
+              esoDujosLayerRef.current = new (EsoDujosTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
             }
             esoElektraLayerRef.current.addTo(map);
             esoDujosLayerRef.current.addTo(map);
