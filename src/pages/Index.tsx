@@ -249,7 +249,6 @@ const Index = () => {
         />
       )}
 
-      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </div>
   );
 };
