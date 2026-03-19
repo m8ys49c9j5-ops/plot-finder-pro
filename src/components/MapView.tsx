@@ -37,6 +37,7 @@ const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/
 const FOREST_BASE = "https://www.geoportal.lt/mapproxy/vmt_mkd/MapServer";
 const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer";
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const SZNS_IDENTIFY = "https://www.geoportal.lt/arcgis/rest/services/SZNS/pub_cache/MapServer/identify";
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -89,13 +90,22 @@ const KadastroTileLayer = L.TileLayer.extend({
 
 const ForestTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const url = `${FOREST_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   },
 });
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
+    const url = `${MELIOR_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
+  },
+});
+
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const url = `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   },
 });
 
@@ -240,7 +250,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const size  = map.getSize();
 
     const identifyUrl =
-      `${SZNS_BASE}/identify?` +
+      `${SZNS_IDENTIFY}?` +
       `geometry=${lks.x},${lks.y}` +
       `&geometryType=esriGeometryPoint` +
       `&sr=3346` +
@@ -342,7 +352,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    // SZNS uses identify-only (no tiles/overlay — server blocks query/export)
+    const sznsLayerRef = useRef<L.TileLayer | null>(null);
+    // SZNS also uses identify on click
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveRef = useRef(false);
@@ -442,7 +453,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-            if (!nowActive) {
+            if (nowActive) {
+              // Show SZNS tile layer
+              if (!sznsLayerRef.current) {
+                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+              }
+              sznsLayerRef.current!.addTo(map);
+              bringKadastroToFront();
+            } else {
+              if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
+                map.removeLayer(sznsLayerRef.current);
+              }
               if (sznsSelectedLayerRef.current) {
                 map.removeLayer(sznsSelectedLayerRef.current);
                 sznsSelectedLayerRef.current = null;
