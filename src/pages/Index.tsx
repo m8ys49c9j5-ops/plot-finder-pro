@@ -264,12 +264,10 @@ const Index = () => {
       </div>
 
       {/* Floating button to reopen parcel sidebar on mobile */}
-      {!selectedParcel && lastSearchInput && (
+      {!selectedParcel && lastParcel && (
         <button
-          onClick={() => {
-            if (lastSearchInput) handleSearch(lastSearchInput);
-          }}
-          className="fixed bottom-16 right-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors sm:hidden"
+          onClick={() => setSelectedParcel(lastParcel)}
+          className="fixed bottom-16 left-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors sm:hidden"
           title="Rodyti sklypo informaciją"
         >
           <FileText className="h-5 w-5 text-primary" />
