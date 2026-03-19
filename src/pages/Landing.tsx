@@ -310,8 +310,8 @@ function FaqRow({ q, a }: { q: string; a: string }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState("");
   const { config } = useAppConfig();
+  const { user, loading: authLoading } = useAuth();
 
   // ── CMS-driven content (falls back to hard-coded if key not in DB) ──────────
   const appName = config.content_app_name ?? "ŽemėPro";
