@@ -41,17 +41,16 @@ const Auth = () => {
           navigate("/");
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
         toast.success("Registracija sėkminga!");
-        // If a tier was selected, redirect to checkout
         if (selectedTier) {
           await redirectToCheckout(selectedTier);
-        } else {
+        } else if (data.session) {
           navigate("/");
         }
       }

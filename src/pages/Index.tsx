@@ -11,7 +11,6 @@ import {
   Map,
   Satellite,
   User,
-  Coins,
   Trees,
   Droplets,
   ShieldAlert,
@@ -45,7 +44,7 @@ const Index = () => {
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, credits, loading, refreshCredits } = useAuth();
+  const { user, loading, refreshCredits } = useAuth();
 
 
   // Auto-search from ?q= parameter (e.g. from Landing page)
@@ -197,19 +196,13 @@ const Index = () => {
             {!loading && (
               <>
                 {user ? (
-                  <div className="flex items-center gap-1.5">
-                    <div className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg">
-                      <Coins className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold text-foreground">{credits}</span>
-                    </div>
-                    <button
-                      onClick={() => navigate("/account")}
-                      className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
-                      title="Paskyra ir istorija"
-                    >
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => navigate("/account")}
+                    className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
+                    title="Paskyra ir istorija"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </button>
                 ) : (
                   <button
                     onClick={() => navigate("/login", { state: { from: "/map" + window.location.search } })}
