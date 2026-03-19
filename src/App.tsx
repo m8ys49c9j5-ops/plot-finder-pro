@@ -34,6 +34,8 @@ const App = () => (
               <Route path="/auditas2" element={<ParcelAudit2 />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/history" element={<UserHistory />} />
+              <Route path="/analytics" element={<AdminAnalytics />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

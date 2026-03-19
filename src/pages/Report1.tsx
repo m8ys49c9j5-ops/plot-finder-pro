@@ -774,6 +774,13 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
       }
       await refreshCredits();
       setIsUnlocked(true);
+
+      // Mark search as unlocked
+      await supabase.rpc("mark_search_unlocked", {
+        p_user_id: user.id,
+        p_cadastral_number: parcel.cadastralNumber,
+      });
+
       // Fetch market value in background
       if (parcel.unikalusNr) {
         fetchMarketValue(parcel.unikalusNr);
