@@ -197,40 +197,18 @@ const Index = () => {
             {!loading && (
               <>
                 {user ? (
-                  <div className="flex items-center gap-1.5" ref={accountMenuRef}>
-                    <button
-                      onClick={() => setPricingOpen(true)}
-                      className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
-                    >
+                  <div className="flex items-center gap-1.5">
+                    <div className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg">
                       <Coins className="h-4 w-4 text-primary" />
                       <span className="text-sm font-semibold text-foreground">{credits}</span>
-                    </button>
+                    </div>
                     <button
-                      onClick={() => setAccountMenuOpen((v) => !v)}
+                      onClick={() => navigate("/account")}
                       className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
-                      title="Paskyra"
+                      title="Paskyra ir istorija"
                     >
                       <User className="h-4 w-4 text-muted-foreground" />
                     </button>
-                    {accountMenuOpen && (
-                      <div className="absolute top-full right-0 mt-2 glass-panel rounded-xl shadow-xl overflow-hidden min-w-[180px] z-[1000]">
-                        <button
-                          onClick={() => { setAccountMenuOpen(false); navigate("/history"); }}
-                          className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/60 flex items-center gap-2"
-                        >
-                          <History className="h-4 w-4" />
-                          Mano Paieškos
-                        </button>
-                        <div className="border-t border-border" />
-                        <button
-                          onClick={() => { setAccountMenuOpen(false); signOut(); }}
-                          className="w-full text-left px-4 py-3 text-sm text-muted-foreground hover:bg-muted/60 flex items-center gap-2"
-                        >
-                          <LogOut className="h-4 w-4" />
-                          Atsijungti
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <button
