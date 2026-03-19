@@ -354,7 +354,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         zoom: config.map_default_zoom ?? 8,
         zoomControl: false,
       });
-      L.control.zoom({ position: "topleft" }).addTo(map);
+      L.control.zoom({ position: "bottomright" }).addTo(map);
       baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,

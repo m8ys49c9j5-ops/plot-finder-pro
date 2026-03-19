@@ -153,9 +153,9 @@
   @apply !bg-muted/60;
 }
 
-.leaflet-top.leaflet-left .leaflet-control-zoom {
-  margin-top: 72px !important;
-  margin-left: 16px !important;
+.leaflet-bottom.leaflet-right .leaflet-control-zoom {
+  margin-bottom: 16px !important;
+  margin-right: 16px !important;
 }
 
 .szns-popup .leaflet-popup-content-wrapper {

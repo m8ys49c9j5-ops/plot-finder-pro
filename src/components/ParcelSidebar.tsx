@@ -176,8 +176,8 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
   if (!parcel) return null;
 
   return (
-    <div className="fixed top-0 right-0 h-full w-full sm:w-[400px] z-[1000] animate-slide-in-right">
-      <div className="h-full bg-card border-l border-border shadow-2xl flex flex-col">
+    <div className="fixed bottom-0 sm:top-0 right-0 w-full sm:w-[400px] max-h-[75vh] sm:max-h-full h-auto sm:h-full z-[1000] animate-slide-in-up sm:animate-slide-in-right rounded-t-2xl sm:rounded-none overflow-hidden">
+      <div className="h-full bg-card border-l border-border shadow-2xl flex flex-col max-h-[75vh] sm:max-h-full">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>
