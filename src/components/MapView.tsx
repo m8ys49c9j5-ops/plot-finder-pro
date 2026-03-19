@@ -223,29 +223,6 @@ const sznsResultsToGeoJson = (items: any[]) => {
   };
 };
 
-const fetchVisibleSznsGeoJson = async (map: L.Map) => {
-  const bounds = map.getBounds();
-  const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
-  const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
-  const bbox = `${swLks.x},${swLks.y},${neLks.x},${neLks.y}`;
-  const layerIds = await getSznsLeafLayerIds();
-
-  const responses = await Promise.allSettled(
-    layerIds.map(async (layerId) => {
-      const queryUrl =
-        `${SZNS_BASE}/${layerId}/query?` +
-        `where=1%3D1` +
-        `&geometry=${bbox}` +
-        `&geometryType=esriGeometryEnvelope` +
-        `&inSR=3346` +
-        `&spatialRel=esriSpatialRelIntersects` +
-        `&returnGeometry=true` +
-        `&outFields=*` +
-        `&outSR=3346` +
-        `&returnExceededLimitFeatures=true` +
-        `&f=json`;
-
-
 
 
 // SZNS identify helper — shows a rich Leaflet popup with geometry highlight
