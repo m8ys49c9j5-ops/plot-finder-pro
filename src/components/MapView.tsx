@@ -22,6 +22,13 @@ interface MapViewProps {
   searchQuery: string | null;
   onSearchComplete: () => void;
   initialFeature?: any;
+  onLogSearch?: (params: {
+    cadastralNumber: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+    searchMethod: string;
+  }) => void;
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
