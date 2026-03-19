@@ -597,16 +597,42 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       }).addTo(map);
       // Don't add kadastro by default — user toggles it on via Sklypai button
 
-      // Map click handler — SZNS identify only
+      // Map click handler — SZNS details
       map.on("click", (e: L.LeafletMouseEvent) => {
         if (sznsActiveRef.current) {
           identifySZNS(e.latlng, map);
         }
       });
 
+      const refreshVisibleSzns = async () => {
+        if (!sznsActiveRef.current) return;
+        try {
+          const geojson = await fetchVisibleSznsGeoJson(map);
+          if (sznsLayerRef.current) {
+            map.removeLayer(sznsLayerRef.current);
+          }
+          sznsLayerRef.current = L.geoJSON(geojson as any, {
+            style: {
+              color: "#f97316",
+              weight: 1.5,
+              fillColor: "#fb923c",
+              fillOpacity: 0.14,
+            },
+          }).addTo(map);
+          bringKadastroToFront();
+        } catch (error) {
+          console.error("SZNS visible overlay refresh failed:", error);
+        }
+      };
+
+      map.on("moveend zoomend", () => {
+        void refreshVisibleSzns();
+      });
+
       mapRef.current = map;
       setMapReady(true);
       return () => {
+        map.off("moveend zoomend");
         map.remove();
         mapRef.current = null;
         setMapReady(false);
