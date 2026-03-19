@@ -13,7 +13,7 @@ import ParcelAudit2 from "./pages/ParcelAudit2";
 import NotFound from "./pages/NotFound";
 import AdminPanel from "./pages/AdminPanel";
 import Login from "./pages/login";
-import UserHistory from "./pages/UserHistory";
+import Account from "./pages/Account";
 import AdminAnalytics from "./pages/AdminAnalytics";
 
 const queryClient = new QueryClient();
