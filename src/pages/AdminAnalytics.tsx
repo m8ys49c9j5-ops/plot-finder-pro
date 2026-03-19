@@ -3,16 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, Legend,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
 } from "recharts";
-import {
-  ArrowLeft, Layers, Users, Search, TrendingUp,
-  Euro, ShoppingCart, Percent, Loader2,
-} from "lucide-react";
+import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2 } from "lucide-react";
 
 // ── CHANGE THIS LIST to your actual admin emails ──────────────────────────────
-const ADMIN_EMAILS = ["admin@zemepro.lt", "your@email.com"];
+const ADMIN_EMAILS = ["admin@zemepro.lt", "aidasaleksonis@gmail.com"];
 
 interface KPI {
   total_users: number;
@@ -28,12 +33,33 @@ interface KPI {
   conversion_rate: number;
 }
 
-interface DailySearch { day: string; registered_count: number; anonymous_count: number; }
-interface DailySignup { day: string; signups: number; }
-interface DailyRevenue { day: string; revenue: number; credits_sold: number; }
-interface TierRevenue { tier: string; total_sold: number; total_revenue: number; }
-interface TopLocation { address: string; search_count: number; }
-interface TopCadastral { cadastral_number: string; search_count: number; }
+interface DailySearch {
+  day: string;
+  registered_count: number;
+  anonymous_count: number;
+}
+interface DailySignup {
+  day: string;
+  signups: number;
+}
+interface DailyRevenue {
+  day: string;
+  revenue: number;
+  credits_sold: number;
+}
+interface TierRevenue {
+  tier: string;
+  total_sold: number;
+  total_revenue: number;
+}
+interface TopLocation {
+  address: string;
+  search_count: number;
+}
+interface TopCadastral {
+  cadastral_number: string;
+  search_count: number;
+}
 
 const TIER_LABELS: Record<string, string> = {
   tier1: "Starteris (1kr)",
@@ -41,8 +67,16 @@ const TIER_LABELS: Record<string, string> = {
   tier3: "Profesionalus (30kr)",
 };
 
-function KpiCard({ icon, label, value, sub }: {
-  icon: React.ReactNode; label: string; value: string | number; sub?: string;
+function KpiCard({
+  icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  sub?: string;
 }) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-1">
@@ -56,11 +90,7 @@ function KpiCard({ icon, label, value, sub }: {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-lg font-bold text-foreground mt-8 mb-4">
-      {children}
-    </h2>
-  );
+  return <h2 className="text-lg font-bold text-foreground mt-8 mb-4">{children}</h2>;
 }
 
 export default function AdminAnalytics() {
@@ -91,16 +121,15 @@ export default function AdminAnalytics() {
     if (!authorized) return;
     (async () => {
       setFetching(true);
-      const [kpiRes, searchRes, signupRes, revenueRes, tierRes, locationRes, cadastralRes] =
-        await Promise.all([
-          supabase.rpc("admin_kpi_summary"),
-          supabase.rpc("admin_daily_searches", { p_days: 30 }),
-          supabase.rpc("admin_daily_signups", { p_days: 30 }),
-          supabase.rpc("admin_daily_revenue", { p_days: 30 }),
-          supabase.rpc("admin_credits_by_tier"),
-          supabase.rpc("admin_top_locations", { p_limit: 10 }),
-          supabase.rpc("admin_top_cadastral", { p_limit: 10 }),
-        ]);
+      const [kpiRes, searchRes, signupRes, revenueRes, tierRes, locationRes, cadastralRes] = await Promise.all([
+        supabase.rpc("admin_kpi_summary"),
+        supabase.rpc("admin_daily_searches", { p_days: 30 }),
+        supabase.rpc("admin_daily_signups", { p_days: 30 }),
+        supabase.rpc("admin_daily_revenue", { p_days: 30 }),
+        supabase.rpc("admin_credits_by_tier"),
+        supabase.rpc("admin_top_locations", { p_limit: 10 }),
+        supabase.rpc("admin_top_cadastral", { p_limit: 10 }),
+      ]);
 
       if (kpiRes.data?.[0]) setKpi(kpiRes.data[0] as KPI);
       if (searchRes.data) setDailySearches(searchRes.data as DailySearch[]);
@@ -114,23 +143,27 @@ export default function AdminAnalytics() {
   }, [authorized]);
 
   const aggregateSearches = (data: DailySearch[], mode: string) => {
-    if (mode === "daily") return data.map((d) => ({
-      label: d.day.slice(5),
-      Registruoti: d.registered_count,
-      Anonimai: d.anonymous_count,
-    }));
+    if (mode === "daily")
+      return data.map((d) => ({
+        label: d.day.slice(5),
+        Registruoti: d.registered_count,
+        Anonimai: d.anonymous_count,
+      }));
     const buckets: Record<string, { registered: number; anonymous: number }> = {};
     for (const d of data) {
       const date = new Date(d.day);
-      const key = mode === "weekly"
-        ? `${date.getFullYear()}-W${Math.ceil(date.getDate() / 7)}`
-        : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const key =
+        mode === "weekly"
+          ? `${date.getFullYear()}-W${Math.ceil(date.getDate() / 7)}`
+          : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       if (!buckets[key]) buckets[key] = { registered: 0, anonymous: 0 };
       buckets[key].registered += d.registered_count;
       buckets[key].anonymous += d.anonymous_count;
     }
     return Object.entries(buckets).map(([k, v]) => ({
-      label: k, Registruoti: v.registered, Anonimai: v.anonymous,
+      label: k,
+      Registruoti: v.registered,
+      Anonimai: v.anonymous,
     }));
   };
 
@@ -167,28 +200,45 @@ export default function AdminAnalytics() {
         {/* KPI Cards */}
         <SectionTitle>Bendri rodikliai</SectionTitle>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard icon={<Users className="h-4 w-4" />} label="Viso vartotojų"
+          <KpiCard
+            icon={<Users className="h-4 w-4" />}
+            label="Viso vartotojų"
             value={kpi?.total_users ?? 0}
-            sub={`+${kpi?.new_users_today ?? 0} šiandien · +${kpi?.new_users_this_week ?? 0} šią savaitę`} />
-          <KpiCard icon={<Search className="h-4 w-4" />} label="Viso paieškų"
+            sub={`+${kpi?.new_users_today ?? 0} šiandien · +${kpi?.new_users_this_week ?? 0} šią savaitę`}
+          />
+          <KpiCard
+            icon={<Search className="h-4 w-4" />}
+            label="Viso paieškų"
             value={kpi?.total_searches ?? 0}
-            sub={`${kpi?.searches_today ?? 0} šiandien`} />
-          <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Reg. / Anon."
+            sub={`${kpi?.searches_today ?? 0} šiandien`}
+          />
+          <KpiCard
+            icon={<TrendingUp className="h-4 w-4" />}
+            label="Reg. / Anon."
             value={`${kpi?.registered_searches ?? 0} / ${kpi?.anonymous_searches ?? 0}`}
-            sub="Registruoti vs Anonimai" />
-          <KpiCard icon={<Euro className="h-4 w-4" />} label="Pajamos iš viso"
+            sub="Registruoti vs Anonimai"
+          />
+          <KpiCard
+            icon={<Euro className="h-4 w-4" />}
+            label="Pajamos iš viso"
             value={`${Number(kpi?.total_revenue ?? 0).toFixed(2)} €`}
-            sub={`${Number(kpi?.revenue_this_month ?? 0).toFixed(2)} € šį mėnesį`} />
+            sub={`${Number(kpi?.revenue_this_month ?? 0).toFixed(2)} € šį mėnesį`}
+          />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-          <KpiCard icon={<ShoppingCart className="h-4 w-4" />} label="Pirkusių vartotojų"
-            value={kpi?.users_who_purchased ?? 0} />
-          <KpiCard icon={<Percent className="h-4 w-4" />} label="Konversijų rodiklis"
+          <KpiCard
+            icon={<ShoppingCart className="h-4 w-4" />}
+            label="Pirkusių vartotojų"
+            value={kpi?.users_who_purchased ?? 0}
+          />
+          <KpiCard
+            icon={<Percent className="h-4 w-4" />}
+            label="Konversijų rodiklis"
             value={`${kpi?.conversion_rate ?? 0}%`}
-            sub="Registruotų, kurie pirko" />
-          <KpiCard icon={<Search className="h-4 w-4" />} label="Paieškos šiandien"
-            value={kpi?.searches_today ?? 0} />
+            sub="Registruotų, kurie pirko"
+          />
+          <KpiCard icon={<Search className="h-4 w-4" />} label="Paieškos šiandien" value={kpi?.searches_today ?? 0} />
         </div>
 
         {/* Search volume chart */}
@@ -258,11 +308,13 @@ export default function AdminAnalytics() {
           <div className="bg-card border border-border rounded-xl p-4">
             <p className="font-semibold text-foreground mb-4">Kreditai pagal planą</p>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={tierRevenue.map((t) => ({
-                label: TIER_LABELS[t.tier] ?? t.tier,
-                "Parduota kreditų": t.total_sold,
-                "Pajamos €": Number(t.total_revenue),
-              }))}>
+              <BarChart
+                data={tierRevenue.map((t) => ({
+                  label: TIER_LABELS[t.tier] ?? t.tier,
+                  "Parduota kreditų": t.total_sold,
+                  "Pajamos €": Number(t.total_revenue),
+                }))}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} />
@@ -292,18 +344,16 @@ export default function AdminAnalytics() {
                   <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full"
-                      style={{ width: `${Math.min(100, (loc.search_count / (topLocations[0]?.search_count || 1)) * 100)}%` }}
+                      style={{
+                        width: `${Math.min(100, (loc.search_count / (topLocations[0]?.search_count || 1)) * 100)}%`,
+                      }}
                     />
                   </div>
-                  <span className="text-xs font-mono text-muted-foreground w-8 text-right">
-                    {loc.search_count}
-                  </span>
+                  <span className="text-xs font-mono text-muted-foreground w-8 text-right">{loc.search_count}</span>
                 </div>
               </div>
             ))}
-            {topLocations.length === 0 && (
-              <p className="p-4 text-sm text-muted-foreground">Duomenų nėra</p>
-            )}
+            {topLocations.length === 0 && <p className="p-4 text-sm text-muted-foreground">Duomenų nėra</p>}
           </div>
         </div>
 
@@ -322,9 +372,7 @@ export default function AdminAnalytics() {
                 <span className="text-xs text-muted-foreground">{c.search_count}×</span>
               </div>
             ))}
-            {topCadastral.length === 0 && (
-              <p className="p-4 text-sm text-muted-foreground">Duomenų nėra</p>
-            )}
+            {topCadastral.length === 0 && <p className="p-4 text-sm text-muted-foreground">Duomenų nėra</p>}
           </div>
         </div>
       </div>
