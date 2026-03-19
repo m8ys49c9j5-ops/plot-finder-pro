@@ -239,7 +239,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           if (!orthoLayerRef.current) {
             orthoLayerRef.current = new (OrthoTileLayer as any)("", { maxZoom: 19, attribution: "Ortofoto © NŽT" });
           }
-          orthoLayerRef.current.addTo(mapRef.current).bringToFront();
+          orthoLayerRef.current.addTo(mapRef.current);
+          // Keep ortho behind all overlays — only above the base tile
+          if (baseTileRef.current) baseTileRef.current.bringToBack();
+          orthoLayerRef.current.setZIndex(100);
         } else {
           if (orthoLayerRef.current) mapRef.current.removeLayer(orthoLayerRef.current);
           if (baseTileRef.current && !mapRef.current.hasLayer(baseTileRef.current))

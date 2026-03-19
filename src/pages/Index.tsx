@@ -35,7 +35,7 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("standard");
   const [activeOverlays, setActiveOverlays] = useState<Record<OverlayLayerType, boolean>>({
-    parcels: true,
+    parcels: false,
     forest: false,
     melior: false,
     szns: false,
