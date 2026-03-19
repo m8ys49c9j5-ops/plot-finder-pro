@@ -1,6 +1,7 @@
 import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppConfig } from "@/hooks/useAppConfig";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconLayers = () => (

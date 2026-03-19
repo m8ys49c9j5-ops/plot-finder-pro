@@ -196,19 +196,14 @@ const Index = () => {
             {!loading && (
               <>
                 {user ? (
-                  <div className="flex items-center gap-1.5">
-                    <div className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg">
-                      <Coins className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold text-foreground">{credits}</span>
-                    </div>
-                    <button
-                      onClick={() => navigate("/account")}
-                      className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
-                      title="Paskyra ir istorija"
-                    >
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => navigate("/account")}
+                    className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
+                    title="Paskyra ir istorija"
+                  >
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium text-foreground">Paskyra</span>
+                  </button>
                 ) : (
                   <button
                     onClick={() => navigate("/login", { state: { from: "/map" + window.location.search } })}
