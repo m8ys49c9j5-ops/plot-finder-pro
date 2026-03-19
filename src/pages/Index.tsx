@@ -11,7 +11,6 @@ import {
   Map,
   Satellite,
   User,
-  Coins,
   Trees,
   Droplets,
   ShieldAlert,
