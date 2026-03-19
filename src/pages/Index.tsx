@@ -17,6 +17,7 @@ import {
   Zap,
   LayoutGrid,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
