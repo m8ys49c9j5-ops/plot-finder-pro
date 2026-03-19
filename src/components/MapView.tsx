@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useAppConfig } from "@/hooks/useAppConfig";
+import { getSessionId } from "@/lib/sessionId";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
