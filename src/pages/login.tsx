@@ -29,7 +29,7 @@ export default function Login() {
         toast.success("Sėkmingai prisijungėte!");
         navigate(returnTo);
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email, 
           password,
           options: { 
@@ -37,11 +37,11 @@ export default function Login() {
           },
         });
         if (error) throw error;
-        toast.success("Registracija sėkminga! Patikrinkite savo el. paštą.");
-        if (!supabase.auth.getSession()) {
-            setIsLogin(true);
+        if (data.session) {
+          toast.success("Registracija sėkminga!");
+          navigate(returnTo);
         } else {
-            navigate(returnTo);
+          toast.info("Patikrinkite savo el. paštą patvirtinimui.");
         }
       }
     } catch (error: any) {
