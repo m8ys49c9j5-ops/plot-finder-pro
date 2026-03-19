@@ -14,7 +14,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2 } from "lucide-react";
+import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2, ChevronLeft, ChevronRight, X, Mail, CheckCircle2, XCircle } from "lucide-react";
 
 // ── CHANGE THIS LIST to your actual admin emails ──────────────────────────────
 const ADMIN_EMAILS = ["admin@zemepro.lt", "aidasaleksonis@gmail.com"];
