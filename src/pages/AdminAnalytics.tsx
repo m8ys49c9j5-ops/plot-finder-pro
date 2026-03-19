@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { format, differenceInDays } from "date-fns";
 import {
   LineChart,
   Line,
@@ -14,7 +15,11 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2, ChevronLeft, ChevronRight, X, Mail, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Layers, Users, Search, TrendingUp, Euro, ShoppingCart, Percent, Loader2, ChevronLeft, ChevronRight, X, Mail, CheckCircle2, XCircle, CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // ── CHANGE THIS LIST to your actual admin emails ──────────────────────────────
 const ADMIN_EMAILS = ["admin@zemepro.lt", "aidasaleksonis@gmail.com"];
