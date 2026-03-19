@@ -61,6 +61,28 @@ interface TopCadastral {
   search_count: number;
 }
 
+interface UserRow {
+  user_id: string;
+  email: string;
+  registered_at: string;
+  last_active: string;
+  total_searches: number;
+  searches_last_30d: number;
+  credits_remaining: number;
+  total_spent: number;
+  ever_purchased: boolean;
+  total_count: number;
+}
+
+interface UserSearchEntry {
+  id: string;
+  cadastral_number: string;
+  address: string | null;
+  is_unlocked: boolean;
+  search_method: string | null;
+  created_at: string;
+}
+
 const TIER_LABELS: Record<string, string> = {
   tier1: "Starteris (1kr)",
   tier2: "Populiarus (10kr)",
