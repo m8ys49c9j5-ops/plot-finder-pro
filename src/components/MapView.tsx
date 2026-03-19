@@ -99,29 +99,6 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-let sznsLeafLayerIdsPromise: Promise<number[]> | null = null;
-
-const getSznsLeafLayerIds = async (): Promise<number[]> => {
-  if (!sznsLeafLayerIdsPromise) {
-    const metadataUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(`${SZNS_BASE}?f=json`)}`;
-    sznsLeafLayerIdsPromise = fetch(metadataUrl)
-      .then((resp) => resp.json())
-      .then((data) =>
-        (data?.layers ?? [])
-          .filter((layer: any) => layer?.geometryType === "esriGeometryPolygon" && !layer?.subLayerIds?.length)
-          .map((layer: any) => Number(layer.id))
-      );
-  }
-
-  return sznsLeafLayerIdsPromise;
-};
-
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
-  },
-});
-
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     return buildExportProxyUrl(ESO_ELEKTRA_BASE, coords, (this as any)._map as L.Map, "png32", true);
