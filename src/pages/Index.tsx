@@ -42,9 +42,6 @@ const Index = () => {
     szns: false,
     energy: false,
   });
-  const [pricingOpen, setPricingOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
