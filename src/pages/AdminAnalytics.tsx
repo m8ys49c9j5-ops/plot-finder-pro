@@ -167,11 +167,12 @@ export default function AdminAnalytics() {
     if (!authorized) return;
     (async () => {
       setFetching(true);
+      const days = Math.max(1, differenceInDays(new Date(), startDate) + 1);
       const [kpiRes, searchRes, signupRes, revenueRes, tierRes, locationRes, cadastralRes] = await Promise.all([
         supabase.rpc("admin_kpi_summary"),
-        supabase.rpc("admin_daily_searches", { p_days: 30 }),
-        supabase.rpc("admin_daily_signups", { p_days: 30 }),
-        supabase.rpc("admin_daily_revenue", { p_days: 30 }),
+        supabase.rpc("admin_daily_searches", { p_days: days }),
+        supabase.rpc("admin_daily_signups", { p_days: days }),
+        supabase.rpc("admin_daily_revenue", { p_days: days }),
         supabase.rpc("admin_credits_by_tier"),
         supabase.rpc("admin_top_locations", { p_limit: 10 }),
         supabase.rpc("admin_top_cadastral", { p_limit: 10 }),
@@ -186,7 +187,7 @@ export default function AdminAnalytics() {
       if (cadastralRes.data) setTopCadastral(cadastralRes.data as TopCadastral[]);
       setFetching(false);
     })();
-  }, [authorized]);
+  }, [authorized, startDate]);
 
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true);
