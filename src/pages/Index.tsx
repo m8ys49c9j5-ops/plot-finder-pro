@@ -263,15 +263,26 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Floating button to reopen parcel sidebar on mobile */}
+      {/* Floating button to reopen parcel sidebar */}
       {!selectedParcel && lastParcel && (
-        <button
-          onClick={() => setSelectedParcel(lastParcel)}
-          className="fixed bottom-16 left-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors sm:hidden"
-          title="Rodyti sklypo informaciją"
-        >
-          <FileText className="h-5 w-5 text-primary" />
-        </button>
+        <>
+          {/* Mobile — bottom left */}
+          <button
+            onClick={() => setSelectedParcel(lastParcel)}
+            className="fixed bottom-16 left-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors sm:hidden"
+            title="Rodyti sklypo informaciją"
+          >
+            <FileText className="h-5 w-5 text-primary" />
+          </button>
+          {/* Tablet/Desktop — right side above zoom */}
+          <button
+            onClick={() => setSelectedParcel(lastParcel)}
+            className="fixed bottom-24 right-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors hidden sm:flex items-center justify-center"
+            title="Rodyti sklypo informaciją"
+          >
+            <FileText className="h-5 w-5 text-primary" />
+          </button>
+        </>
       )}
 
       <ParcelSidebar
