@@ -352,10 +352,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "melior":
             return toggle(meliorLayerRef, MeliorTileLayer);
           case "szns": {
-            // SZNS has no web-mercator tiles — toggle only controls identify-on-click
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-            if (!nowActive) {
+            if (nowActive) {
+              if (!sznsLayerRef.current) {
+                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+              }
+              sznsLayerRef.current.addTo(map);
+              bringKadastroToFront();
+            } else {
+              if (sznsLayerRef.current) map.removeLayer(sznsLayerRef.current);
               map.closePopup();
             }
             return nowActive;
