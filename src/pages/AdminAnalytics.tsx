@@ -443,6 +443,218 @@ export default function AdminAnalytics() {
             {topCadastral.length === 0 && <p className="p-4 text-sm text-muted-foreground">Duomenų nėra</p>}
           </div>
         </div>
+
+        {/* ── Users section ───────────────────────────── */}
+        <SectionTitle>Vartotojai</SectionTitle>
+
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 flex-1 min-w-[200px]">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={userSearchInput}
+              onChange={e => setUserSearchInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  setUserSearch(userSearchInput);
+                  setUserPage(0);
+                }
+              }}
+              placeholder="Ieškoti pagal el. paštą..."
+              className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
+            />
+            {userSearchInput && (
+              <button onClick={() => { setUserSearchInput(""); setUserSearch(""); setUserPage(0); }}>
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-1">
+            {([
+              { label: "Visi", value: null },
+              { label: "Pirko", value: true },
+              { label: "Nepirko", value: false },
+            ] as const).map(opt => (
+              <button
+                key={String(opt.value)}
+                onClick={() => { setUserFilter(opt.value); setUserPage(0); }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  userFilter === opt.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={userSort}
+            onChange={e => { setUserSort(e.target.value); setUserPage(0); }}
+            className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none"
+          >
+            <option value="last_active">Paskutinis aktyvumas</option>
+            <option value="most_searches">Daugiausia paieškų</option>
+            <option value="highest_spend">Didžiausios išlaidos</option>
+          </select>
+        </div>
+
+        {/* Table */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden relative">
+          {usersLoading && (
+            <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  {["El. paštas", "Registracija", "Pask. aktyvumas", "Paieškos", "30d.", "Kreditai", "Išleista €", "Pirko"].map(h => (
+                    <th key={h} className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr
+                    key={u.user_id}
+                    onClick={() => openUserPanel(u)}
+                    className="hover:bg-muted/40 cursor-pointer transition-colors border-b border-border last:border-0"
+                  >
+                    <td className="px-3 py-2.5 font-medium text-foreground">{u.email}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{new Date(u.registered_at).toLocaleDateString("lt-LT")}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{u.last_active ? new Date(u.last_active).toLocaleDateString("lt-LT") : "—"}</td>
+                    <td className="px-3 py-2.5 text-foreground">{u.total_searches}</td>
+                    <td className="px-3 py-2.5 text-foreground">{u.searches_last_30d}</td>
+                    <td className="px-3 py-2.5 text-foreground">{u.credits_remaining}</td>
+                    <td className="px-3 py-2.5 text-foreground">{Number(u.total_spent).toFixed(2)} €</td>
+                    <td className="px-3 py-2.5">
+                      {u.ever_purchased
+                        ? <CheckCircle2 className="h-4 w-4 text-primary" />
+                        : <XCircle className="h-4 w-4 text-muted-foreground/40" />
+                      }
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && !usersLoading && (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Vartotojų nerasta</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between mt-3 mb-8">
+          <p className="text-xs text-muted-foreground">
+            {userTotal} vartotojų iš viso · puslapis {userPage + 1} iš {Math.max(1, Math.ceil(userTotal / 25))}
+          </p>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setUserPage(p => Math.max(0, p - 1))}
+              disabled={userPage === 0}
+              className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setUserPage(p => p + 1)}
+              disabled={(userPage + 1) * 25 >= userTotal}
+              className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Slide-in user detail panel */}
+        {selectedUser && (
+          <>
+            <div
+              className="fixed inset-0 bg-foreground/20 z-[1000]"
+              onClick={() => setSelectedUser(null)}
+            />
+            <div className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-card border-l border-border z-[1001] overflow-y-auto animate-slide-in-right">
+              <div className="flex items-start justify-between p-4 border-b border-border">
+                <div>
+                  <p className="font-semibold text-foreground">Vartotojas</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                    <Mail className="h-3.5 w-3.5" /> {selectedUser.email}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-4">
+                {[
+                  { label: "Viso paieškų", value: selectedUser.total_searches },
+                  { label: "Per 30d.", value: selectedUser.searches_last_30d },
+                  { label: "Kreditai", value: selectedUser.credits_remaining },
+                  { label: "Išleista", value: `${Number(selectedUser.total_spent).toFixed(2)} €` },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-muted/50 rounded-lg p-3 text-center">
+                    <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="px-4 pb-2 text-xs text-muted-foreground space-y-1">
+                <p>Registruotas: {new Date(selectedUser.registered_at).toLocaleDateString("lt-LT")}</p>
+                <p>Pirko: {selectedUser.ever_purchased ? "✅ Taip" : "❌ Ne"}</p>
+              </div>
+
+              <div className="p-4">
+                <p className="text-sm font-semibold text-foreground mb-3">Paieškų istorija</p>
+                {userSearchesLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                ) : userSearches.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Paieškų nėra</p>
+                ) : (
+                  <div className="space-y-2">
+                    {userSearches.map(s => (
+                      <div key={s.id} className="bg-muted/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-semibold text-foreground">
+                            {s.cadastral_number}
+                          </span>
+                          {s.is_unlocked && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                              Atrakinta
+                            </span>
+                          )}
+                        </div>
+                        {s.address && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{s.address}</p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground/70 mt-1">
+                          {new Date(s.created_at).toLocaleString("lt-LT", {
+                            day: "2-digit", month: "2-digit", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                          {s.search_method && ` · ${s.search_method}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
       </div>
     </div>
   );
