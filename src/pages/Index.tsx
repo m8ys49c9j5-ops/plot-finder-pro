@@ -11,8 +11,12 @@ import {
   Map,
   Satellite,
   User,
-  Coins,
   Trees,
+  Droplets,
+  ShieldAlert,
+  Zap,
+  LayoutGrid,
+} from "lucide-react";
   Droplets,
   ShieldAlert,
   Zap,
