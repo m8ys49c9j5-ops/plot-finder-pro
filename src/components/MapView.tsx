@@ -89,19 +89,24 @@ const KadastroTileLayer = L.TileLayer.extend({
 
 const ForestTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const url = `${FOREST_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   },
 });
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    // Only show polygon layer 6 (Melioruoti žemės plotai) to exclude all text/point/label layers
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
+    const url = `${MELIOR_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   },
 });
 
-// SZNS MapServer only has a fused tile cache in LKS94 (EPSG:3346) —
-// tiles/export cannot be rendered in EPSG:3857. SZNS is identify-only (click popup).
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const url = `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
+  },
+});
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
