@@ -363,15 +363,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         opacity: 0.7,
         attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
       }).addTo(map);
-      kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
-        maxZoom: 19,
-        opacity: 0.85,
-        attribution: "Kadastro žemėlapis",
-      }).addTo(map);
+      // Don't add kadastro by default — user toggles it on via Sklypai button
 
-      // Map click handler — parcel identify + SZNS identify
+      // Map click handler — SZNS identify only
       map.on("click", (e: L.LeafletMouseEvent) => {
-        identifyParcelRef.current(e.latlng, map);
         if (sznsActiveRef.current) {
           identifySZNS(e.latlng, map);
         }
