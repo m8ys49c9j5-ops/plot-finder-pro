@@ -442,36 +442,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns": {
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
-
-            const refreshSznsOverlay = async () => {
-              if (!map || !sznsActiveRef.current) return;
-              try {
-                const geojson = await fetchVisibleSznsGeoJson(map);
-                if (sznsLayerRef.current) {
-                  map.removeLayer(sznsLayerRef.current);
-                  sznsLayerRef.current = null;
-                }
-                sznsLayerRef.current = L.geoJSON(geojson as any, {
-                  style: {
-                    color: "#f97316",
-                    weight: 1.5,
-                    fillColor: "#fb923c",
-                    fillOpacity: 0.14,
-                  },
-                }).addTo(map);
-                bringKadastroToFront();
-              } catch (error) {
-                console.error("SZNS overlay refresh failed:", error);
-              }
-            };
-
-            if (nowActive) {
-              void refreshSznsOverlay();
-            } else {
-              if (sznsLayerRef.current) {
-                map.removeLayer(sznsLayerRef.current);
-                sznsLayerRef.current = null;
-              }
+            if (!nowActive) {
               if (sznsSelectedLayerRef.current) {
                 map.removeLayer(sznsSelectedLayerRef.current);
                 sznsSelectedLayerRef.current = null;
