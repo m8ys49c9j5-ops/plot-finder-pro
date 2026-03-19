@@ -262,6 +262,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         const map = mapRef.current;
         if (!map) return false;
 
+        const OVERLAY_ZINDEX = 200;
+        const KADASTRO_ZINDEX = 300;
+
         const toggle = (
           layerRef: React.MutableRefObject<L.TileLayer | null>,
           LayerClass: any,
@@ -272,7 +275,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             return false;
           }
           if (!layerRef.current) {
-            layerRef.current = new LayerClass("", { maxZoom: 19, opacity: 0.7, ...opts });
+            layerRef.current = new LayerClass("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX, ...opts });
           }
           layerRef.current!.addTo(map);
           bringKadastroToFront();
@@ -287,7 +290,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             }
             if (!kadastroLayerRef.current) {
               kadastroLayerRef.current = new (KadastroTileLayer as any)("", {
-                maxZoom: 19, opacity: 0.85, attribution: "Kadastro žemėlapis",
+                maxZoom: 19, opacity: 0.85, zIndex: KADASTRO_ZINDEX, attribution: "Kadastro žemėlapis",
               });
             }
             kadastroLayerRef.current.addTo(map);
@@ -299,15 +302,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "melior":
             return toggle(meliorLayerRef, MeliorTileLayer);
           case "szns": {
-            const active = toggle(sznsLayerRef, SznsTileLayer);
-            sznsActiveRef.current = active;
-            if (!active && map) {
+            // SZNS has no web-mercator tiles — toggle only controls identify-on-click
+            const nowActive = !sznsActiveRef.current;
+            sznsActiveRef.current = nowActive;
+            if (!nowActive) {
               map.closePopup();
             }
-            return active;
+            return nowActive;
           }
           case "energy": {
-            // Use elektra layer presence as indicator
             const isOn = esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current);
             if (isOn) {
               if (esoElektraLayerRef.current) map.removeLayer(esoElektraLayerRef.current);
@@ -315,10 +318,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               return false;
             }
             if (!esoElektraLayerRef.current) {
-              esoElektraLayerRef.current = new (EsoElektraTileLayer as any)("", { maxZoom: 19, opacity: 0.7 });
+              esoElektraLayerRef.current = new (EsoElektraTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
             }
             if (!esoDujosLayerRef.current) {
-              esoDujosLayerRef.current = new (EsoDujosTileLayer as any)("", { maxZoom: 19, opacity: 0.7 });
+              esoDujosLayerRef.current = new (EsoDujosTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
             }
             esoElektraLayerRef.current.addTo(map);
             esoDujosLayerRef.current.addTo(map);
