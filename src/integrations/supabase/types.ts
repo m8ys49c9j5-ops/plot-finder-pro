@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarks: {
+        Row: {
+          address: string | null
+          cadastral_number: string
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          cadastral_number: string
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          cadastral_number?: string
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       lithuanian_addresses: {
         Row: {
           aob_kodas: number | null
@@ -125,6 +155,36 @@ export type Database = {
           kadastro_nr?: string | null
           sav_kodas?: string | null
           unikalus_nr?: string | null
+        }
+        Relationships: []
+      }
+      payment_logs: {
+        Row: {
+          amount_eur: number
+          created_at: string
+          credits: number
+          id: string
+          stripe_session_id: string | null
+          tier: string
+          user_id: string | null
+        }
+        Insert: {
+          amount_eur: number
+          created_at?: string
+          credits: number
+          id?: string
+          stripe_session_id?: string | null
+          tier: string
+          user_id?: string | null
+        }
+        Update: {
+          amount_eur?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          stripe_session_id?: string | null
+          tier?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -214,22 +274,43 @@ export type Database = {
       }
       search_history: {
         Row: {
+          address: string | null
           cadastral_number: string
           created_at: string
           id: string
-          user_id: string
+          is_anonymous: boolean
+          is_unlocked: boolean
+          lat: number | null
+          lng: number | null
+          search_method: string | null
+          session_id: string | null
+          user_id: string | null
         }
         Insert: {
+          address?: string | null
           cadastral_number: string
           created_at?: string
           id?: string
-          user_id: string
+          is_anonymous?: boolean
+          is_unlocked?: boolean
+          lat?: number | null
+          lng?: number | null
+          search_method?: string | null
+          session_id?: string | null
+          user_id?: string | null
         }
         Update: {
+          address?: string | null
           cadastral_number?: string
           created_at?: string
           id?: string
-          user_id?: string
+          is_anonymous?: boolean
+          is_unlocked?: boolean
+          lat?: number | null
+          lng?: number | null
+          search_method?: string | null
+          session_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -479,6 +560,67 @@ export type Database = {
             }
             Returns: string
           }
+      admin_credits_by_tier: {
+        Args: never
+        Returns: {
+          tier: string
+          total_revenue: number
+          total_sold: number
+        }[]
+      }
+      admin_daily_revenue: {
+        Args: { p_days?: number }
+        Returns: {
+          credits_sold: number
+          day: string
+          revenue: number
+        }[]
+      }
+      admin_daily_searches: {
+        Args: { p_days?: number }
+        Returns: {
+          anonymous_count: number
+          day: string
+          registered_count: number
+        }[]
+      }
+      admin_daily_signups: {
+        Args: { p_days?: number }
+        Returns: {
+          day: string
+          signups: number
+        }[]
+      }
+      admin_kpi_summary: {
+        Args: never
+        Returns: {
+          anonymous_searches: number
+          conversion_rate: number
+          new_users_this_week: number
+          new_users_today: number
+          registered_searches: number
+          revenue_this_month: number
+          searches_today: number
+          total_revenue: number
+          total_searches: number
+          total_users: number
+          users_who_purchased: number
+        }[]
+      }
+      admin_top_cadastral: {
+        Args: { p_limit?: number }
+        Returns: {
+          cadastral_number: string
+          search_count: number
+        }[]
+      }
+      admin_top_locations: {
+        Args: { p_limit?: number }
+        Returns: {
+          address: string
+          search_count: number
+        }[]
+      }
       build_official_addresses: { Args: never; Returns: undefined }
       deduct_credit: { Args: { p_user_id: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
@@ -663,7 +805,25 @@ export type Database = {
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
+      log_search: {
+        Args: {
+          p_address?: string
+          p_cadastral_number: string
+          p_is_anonymous?: boolean
+          p_is_unlocked?: boolean
+          p_lat?: number
+          p_lng?: number
+          p_search_method?: string
+          p_session_id?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      mark_search_unlocked: {
+        Args: { p_cadastral_number: string; p_user_id: string }
+        Returns: undefined
+      }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }

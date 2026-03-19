@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useAppConfig } from "@/hooks/useAppConfig";
+import { getSessionId } from "@/lib/sessionId";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
@@ -21,6 +22,13 @@ interface MapViewProps {
   searchQuery: string | null;
   onSearchComplete: () => void;
   initialFeature?: any;
+  onLogSearch?: (params: {
+    cadastralNumber: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+    searchMethod: string;
+  }) => void;
 }
 
 const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
@@ -144,7 +152,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 };
 
 const MapView = forwardRef<MapViewHandle, MapViewProps>(
-  ({ onParcelSelect, searchQuery, onSearchComplete, initialFeature }, ref) => {
+  ({ onParcelSelect, searchQuery, onSearchComplete, initialFeature, onLogSearch }, ref) => {
     const mapRef = useRef<L.Map | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const highlightLayerRef = useRef<L.GeoJSON | null>(null);
@@ -415,6 +423,14 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             }
           }
           onParcelSelect(parcel, feature);
+
+          onLogSearch?.({
+            cadastralNumber: cadastralNr,
+            address: parcel.address,
+            lat: parcel.lat,
+            lng: parcel.lng,
+            searchMethod: 'cadastral',
+          });
 
           if (parcel.unikalusNr) {
             supabase.functions
