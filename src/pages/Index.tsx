@@ -17,11 +17,6 @@ import {
   Zap,
   LayoutGrid,
 } from "lucide-react";
-  Droplets,
-  ShieldAlert,
-  Zap,
-  LayoutGrid,
-} from "lucide-react";
 import { toast } from "sonner";
 
 const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.ElementType }[] = [
