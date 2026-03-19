@@ -277,7 +277,7 @@ const Index = () => {
           {/* Tablet/Desktop — right side above zoom */}
           <button
             onClick={() => setSelectedParcel(lastParcel)}
-            className="fixed bottom-24 right-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors hidden sm:flex items-center justify-center"
+            className="fixed bottom-36 right-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors hidden sm:flex items-center justify-center"
             title="Rodyti sklypo informaciją"
           >
             <FileText className="h-5 w-5 text-primary" />
