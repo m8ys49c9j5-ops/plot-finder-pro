@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   Zap,
   LayoutGrid,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,11 +42,11 @@ const Index = () => {
     szns: false,
     energy: false,
   });
+  const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading, refreshCredits } = useAuth();
-
 
   // Auto-search from ?q= parameter (e.g. from Landing page)
   const qParam = searchParams.get("q");
@@ -129,6 +130,8 @@ const Index = () => {
     });
   }, [user]);
 
+  const activeCount = Object.values(activeOverlays).filter(Boolean).length;
+
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
       <MapView
@@ -140,9 +143,9 @@ const Index = () => {
         onLogSearch={handleLogSearch}
       />
 
-      {/* Map layer & overlay toggles */}
+      {/* Map layer & overlay toggles — left side */}
       <div className="absolute top-4 left-4 z-[900] flex flex-col gap-1.5">
-        {/* Ortofoto toggle */}
+        {/* Ortofoto toggle — always visible */}
         <button
           onClick={toggleLayer}
           className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
@@ -153,42 +156,58 @@ const Index = () => {
           ) : (
             <Map className="h-5 w-5 text-foreground" />
           )}
-          <span className="text-xs font-medium text-foreground hidden sm:inline">
+          <span className="text-xs font-medium text-foreground hidden md:inline">
             {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
           </span>
         </button>
 
-        {/* Overlay toggle buttons */}
-        {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            onClick={() => handleToggleOverlay(key)}
-            title={label}
-            className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
-              activeOverlays[key]
-                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-                : "hover:bg-muted/60"
-            }`}
-          >
-            <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
-            <span
-              className={`text-xs font-medium hidden sm:inline ${
-                activeOverlays[key] ? "text-primary" : "text-foreground"
+        {/* Mobile/tablet: collapsed layers toggle */}
+        <button
+          onClick={() => setLayerPanelOpen((v) => !v)}
+          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-1.5 md:hidden"
+        >
+          <Layers className="h-5 w-5 text-foreground" />
+          {activeCount > 0 && (
+            <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+              {activeCount}
+            </span>
+          )}
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${layerPanelOpen ? "rotate-180" : ""}`} />
+        </button>
+
+        {/* Overlay buttons — always on desktop, collapsible on mobile */}
+        <div className={`flex flex-col gap-1.5 ${layerPanelOpen ? "flex" : "hidden"} md:flex`}>
+          {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              onClick={() => handleToggleOverlay(key)}
+              title={label}
+              className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
+                activeOverlays[key]
+                  ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                  : "hover:bg-muted/60"
               }`}
             >
-              {label}
-            </span>
-          </button>
-        ))}
+              <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
+              <span
+                className={`text-xs font-medium hidden md:inline ${
+                  activeOverlays[key] ? "text-primary" : "text-foreground"
+                }`}
+              >
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Top overlay */}
+      {/* Top bar — logo, account, search */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
-        <div className="flex flex-col items-center pt-4 px-4 gap-3">
+        <div className="flex flex-col items-center pt-3 sm:pt-4 px-3 sm:px-4 gap-2 sm:gap-3">
           <div className="pointer-events-auto flex items-center gap-2">
-            <Link to="/" className="glass-panel rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg hover:bg-muted/60 transition-colors no-underline">
+            <Link to="/" className="glass-panel rounded-xl px-3 sm:px-4 py-2 flex items-center gap-2 shadow-lg hover:bg-muted/60 transition-colors no-underline">
               <Layers className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground text-lg">
+              <span className="font-display font-bold text-foreground text-base sm:text-lg">
                 Žemė<span className="text-gradient">Pro</span>
               </span>
             </Link>
@@ -202,7 +221,7 @@ const Index = () => {
                     title="Paskyra ir istorija"
                   >
                     <User className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium text-foreground">Paskyra</span>
+                    <span className="text-xs font-medium text-foreground hidden sm:inline">Paskyra</span>
                   </button>
                 ) : (
                   <button
@@ -210,14 +229,14 @@ const Index = () => {
                     className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
                   >
                     <User className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium text-foreground">Prisijungti</span>
+                    <span className="text-xs font-medium text-foreground hidden sm:inline">Prisijungti</span>
                   </button>
                 )}
               </>
             )}
           </div>
 
-          <div className="pointer-events-auto w-full max-w-xl">
+          <div className="pointer-events-auto w-full max-w-xl px-0 sm:px-0">
             <SearchBar onSearch={handleSearch} isLoading={isSearching} />
           </div>
         </div>
