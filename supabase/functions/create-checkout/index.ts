@@ -53,6 +53,7 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
         credits: tierConfig.credits.toString(),
+        tier,
       },
       success_url: `${req.headers.get("origin")}/?payment=success`,
       cancel_url: `${req.headers.get("origin")}/?payment=canceled`,

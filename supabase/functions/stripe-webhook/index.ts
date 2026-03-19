@@ -44,28 +44,39 @@ serve(async (req) => {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;
     const credits = parseInt(session.metadata?.credits || "0", 10);
+    const tier = session.metadata?.tier || "unknown";
 
     if (!userId || credits <= 0) {
       console.error("Missing metadata:", { userId, credits });
       return new Response("Missing metadata", { status: 400 });
     }
 
-    console.log(`Adding ${credits} credits to user ${userId}`);
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { error } = await supabase.rpc("add_credits", {
+    // Add credits
+    const { error: creditsError } = await supabase.rpc("add_credits", {
       p_user_id: userId,
       p_amount: credits,
     });
-
-    if (error) {
-      console.error("Failed to add credits:", error);
+    if (creditsError) {
+      console.error("Failed to add credits:", creditsError);
       return new Response("Failed to add credits", { status: 500 });
     }
+
+    // Log payment
+    const tierAmounts: Record<string, number> = {
+      tier1: 1.99, tier2: 9.99, tier3: 19.99,
+    };
+    await supabase.from("payment_logs").insert({
+      user_id: userId,
+      tier,
+      credits,
+      amount_eur: tierAmounts[tier] ?? 0,
+      stripe_session_id: session.id,
+    });
 
     console.log(`Successfully added ${credits} credits to ${userId}`);
   }

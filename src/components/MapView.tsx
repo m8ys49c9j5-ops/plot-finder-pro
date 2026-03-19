@@ -424,6 +424,14 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           }
           onParcelSelect(parcel, feature);
 
+          onLogSearch?.({
+            cadastralNumber: cadastralNr,
+            address: parcel.address,
+            lat: parcel.lat,
+            lng: parcel.lng,
+            searchMethod: 'cadastral',
+          });
+
           if (parcel.unikalusNr) {
             supabase.functions
               .invoke("fetch-market-value", { body: { unikalusNr: parcel.unikalusNr } })
