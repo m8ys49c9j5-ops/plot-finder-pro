@@ -6,6 +6,7 @@ import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getSessionId } from "@/lib/sessionId";
 import {
   Layers,
   Map,
@@ -18,6 +19,7 @@ import {
   ShieldAlert,
   Zap,
   LayoutGrid,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 
