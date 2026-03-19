@@ -276,6 +276,38 @@ export default function AdminAnalytics() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Date range picker */}
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-sm font-medium text-muted-foreground">Rodyti nuo:</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[200px] justify-start text-left font-normal",
+                  !startDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(startDate, "yyyy-MM-dd")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={(d) => d && setStartDate(d)}
+                disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <span className="text-xs text-muted-foreground">
+            ({differenceInDays(new Date(), startDate)} d.)
+          </span>
+        </div>
+
         {/* KPI Cards */}
         <SectionTitle>Bendri rodikliai</SectionTitle>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
