@@ -805,9 +805,9 @@ export default function Landing() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
               gap: "1rem",
             }}
+            className="grid-cols-2 sm:grid-cols-4"
           >
             {REPORT_FEATURES.map((f, i) => (
               <div

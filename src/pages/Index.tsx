@@ -143,65 +143,7 @@ const Index = () => {
         onLogSearch={handleLogSearch}
       />
 
-      {/* Map layer & overlay toggles — left side */}
-      <div className="absolute top-4 left-4 z-[900] flex flex-col gap-1.5">
-        {/* Ortofoto toggle — always visible */}
-        <button
-          onClick={toggleLayer}
-          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
-          title={activeLayer === "standard" ? "Rodyti ortofoto" : "Rodyti žemėlapį"}
-        >
-          {activeLayer === "standard" ? (
-            <Satellite className="h-5 w-5 text-foreground" />
-          ) : (
-            <Map className="h-5 w-5 text-foreground" />
-          )}
-          <span className="text-xs font-medium text-foreground hidden md:inline">
-            {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
-          </span>
-        </button>
-
-        {/* Mobile/tablet: collapsed layers toggle */}
-        <button
-          onClick={() => setLayerPanelOpen((v) => !v)}
-          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-1.5 md:hidden"
-        >
-          <Layers className="h-5 w-5 text-foreground" />
-          {activeCount > 0 && (
-            <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-              {activeCount}
-            </span>
-          )}
-          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${layerPanelOpen ? "rotate-180" : ""}`} />
-        </button>
-
-        {/* Overlay buttons — always on desktop, collapsible on mobile */}
-        <div className={`flex flex-col gap-1.5 ${layerPanelOpen ? "flex" : "hidden"} md:flex`}>
-          {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              onClick={() => handleToggleOverlay(key)}
-              title={label}
-              className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
-                activeOverlays[key]
-                  ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-                  : "hover:bg-muted/60"
-              }`}
-            >
-              <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
-              <span
-                className={`text-xs font-medium hidden md:inline ${
-                  activeOverlays[key] ? "text-primary" : "text-foreground"
-                }`}
-              >
-                {label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Top bar — logo, account, search */}
+      {/* Top bar — logo, account, search, then layer buttons on mobile */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
         <div className="flex flex-col items-center pt-3 sm:pt-4 px-3 sm:px-4 gap-2 sm:gap-3">
           <div className="pointer-events-auto flex items-center gap-2">
@@ -239,7 +181,76 @@ const Index = () => {
           <div className="pointer-events-auto w-full max-w-xl px-0 sm:px-0">
             <SearchBar onSearch={handleSearch} isLoading={isSearching} />
           </div>
+
+          {/* Layer buttons — below search on mobile, left side on desktop */}
+          <div className="pointer-events-auto flex flex-wrap gap-1.5 justify-center md:hidden">
+            <button
+              onClick={toggleLayer}
+              className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-1.5"
+            >
+              {activeLayer === "standard" ? (
+                <Satellite className="h-4 w-4 text-foreground" />
+              ) : (
+                <Map className="h-4 w-4 text-foreground" />
+              )}
+              <span className="text-[11px] font-medium text-foreground">
+                {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
+              </span>
+            </button>
+            {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                onClick={() => handleToggleOverlay(key)}
+                className={`glass-panel rounded-xl p-2 shadow-lg transition-colors flex items-center gap-1.5 ${
+                  activeOverlays[key]
+                    ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                    : "hover:bg-muted/60"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
+                <span className={`text-[11px] font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
+                  {label}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      {/* Desktop layer buttons — left side */}
+      <div className="absolute top-4 left-4 z-[900] hidden md:flex flex-col gap-1.5">
+        <button
+          onClick={toggleLayer}
+          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
+          title={activeLayer === "standard" ? "Rodyti ortofoto" : "Rodyti žemėlapį"}
+        >
+          {activeLayer === "standard" ? (
+            <Satellite className="h-5 w-5 text-foreground" />
+          ) : (
+            <Map className="h-5 w-5 text-foreground" />
+          )}
+          <span className="text-xs font-medium text-foreground">
+            {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
+          </span>
+        </button>
+
+        {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => handleToggleOverlay(key)}
+            title={label}
+            className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
+              activeOverlays[key]
+                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                : "hover:bg-muted/60"
+            }`}
+          >
+            <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
+            <span className={`text-xs font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
+              {label}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Attribution */}
@@ -248,6 +259,19 @@ const Index = () => {
           Duomenys: Geoportal.lt · RC Kadastras
         </div>
       </div>
+
+      {/* Floating button to reopen parcel sidebar on mobile */}
+      {!selectedParcel && lastSearchInput && (
+        <button
+          onClick={() => {
+            if (lastSearchInput) handleSearch(lastSearchInput);
+          }}
+          className="fixed bottom-16 right-4 z-[900] glass-panel rounded-full p-3 shadow-lg hover:bg-muted/60 transition-colors sm:hidden"
+          title="Rodyti sklypo informaciją"
+        >
+          <FileText className="h-5 w-5 text-primary" />
+        </button>
+      )}
 
       <ParcelSidebar
         parcel={selectedParcel}
