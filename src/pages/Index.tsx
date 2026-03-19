@@ -31,6 +31,7 @@ const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.Eleme
 
 const Index = () => {
   const [selectedParcel, setSelectedParcel] = useState<ParcelData | null>(null);
+  const [lastParcel, setLastParcel] = useState<ParcelData | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [lastSearchInput, setLastSearchInput] = useState<string>("");
