@@ -330,6 +330,84 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       },
     }));
 
+    // identifyParcel — restored map-click parcel identification
+    const identifyParcel = async (latlng: L.LatLng, map: L.Map) => {
+      const currentUser = userRef.current;
+      const currentCredits = creditsRef.current;
+
+      if (!currentUser) {
+        toast.error("Prisijunkite, kad galėtumėte identifikuoti sklypus");
+        return;
+      }
+      if (currentCredits <= 0) {
+        toast.error("Neturite paieškos kreditų");
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const data = await callEdgeFunction({ action: "identify", lat: latlng.lat, lng: latlng.lng });
+        const success = !!(data?.features && data.features.length > 0);
+        logSearchAnalytics(`${latlng.lat},${latlng.lng}`, "map_click", success, currentUser.id);
+
+        if (success) {
+          const feature = data.features[0];
+          const props = feature.properties || {};
+          const cadastralNr = props.nationalCadastralReference || props.NTR_ID?.toString() || "Nežinomas";
+
+          const unlockResult = await unlockParcel(cadastralNr);
+          if (unlockResult.status === "insufficient_credits") {
+            toast.error("Neturite paieškos kreditų"); return;
+          }
+          if (unlockResult.status === "error") {
+            toast.error("Nepavyko apdoroti užklausos"); return;
+          }
+          if (unlockResult.status === "already_unlocked") {
+            toast.info("Šis sklypas jau atrakintas – kreditas nenurašytas");
+          }
+
+          const parcel: ParcelData = {
+            cadastralNumber: cadastralNr,
+            unikalusNr: props.UNIK_NR?.toString() || props.unikalus_nr,
+            area: props.areaValue || props.PLOTAS_J,
+            purpose: props.currentUse || props.PASKIRTIS || props.pask_tipas,
+            address:
+              props.exactAddress || props.label || props.adresas || props.ADRESAS ||
+              [
+                props.kaimas_miestas,
+                props.seniunija ? `${props.seniunija} sen.` : null,
+                props.sav_pavadinimas ? `${props.sav_pavadinimas} r. sav.` : null,
+              ].filter(Boolean).join(", ") || undefined,
+            lat: latlng.lat,
+            lng: latlng.lng,
+            coordinates: feature.geometry?.coordinates,
+            formavimoData: props.formavimo_data || props.FORMAVIMO_DATA,
+          };
+
+          if (feature.geometry) highlightGeoJSON(feature);
+          onParcelSelect(parcel, feature);
+
+          onLogSearch?.({
+            cadastralNumber: cadastralNr,
+            address: parcel.address,
+            lat: latlng.lat,
+            lng: latlng.lng,
+            searchMethod: "map_click",
+          });
+        } else {
+          toast.error("Sklypas nerastas šiame taške. Pabandykite priartinti žemėlapį.");
+        }
+      } catch (error) {
+        console.error("Identify error:", error);
+        toast.error("Paieškos klaida. Pabandykite vėliau.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const identifyParcelRef = useRef(identifyParcel);
+    useEffect(() => { identifyParcelRef.current = identifyParcel; }, [identifyParcel]);
+
     // Re-highlight initial feature when map is ready
     useEffect(() => {
       if (!mapReady || !initialFeature?.geometry || !mapRef.current) return;
@@ -363,8 +441,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         attribution: "Kadastro žemėlapis",
       }).addTo(map);
 
-      // Map click handler — SZNS identify + normal flow
+      // Map click handler — parcel identify + SZNS identify
       map.on("click", (e: L.LeafletMouseEvent) => {
+        identifyParcelRef.current(e.latlng, map);
         if (sznsActiveRef.current) {
           identifySZNS(e.latlng, map);
         }
