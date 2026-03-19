@@ -90,13 +90,22 @@ const KadastroTileLayer = L.TileLayer.extend({
 
 const ForestTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const url = `${FOREST_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   },
 });
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
+    const url = `${MELIOR_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
+  },
+});
+
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const url = `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
+    return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   },
 });
 
