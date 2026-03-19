@@ -178,6 +178,38 @@ export default function AdminAnalytics() {
     })();
   }, [authorized]);
 
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    const { data } = await supabase.rpc("admin_user_list", {
+      p_limit: 25,
+      p_offset: userPage * 25,
+      p_search_email: userSearch || null,
+      p_filter_purchased: userFilter,
+      p_sort_by: userSort,
+    } as any);
+    if (data) {
+      setUsers(data as unknown as UserRow[]);
+      setUserTotal((data as unknown as UserRow[])[0]?.total_count ?? 0);
+    }
+    setUsersLoading(false);
+  }, [userPage, userSearch, userFilter, userSort]);
+
+  useEffect(() => {
+    if (authorized) fetchUsers();
+  }, [authorized, fetchUsers]);
+
+  const openUserPanel = async (u: UserRow) => {
+    setSelectedUser(u);
+    setUserSearchesLoading(true);
+    const { data } = await supabase.rpc("admin_user_searches", {
+      p_user_id: u.user_id,
+      p_limit: 50,
+      p_offset: 0,
+    } as any);
+    setUserSearches((data ?? []) as unknown as UserSearchEntry[]);
+    setUserSearchesLoading(false);
+  };
+
   const aggregateSearches = (data: DailySearch[], mode: string) => {
     if (mode === "daily")
       return data.map((d) => ({
