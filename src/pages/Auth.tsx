@@ -48,10 +48,15 @@ const Auth = () => {
         });
         if (error) throw error;
         toast.success("Registracija sėkminga!");
-        if (selectedTier) {
-          await redirectToCheckout(selectedTier);
-        } else if (data.session) {
-          navigate("/");
+        // Auto-login: if session exists immediately, navigate
+        if (data.session) {
+          if (selectedTier) {
+            await redirectToCheckout(selectedTier);
+          } else {
+            navigate("/");
+          }
+        } else {
+          toast.info("Patikrinkite el. paštą patvirtinimui.");
         }
       }
     } catch (error: any) {

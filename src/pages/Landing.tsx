@@ -310,9 +310,9 @@ function FaqRow({ q, a }: { q: string; a: string }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Landing() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const { config } = useAppConfig();
-  const { user, loading: authLoading } = useAuth();
 
   // ── CMS-driven content (falls back to hard-coded if key not in DB) ──────────
   const appName = config.content_app_name ?? "ŽemėPro";
@@ -433,96 +433,70 @@ export default function Landing() {
           </span>
         </button>
 
-        {/* Auth buttons */}
+        {/* Auth buttons — exactly like screenshot */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {!authLoading && user ? (
-            <>
-              <button
-                onClick={() => navigate("/account")}
-                style={{
-                  background: "rgba(255,255,255,0.85)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  border: "1px solid rgba(0,0,0,0.15)",
-                  color: "hsl(var(--foreground))",
-                  borderRadius: 8,
-                  padding: "7px 18px",
-                  fontSize: "0.85rem",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "background .2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-              >
-                Mano paskyra
-              </button>
-              {btnTryFree.enabled !== false && (
-                <button
-                  onClick={() => navigate(btnTryFree.href ?? "/map")}
-                  className="premium-gradient"
-                  style={{
-                    border: "none",
-                    color: "#fff",
-                    borderRadius: 8,
-                    padding: "7px 18px",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "opacity .2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                >
-                  {btnTryFree.label ?? "Atidaryti žemėlapį"}
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              {btnSignin.enabled !== false && !authLoading && (
-                <button
-                  onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
-                  style={{
-                    background: "rgba(255,255,255,0.85)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    border: "1px solid rgba(0,0,0,0.15)",
-                    color: "hsl(var(--foreground))",
-                    borderRadius: 8,
-                    padding: "7px 18px",
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "background .2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-                >
-                  {btnSignin.label ?? "Prisijungti"}
-                </button>
-              )}
-              {btnTryFree.enabled !== false && (
-                <button
-                  onClick={() => navigate(btnTryFree.href ?? "/map")}
-                  className="premium-gradient"
-                  style={{
-                    border: "none",
-                    color: "#fff",
-                    borderRadius: 8,
-                    padding: "7px 18px",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "opacity .2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                >
-                  {btnTryFree.label ?? "Išbandyti nemokamai"}
-                </button>
-              )}
-            </>
+          {user ? (
+            <button
+              onClick={() => navigate("/account")}
+              style={{
+                background: "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                border: "1px solid rgba(0,0,0,0.15)",
+                color: "hsl(var(--foreground))",
+                borderRadius: 8,
+                padding: "7px 18px",
+                fontSize: "0.85rem",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+            >
+              Mano paskyra
+            </button>
+          ) : btnSignin.enabled !== false ? (
+            <button
+              onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
+              style={{
+                background: "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                border: "1px solid rgba(0,0,0,0.15)",
+                color: "hsl(var(--foreground))",
+                borderRadius: 8,
+                padding: "7px 18px",
+                fontSize: "0.85rem",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+            >
+              {btnSignin.label ?? "Prisijungti"}
+            </button>
+          ) : null}
+          {btnTryFree.enabled !== false && (
+            <button
+              onClick={() => navigate(btnTryFree.href ?? "/map")}
+              className="premium-gradient"
+              style={{
+                border: "none",
+                color: "#fff",
+                borderRadius: 8,
+                padding: "7px 18px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "opacity .2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              {btnTryFree.label ?? "Išbandyti nemokamai"}
+            </button>
           )}
         </div>
       </nav>

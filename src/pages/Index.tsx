@@ -198,10 +198,11 @@ const Index = () => {
                 {user ? (
                   <button
                     onClick={() => navigate("/account")}
-                    className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors"
+                    className="glass-panel rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-lg hover:bg-muted/60 transition-colors"
                     title="Paskyra ir istorija"
                   >
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium text-foreground">Paskyra</span>
                   </button>
                 ) : (
                   <button

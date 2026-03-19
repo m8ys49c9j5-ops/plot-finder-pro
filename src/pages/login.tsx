@@ -37,13 +37,11 @@ export default function Login() {
           },
         });
         if (error) throw error;
-        toast.success("Registracija sėkminga!");
-        // Auto-confirm is enabled, so user is logged in immediately
         if (data.session) {
+          toast.success("Registracija sėkminga!");
           navigate(returnTo);
         } else {
           toast.info("Patikrinkite savo el. paštą patvirtinimui.");
-          setIsLogin(true);
         }
       }
     } catch (error: any) {
