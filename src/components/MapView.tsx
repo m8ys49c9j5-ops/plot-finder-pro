@@ -245,23 +245,8 @@ const fetchVisibleSznsGeoJson = async (map: L.Map) => {
         `&returnExceededLimitFeatures=true` +
         `&f=json`;
 
-      const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(queryUrl)}`;
-      const resp = await fetch(proxyUrl);
-      return resp.json();
-    })
-  );
 
-  const items = responses.flatMap((result, index) => {
-    if (result.status !== "fulfilled") return [];
-    const layerId = layerIds[index];
-    return (result.value?.features ?? []).map((feature: any) => ({
-      ...feature,
-      layerName: feature?.layerName ?? `ŠZNS (${layerId})`,
-    }));
-  });
 
-  return sznsResultsToGeoJson(items);
-};
 
 // SZNS identify helper — shows a rich Leaflet popup with geometry highlight
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
