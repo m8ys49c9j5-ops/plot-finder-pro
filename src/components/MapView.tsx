@@ -268,7 +268,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const size  = map.getSize();
 
     const identifyUrl =
-      `${SZNS_BASE}/identify?` +
+      `https://www.geoportal.lt/arcgis/rest/services/SZNS/pub_cache/MapServer/identify?` +
       `geometry=${lks.x},${lks.y}` +
       `&geometryType=esriGeometryPoint` +
       `&sr=3346` +
