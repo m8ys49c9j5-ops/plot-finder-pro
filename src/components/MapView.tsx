@@ -37,7 +37,7 @@ const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/
 const FOREST_BASE = "https://www.geoportal.lt/mapproxy/vmt_mkd/MapServer";
 const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer";
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
-const SZNS_IDENTIFY = "https://www.geoportal.lt/arcgis/rest/services/SZNS/pub_cache/MapServer/identify";
+
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -62,8 +62,8 @@ const buildExportProxyUrl = (
   format: "jpg" | "png32",
   transparent = false,
   layers?: string,
+  tileSize = 256,
 ) => {
-  const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
   const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
   const nw = map.unproject(nwPoint, coords.z);
@@ -123,7 +123,7 @@ const MeliorTileLayer = L.TileLayer.extend({
 
 const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true, undefined, 512);
   },
 });
 
@@ -474,7 +474,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               // Show SZNS tile layer
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+                sznsLayerRef.current = new (SznsTileLayer as any)("", { minZoom: 12, maxZoom: 19, tileSize: 512, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
@@ -513,9 +513,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         }
       },
     }));
-
-    // Stable ref for SZNS identify in click handler
-    const sznsActiveRefStable = sznsActiveRef;
 
     // Re-highlight initial feature when map is ready
     useEffect(() => {
