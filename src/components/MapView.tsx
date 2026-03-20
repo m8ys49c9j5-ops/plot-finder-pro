@@ -432,10 +432,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
                 map.removeLayer(sznsLayerRef.current);
               }
-              if (sznsSelectedLayerRef.current) {
-                map.removeLayer(sznsSelectedLayerRef.current);
-                sznsSelectedLayerRef.current = null;
-              }
               map.closePopup();
             }
             return nowActive;
