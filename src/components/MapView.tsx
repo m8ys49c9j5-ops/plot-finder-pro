@@ -514,9 +514,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       },
     }));
 
-    // Stable ref for SZNS identify in click handler
-    const sznsActiveRefStable = sznsActiveRef;
-
     // Re-highlight initial feature when map is ready
     useEffect(() => {
       if (!mapReady || !initialFeature?.geometry || !mapRef.current) return;
