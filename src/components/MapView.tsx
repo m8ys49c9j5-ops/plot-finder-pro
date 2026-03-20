@@ -268,7 +268,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const size  = map.getSize();
 
     const identifyUrl =
-      `https://www.geoportal.lt/arcgis/rest/services/SZNS/pub_cache/MapServer/identify?` +
+      `${SZNS_BASE}/identify?` +
       `geometry=${lks.x},${lks.y}` +
       `&geometryType=esriGeometryPoint` +
       `&sr=3346` +
@@ -281,7 +281,18 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 
     const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
     const resp = await fetch(proxyUrl);
-    const data = await resp.json();
+    const text = await resp.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error("ŠZNS identify: non-JSON response", text.slice(0, 200));
+      return;
+    }
+    if (data?.error) {
+      console.warn("ŠZNS identify service error:", data.error.message || data.error);
+      return;
+    }
 
     if (data?.results && data.results.length > 0) {
       const seen = new Set<string>();
