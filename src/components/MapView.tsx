@@ -123,7 +123,7 @@ const MeliorTileLayer = L.TileLayer.extend({
 
 const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true, undefined, 512);
+    return `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
   },
 });
 
