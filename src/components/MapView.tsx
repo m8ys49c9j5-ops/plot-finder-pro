@@ -227,139 +227,72 @@ const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
   return { lat: lat * 180 / Math.PI, lng: lng * 180 / Math.PI };
 };
 
-const sznsSelectedLayerRef = { current: null as L.GeoJSON | null };
+const SZNS_QUERY_LAYERS = "apsaugos_zonos_patvirtintos,apsaugos_juostos_patvirtintos,apsaugos_zonos_tvirtinamos,apsaugos_juostos_tvirtinamos";
 
-const sznsResultsToGeoJson = (items: any[]) => {
-  const features = items.flatMap((item) => {
-    if (!item?.geometry?.rings?.length) return [];
-
-    return [{
-      type: "Feature" as const,
-      properties: {
-        ...(item.attributes ?? {}),
-        layerName: item.layerName ?? "ŠZNS",
-      },
-      geometry: {
-        type: "Polygon" as const,
-        coordinates: item.geometry.rings.map((ring: number[][]) =>
-          ring.map((point: number[]) => {
-            const wgs = lks94ToWGS84(point[0], point[1]);
-            return [wgs.lng, wgs.lat];
-          })
-        ),
-      },
-    }];
-  });
-
-  return {
-    type: "FeatureCollection" as const,
-    features,
-  };
-};
-
-
-
-// SZNS identify helper — shows a rich Leaflet popup with geometry highlight
+// SZNS identify via WMS GetFeatureInfo
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
-    if (sznsSelectedLayerRef.current) {
-      map.removeLayer(sznsSelectedLayerRef.current);
-      sznsSelectedLayerRef.current = null;
-    }
-
-    const lks = wgs84ToLKS94(latlng.lat, latlng.lng);
     const bounds = map.getBounds();
-    const swLks = wgs84ToLKS94(bounds.getSouth(), bounds.getWest());
-    const neLks = wgs84ToLKS94(bounds.getNorth(), bounds.getEast());
-    const size  = map.getSize();
+    const size = map.getSize();
 
-    const identifyUrl =
-      `${SZNS_BASE}/identify?` +
-      `geometry=${lks.x},${lks.y}` +
-      `&geometryType=esriGeometryPoint` +
-      `&sr=3346` +
-      `&layers=all` +
-      `&tolerance=5` +
-      `&mapExtent=${swLks.x},${swLks.y},${neLks.x},${neLks.y}` +
-      `&imageDisplay=${size.x},${size.y},96` +
-      `&returnGeometry=true` +
-      `&f=json`;
+    // Compute pixel position of the click within the current map view
+    const point = map.latLngToContainerPoint(latlng);
 
-    const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
-    const resp = await fetch(proxyUrl);
-    const text = await resp.text();
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("ŠZNS identify: non-JSON response", text.slice(0, 200));
-      return;
-    }
-    if (data?.error) {
-      console.warn("ŠZNS identify service error:", data.error.message || data.error);
-      return;
-    }
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
 
-    if (data?.results && data.results.length > 0) {
-      const seen = new Set<string>();
-      const rows: Array<{ layer: string; pavadinimas: string; nuoroda: string; unikNr: string }> = [];
+    const url =
+      `${SZNS_WMS_BASE}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo` +
+      `&LAYERS=${SZNS_QUERY_LAYERS}` +
+      `&QUERY_LAYERS=${SZNS_QUERY_LAYERS}` +
+      `&SRS=EPSG:4326` +
+      `&BBOX=${bbox}` +
+      `&WIDTH=${size.x}` +
+      `&HEIGHT=${size.y}` +
+      `&X=${Math.round(point.x)}` +
+      `&Y=${Math.round(point.y)}` +
+      `&INFO_FORMAT=application/json` +
+      `&FEATURE_COUNT=10`;
 
-      for (const r of data.results) {
-        const attrs = r.attributes ?? {};
-        const layer = r.layerName ?? "ŠZNS";
-        const pavadinimas = attrs.PAVADINIM || attrs.PAVADINIMAS || attrs.pavadinimas || "";
-        const nuoroda = attrs.NUORODA || attrs.nuoroda || "";
-        const unikNr = attrs.UNIK_NR || attrs.unik_nr || r.value || "";
-        const key = `${layer}|${unikNr}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          rows.push({ layer, pavadinimas, nuoroda, unikNr });
-        }
-      }
+    const resp = await fetch(url);
+    const data = await resp.json();
 
-      const selectedGeoJson = sznsResultsToGeoJson(data.results);
-      if (selectedGeoJson.features.length > 0) {
-        sznsSelectedLayerRef.current = L.geoJSON(selectedGeoJson as any, {
-          style: {
-            color: "#dc2626",
-            weight: 2,
-            fillColor: "#dc2626",
-            fillOpacity: 0.18,
-            dashArray: "5,5",
-          },
-        }).addTo(map);
-      }
+    if (data?.features && data.features.length > 0) {
+      const rowsHtml = data.features.map((f: any) => {
+        const p = f.properties || {};
+        const salyga = p["Specialioji sąlyga"] || "";
+        const pavadinimas = p["Paviršinio vandens telkinio pavadinimas"] || "";
+        const plotas = p["Specialiosios sąlygos plotas (ha)"];
+        const statusas = p["Tvirtinimo statusas"] || "";
+        const uetk = p["Paviršinio vandens telkinio UETK kodas"] || "";
+        const pdf = p["Papildoma informacija"] || "";
+        const unikalus = p["Unikalus numeris Nekilnojamojo turto registre"] || "";
 
-      const rowsHtml = rows.map(row => `
-        <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
-          <div style="font-size:12px;font-weight:600;color:#111;">${row.layer}</div>
-          ${row.pavadinimas ? `<div style="font-size:11px;color:#555;margin-top:2px;">${row.pavadinimas}</div>` : ""}
-          <div style="display:flex;gap:8px;align-items:center;margin-top:3px;">
-            ${row.unikNr ? `<span style="font-size:10px;color:#888;">Nr. ${row.unikNr}</span>` : ""}
-            ${row.nuoroda ? `<a href="${row.nuoroda}" target="_blank" rel="noopener" style="font-size:10px;color:#2563eb;text-decoration:underline;">PDF</a>` : ""}
+        return `
+          <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
+            <div style="font-size:12px;font-weight:600;color:#111;">${salyga}</div>
+            ${pavadinimas ? `<div style="font-size:11px;color:#555;margin-top:2px;">🌊 ${pavadinimas}${uetk ? ` (${uetk})` : ""}</div>` : ""}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;">
+              ${plotas != null ? `<span style="font-size:10px;background:#f0f4ff;padding:1px 6px;border-radius:4px;color:#334;">${plotas} ha</span>` : ""}
+              ${statusas ? `<span style="font-size:10px;background:${statusas === "Patvirtinta" ? "#dcfce7" : "#fef9c3"};padding:1px 6px;border-radius:4px;color:#334;">${statusas}</span>` : ""}
+              ${unikalus ? `<span style="font-size:10px;color:#888;">Nr. ${unikalus}</span>` : ""}
+            </div>
+            ${pdf ? `<a href="${pdf}" target="_blank" rel="noopener" style="font-size:10px;color:#2563eb;text-decoration:underline;margin-top:3px;display:inline-block;">📄 PDF dokumentas</a>` : ""}
           </div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
 
-      const popup = L.popup({ maxWidth: 340, className: "szns-popup" })
+      L.popup({ maxWidth: 380, className: "szns-popup" })
         .setLatLng(latlng)
         .setContent(`
-          <div style="min-width:220px;max-width:320px;font-family:Inter,sans-serif;">
+          <div style="min-width:240px;max-width:360px;font-family:Inter,sans-serif;">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">
-              Specialiosios sąlygos (${rows.length})
+              Specialiosios sąlygos (${data.features.length})
             </div>
             ${rowsHtml}
-            <div style="font-size:10px;color:#aaa;margin-top:8px;">© VĮ Registrų centras</div>
+            <div style="font-size:10px;color:#aaa;margin-top:8px;">© Aplinkos apsaugos agentūra</div>
           </div>
         `)
         .openOn(map);
-
-      popup.on("remove", () => {
-        if (sznsSelectedLayerRef.current) {
-          map.removeLayer(sznsSelectedLayerRef.current);
-          sznsSelectedLayerRef.current = null;
-        }
-      });
     } else {
       L.popup({ maxWidth: 240 })
         .setLatLng(latlng)
@@ -498,10 +431,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             } else {
               if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
                 map.removeLayer(sznsLayerRef.current);
-              }
-              if (sznsSelectedLayerRef.current) {
-                map.removeLayer(sznsSelectedLayerRef.current);
-                sznsSelectedLayerRef.current = null;
               }
               map.closePopup();
             }
