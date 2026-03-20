@@ -474,7 +474,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               // Show SZNS tile layer
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+                sznsLayerRef.current = new (SznsTileLayer as any)("", { minZoom: 12, maxZoom: 19, tileSize: 512, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
