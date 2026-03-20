@@ -122,17 +122,17 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SznsTileLayer = L.TileLayer.WMS.extend({
-  initialize: function () {
-    L.TileLayer.WMS.prototype.initialize.call(this, SZNS_WMS_BASE, {
-      layers: "patvirtintos_teritorijos,ruosiamos_tvirtinimui_teritorijos",
-      format: "image/png",
-      transparent: true,
-      version: "1.1.1",
-      srs: "EPSG:3857",
-    });
-  },
-});
+const createSznsLayer = () =>
+  L.tileLayer.wms(SZNS_WMS_BASE, {
+    layers: "patvirtintos_teritorijos,ruosiamos_tvirtinimui_teritorijos",
+    format: "image/png",
+    transparent: true,
+    version: "1.1.1",
+    srs: "EPSG:3857",
+    maxZoom: 19,
+    opacity: 0.7,
+    zIndex: 200,
+  });
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
