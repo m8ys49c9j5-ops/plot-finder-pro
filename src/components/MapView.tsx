@@ -123,7 +123,7 @@ const MeliorTileLayer = L.TileLayer.extend({
 
 const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true, undefined, 512);
+    return `${SZNS_BASE}/tile/${coords.z}/${coords.y}/${coords.x}`;
   },
 });
 
@@ -485,7 +485,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               // Show SZNS tile layer
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", { minZoom: 12, maxZoom: 19, tileSize: 512, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
+                sznsLayerRef.current = new (SznsTileLayer as any)("", { maxZoom: 19, maxNativeZoom: 12, opacity: 0.7, zIndex: OVERLAY_ZINDEX });
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
