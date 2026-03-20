@@ -128,7 +128,6 @@ const createSznsLayer = () =>
     format: "image/png",
     transparent: true,
     version: "1.1.1",
-    srs: "EPSG:3857",
     maxZoom: 19,
     opacity: 0.7,
     zIndex: 200,
