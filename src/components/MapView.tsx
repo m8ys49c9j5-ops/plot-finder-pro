@@ -62,8 +62,8 @@ const buildExportProxyUrl = (
   format: "jpg" | "png32",
   transparent = false,
   layers?: string,
+  tileSize = 256,
 ) => {
-  const tileSize = 256;
   const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
   const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
   const nw = map.unproject(nwPoint, coords.z);
