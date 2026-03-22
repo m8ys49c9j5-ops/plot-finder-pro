@@ -219,59 +219,46 @@ const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
     + (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*(e2/(1-e2)) + 24*T1*T1) * D*D*D*D*D/120
   ) / cosP1;
 
-  return { lat: lat * 180 / Math.PI, lng: lng * 180 / Math.PI };
-};
-
-const SZNS_QUERY_LAYERS = "apsaugos_zonos_patvirtintos,apsaugos_juostos_patvirtintos,apsaugos_zonos_tvirtinamos,apsaugos_juostos_tvirtinamos";
-
-// SZNS identify via WMS GetFeatureInfo
+// SZNS identify via ArcGIS /identify
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
     const bounds = map.getBounds();
     const size = map.getSize();
 
-    // Compute pixel position of the click within the current map view
-    const point = map.latLngToContainerPoint(latlng);
+    const sw = map.options.crs!.project(bounds.getSouthWest());
+    const ne = map.options.crs!.project(bounds.getNorthEast());
+    const pt = map.options.crs!.project(latlng);
 
-    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
     const url =
-      `${SZNS_WMS_BASE}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo` +
-      `&LAYERS=${SZNS_QUERY_LAYERS}` +
-      `&QUERY_LAYERS=${SZNS_QUERY_LAYERS}` +
-      `&SRS=EPSG:4326` +
-      `&BBOX=${bbox}` +
-      `&WIDTH=${size.x}` +
-      `&HEIGHT=${size.y}` +
-      `&X=${Math.round(point.x)}` +
-      `&Y=${Math.round(point.y)}` +
-      `&INFO_FORMAT=application/json` +
-      `&FEATURE_COUNT=10`;
+      `${SZNS_BASE}/identify?geometry=${pt.x},${pt.y}` +
+      `&geometryType=esriGeometryPoint&sr=3857` +
+      `&layers=all&tolerance=5` +
+      `&mapExtent=${mapExtent}` +
+      `&imageDisplay=${size.x},${size.y},96` +
+      `&returnGeometry=false&f=json`;
 
     const resp = await fetch(url);
     const data = await resp.json();
 
-    if (data?.features && data.features.length > 0) {
-      const rowsHtml = data.features.map((f: any) => {
-        const p = f.properties || {};
-        const salyga = p["Specialioji sąlyga"] || "";
-        const pavadinimas = p["Paviršinio vandens telkinio pavadinimas"] || "";
-        const plotas = p["Specialiosios sąlygos plotas (ha)"];
-        const statusas = p["Tvirtinimo statusas"] || "";
-        const uetk = p["Paviršinio vandens telkinio UETK kodas"] || "";
-        const pdf = p["Papildoma informacija"] || "";
-        const unikalus = p["Unikalus numeris Nekilnojamojo turto registre"] || "";
+    if (data?.results && data.results.length > 0) {
+      const rowsHtml = data.results.map((r: any) => {
+        const p = r.attributes || {};
+        const layerName = r.layerName || "";
+        const salyga = p["SPECIALIOJI_SALYGA"] || p["SPEC_SALYGA"] || p["PAVADINIMAS"] || layerName;
+        const plotas = p["PLOTAS_HA"] || p["PLOTAS"];
+        const statusas = p["STATUSAS"] || "";
+        const unikalus = p["UNIKALUS_NR"] || p["UNR"] || "";
 
         return `
           <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
             <div style="font-size:12px;font-weight:600;color:#111;">${salyga}</div>
-            ${pavadinimas ? `<div style="font-size:11px;color:#555;margin-top:2px;">🌊 ${pavadinimas}${uetk ? ` (${uetk})` : ""}</div>` : ""}
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;">
               ${plotas != null ? `<span style="font-size:10px;background:#f0f4ff;padding:1px 6px;border-radius:4px;color:#334;">${plotas} ha</span>` : ""}
               ${statusas ? `<span style="font-size:10px;background:${statusas === "Patvirtinta" ? "#dcfce7" : "#fef9c3"};padding:1px 6px;border-radius:4px;color:#334;">${statusas}</span>` : ""}
               ${unikalus ? `<span style="font-size:10px;color:#888;">Nr. ${unikalus}</span>` : ""}
             </div>
-            ${pdf ? `<a href="${pdf}" target="_blank" rel="noopener" style="font-size:10px;color:#2563eb;text-decoration:underline;margin-top:3px;display:inline-block;">📄 PDF dokumentas</a>` : ""}
           </div>
         `;
       }).join("");
@@ -281,10 +268,10 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
         .setContent(`
           <div style="min-width:240px;max-width:360px;font-family:Inter,sans-serif;">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px;">
-              Specialiosios sąlygos (${data.features.length})
+              Specialiosios sąlygos (${data.results.length})
             </div>
             ${rowsHtml}
-            <div style="font-size:10px;color:#aaa;margin-top:8px;">© Aplinkos apsaugos agentūra</div>
+            <div style="font-size:10px;color:#aaa;margin-top:8px;">© NŽT / Registrų centras</div>
           </div>
         `)
         .openOn(map);
