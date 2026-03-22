@@ -135,15 +135,21 @@ const SznsTileLayer = L.GridLayer.extend({
     const tileSize = 256;
 
     const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+    const nePoint = nwPoint.add(new L.Point(tileSize, 0));
+    const swPoint = nwPoint.add(new L.Point(0, tileSize));
     const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
-    const nwLatLng = map.unproject(nwPoint, coords.z);
-    const seLatLng = map.unproject(sePoint, coords.z);
 
-    const nwLks = wgs84ToLKS94(nwLatLng.lat, nwLatLng.lng);
-    const seLks = wgs84ToLKS94(seLatLng.lat, seLatLng.lng);
+    const corners = [nwPoint, nePoint, swPoint, sePoint]
+      .map((point) => map.unproject(point, coords.z))
+      .map((latLng) => wgs84ToLKS94(latLng.lat, latLng.lng));
 
-    const groundResX = Math.abs(seLks.x - nwLks.x) / tileSize;
-    const groundResY = Math.abs(nwLks.y - seLks.y) / tileSize;
+    const minX = Math.min(...corners.map((corner) => corner.x));
+    const maxX = Math.max(...corners.map((corner) => corner.x));
+    const minY = Math.min(...corners.map((corner) => corner.y));
+    const maxY = Math.max(...corners.map((corner) => corner.y));
+
+    const groundResX = (maxX - minX) / tileSize;
+    const groundResY = (maxY - minY) / tileSize;
     const groundRes = (groundResX + groundResY) / 2;
 
     let lksZoom = 9;
@@ -160,14 +166,10 @@ const SznsTileLayer = L.GridLayer.extend({
     const lksRes = SZNS_LKS_RESOLUTIONS[lksZoom];
     const tileSizeM = SZNS_LKS_TILE_SIZE * lksRes;
 
-    const pxPerMeterX = tileSize / Math.abs(seLks.x - nwLks.x);
-    const pxPerMeterY = tileSize / Math.abs(nwLks.y - seLks.y);
-
-    // Find ALL LKS tiles that overlap this Leaflet slot (NW→SE corners, not just center)
-    const startCol = Math.floor((nwLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
-    const endCol = Math.floor((seLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
-    const startRow = Math.floor((SZNS_LKS_ORIGIN.y - nwLks.y) / tileSizeM);
-    const endRow = Math.floor((SZNS_LKS_ORIGIN.y - seLks.y) / tileSizeM);
+    const startCol = Math.floor((minX - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const endCol = Math.floor((maxX - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const startRow = Math.floor((SZNS_LKS_ORIGIN.y - maxY) / tileSizeM);
+    const endRow = Math.floor((SZNS_LKS_ORIGIN.y - minY) / tileSizeM);
 
     const el = document.createElement("div");
     el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
@@ -184,11 +186,18 @@ const SznsTileLayer = L.GridLayer.extend({
 
         const lksTileLeft = SZNS_LKS_ORIGIN.x + col * tileSizeM;
         const lksTileTop = SZNS_LKS_ORIGIN.y - row * tileSizeM;
+        const lksTileRight = lksTileLeft + tileSizeM;
+        const lksTileBottom = lksTileTop - tileSizeM;
 
-        const imgLeft = (lksTileLeft - nwLks.x) * pxPerMeterX;
-        const imgTop = (nwLks.y - lksTileTop) * pxPerMeterY;
-        const imgWidth = tileSizeM * pxPerMeterX;
-        const imgHeight = tileSizeM * pxPerMeterY;
+        const tileNorthWest = lks94ToWGS84(lksTileLeft, lksTileTop);
+        const tileSouthEast = lks94ToWGS84(lksTileRight, lksTileBottom);
+        const tileNorthWestPoint = map.project(L.latLng(tileNorthWest.lat, tileNorthWest.lng), coords.z);
+        const tileSouthEastPoint = map.project(L.latLng(tileSouthEast.lat, tileSouthEast.lng), coords.z);
+
+        const imgLeft = tileNorthWestPoint.x - nwPoint.x;
+        const imgTop = tileNorthWestPoint.y - nwPoint.y;
+        const imgWidth = tileSouthEastPoint.x - tileNorthWestPoint.x;
+        const imgHeight = tileSouthEastPoint.y - tileNorthWestPoint.y;
 
         const img = document.createElement("img");
         img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${row}/${col}`;
