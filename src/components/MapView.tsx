@@ -39,7 +39,7 @@ const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer"
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SZNS_DYNAMIC_BASE = "https://www.geoportal.lt/arcgis/rest/services/NZT/SZNS_DR10LT/MapServer";
+const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -136,7 +136,7 @@ const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    return buildExportProxyUrl(SZNS_DYNAMIC_BASE, coords, map, "png32", true);
+    return buildDirectExportUrl(SZNS_BASE, coords, map, "png32", true);
   },
 });
 
@@ -257,7 +257,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
     const url =
-      `${SZNS_DYNAMIC_BASE}/identify?geometry=${pt.x},${pt.y}` +
+      `${SZNS_BASE}/identify?geometry=${pt.x},${pt.y}` +
       `&geometryType=esriGeometryPoint&sr=3346` +
       `&layers=all&tolerance=8` +
       `&mapExtent=${mapExtent}` +
@@ -446,6 +446,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               if (!sznsLayerRef.current) {
                 sznsLayerRef.current = new (SznsTileLayer as any)("", {
+                  minZoom: 14,
                   maxZoom: 22,
                   maxNativeZoom: 18,
                   opacity: 0.7,
