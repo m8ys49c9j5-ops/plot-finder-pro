@@ -136,7 +136,7 @@ const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    return buildExportProxyUrl(SZNS_DYNAMIC_BASE, coords, map, "png32", true);
+    return buildDirectExportUrl(SZNS_BASE, coords, map, "png32", true);
   },
 });
 
