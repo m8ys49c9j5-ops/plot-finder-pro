@@ -454,11 +454,14 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             const nowActive = !sznsActiveRef.current;
             sznsActiveRef.current = nowActive;
             if (nowActive) {
+              if (map.getZoom() < 16) {
+                toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
+              }
               if (!sznsLayerRef.current) {
                 sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                  minZoom: 14,
+                  minZoom: 16,
                   maxZoom: 22,
-                  maxNativeZoom: 18,
+                  maxNativeZoom: 19,
                   opacity: 0.7,
                   zIndex: OVERLAY_ZINDEX,
                 });
