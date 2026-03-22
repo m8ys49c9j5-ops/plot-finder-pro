@@ -122,9 +122,78 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    return buildDirectExportUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+const SZNS_LKS_ORIGIN = { x: 18900, y: 6258000 };
+const SZNS_LKS_TILE_SIZE = 512;
+const SZNS_LKS_RESOLUTIONS = [
+  1587.5031750063501, 793.7515875031751, 529.1677250021168,
+  264.5838625010584, 132.2919312505292, 52.91677250021167,
+  26.458386250105836, 13.229193125052918, 6.614596562526459,
+  2.6458386250105836, 1.3229193125052918, 0.5291677250021167,
+  0.26458386250105836,
+];
+
+const SznsTileLayer = L.GridLayer.extend({
+  createTile: function (coords: L.Coords, done: Function) {
+    const map = (this as any)._map as L.Map;
+    const tileSize = 256;
+
+    const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+    const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+    const nwLatLng = map.unproject(nwPoint, coords.z);
+    const seLatLng = map.unproject(sePoint, coords.z);
+
+    const nwLks = wgs84ToLKS94(nwLatLng.lat, nwLatLng.lng);
+    const seLks = wgs84ToLKS94(seLatLng.lat, seLatLng.lng);
+
+    const groundResX = Math.abs(seLks.x - nwLks.x) / tileSize;
+    const groundResY = Math.abs(nwLks.y - seLks.y) / tileSize;
+    const groundRes = (groundResX + groundResY) / 2;
+
+    let lksZoom = 9;
+    let minDiff = Infinity;
+    SZNS_LKS_RESOLUTIONS.forEach((r, i) => {
+      const diff = Math.abs(r - groundRes);
+      if (diff < minDiff) { minDiff = diff; lksZoom = i; }
+    });
+    lksZoom = Math.max(5, Math.min(12, lksZoom));
+
+    const lksRes = SZNS_LKS_RESOLUTIONS[lksZoom];
+    const tileSizeM = SZNS_LKS_TILE_SIZE * lksRes;
+
+    const centerLks = {
+      x: (nwLks.x + seLks.x) / 2,
+      y: (nwLks.y + seLks.y) / 2,
+    };
+
+    const lksTileCol = Math.floor((centerLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const lksTileRow = Math.floor((SZNS_LKS_ORIGIN.y - centerLks.y) / tileSizeM);
+
+    const lksTileLeft = SZNS_LKS_ORIGIN.x + lksTileCol * tileSizeM;
+    const lksTileTop = SZNS_LKS_ORIGIN.y - lksTileRow * tileSizeM;
+
+    const pxPerMeterX = tileSize / Math.abs(seLks.x - nwLks.x);
+    const pxPerMeterY = tileSize / Math.abs(nwLks.y - seLks.y);
+
+    const imgLeft = (lksTileLeft - nwLks.x) * pxPerMeterX;
+    const imgTop = (nwLks.y - lksTileTop) * pxPerMeterY;
+    const imgWidth = tileSizeM * pxPerMeterX;
+    const imgHeight = tileSizeM * pxPerMeterY;
+
+    const el = document.createElement("div");
+    el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
+
+    if (lksTileCol >= 0 && lksTileRow >= 0) {
+      const img = document.createElement("img");
+      img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${lksTileRow}/${lksTileCol}`;
+      img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;opacity:0.75;`;
+      img.onload = () => done(null, el);
+      img.onerror = () => done(null, el);
+      el.appendChild(img);
+    } else {
+      done(null, el);
+    }
+
+    return el;
   },
 });
 
@@ -408,9 +477,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             sznsActiveRef.current = nowActive;
             if (nowActive) {
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                  tileSize: 256, opacity: 0.7, maxZoom: 19, zIndex: 200,
-                }) as L.TileLayer;
+                sznsLayerRef.current = new (SznsTileLayer as any)({ minZoom: 8, maxZoom: 19, zIndex: OVERLAY_ZINDEX }) as L.TileLayer;
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
