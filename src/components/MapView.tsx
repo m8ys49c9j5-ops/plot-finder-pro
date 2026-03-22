@@ -36,7 +36,7 @@ const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/
 const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
 const FOREST_BASE = "https://www.geoportal.lt/mapproxy/vmt_mkd/MapServer";
 const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer";
-const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const SZNS_BASE = "https://www.geoportal.lt/arcgis/rest/services/NZT/SZNS_DR10LT/MapServer";
 
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
@@ -97,8 +97,6 @@ const buildDirectExportUrl = (
   return exportUrl;
 };
 
-const buildProxyJsonUrl = (url: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
-
 const OrthoTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     return buildExportProxyUrl(ORTHO_BASE, coords, (this as any)._map as L.Map, "jpg", false);
@@ -123,9 +121,96 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+const SZNS_LKS_ORIGIN = { x: 18900, y: 6258000 };
+const SZNS_LKS_TILE_SIZE = 512;
+const SZNS_LKS_RESOLUTIONS = [
+  1587.5031750063501, 793.7515875031751, 529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167,
+  26.458386250105836, 13.229193125052918, 6.614596562526459, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167,
+  0.26458386250105836,
+];
+
+const SznsTileLayer = L.GridLayer.extend({
+  createTile: function (coords: L.Coords, done: Function) {
+    const map = (this as any)._map as L.Map;
+    const tileSize = 256;
+
+    const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
+    const nePoint = nwPoint.add(new L.Point(tileSize, 0));
+    const swPoint = nwPoint.add(new L.Point(0, tileSize));
+    const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+
+    const corners = [nwPoint, nePoint, swPoint, sePoint]
+      .map((point) => map.unproject(point, coords.z))
+      .map((latLng) => wgs84ToLKS94(latLng.lat, latLng.lng));
+
+    const minX = Math.min(...corners.map((corner) => corner.x));
+    const maxX = Math.max(...corners.map((corner) => corner.x));
+    const minY = Math.min(...corners.map((corner) => corner.y));
+    const maxY = Math.max(...corners.map((corner) => corner.y));
+
+    const groundResX = (maxX - minX) / tileSize;
+    const groundResY = (maxY - minY) / tileSize;
+    const groundRes = (groundResX + groundResY) / 2;
+
+    let lksZoom = 9;
+    let minDiff = Infinity;
+    SZNS_LKS_RESOLUTIONS.forEach((r, i) => {
+      const diff = Math.abs(r - groundRes);
+      if (diff < minDiff) {
+        minDiff = diff;
+        lksZoom = i;
+      }
+    });
+    lksZoom = Math.max(5, Math.min(12, lksZoom));
+
+    const lksRes = SZNS_LKS_RESOLUTIONS[lksZoom];
+    const tileSizeM = SZNS_LKS_TILE_SIZE * lksRes;
+
+    const startCol = Math.floor((minX - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const endCol = Math.floor((maxX - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const startRow = Math.floor((SZNS_LKS_ORIGIN.y - maxY) / tileSizeM);
+    const endRow = Math.floor((SZNS_LKS_ORIGIN.y - minY) / tileSizeM);
+
+    const el = document.createElement("div");
+    el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
+
+    let pendingCount = 0;
+    const onLoadOrError = () => {
+      pendingCount--;
+      if (pendingCount <= 0) done(null, el);
+    };
+
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        if (col < 0 || row < 0) continue;
+
+        const lksTileLeft = SZNS_LKS_ORIGIN.x + col * tileSizeM;
+        const lksTileTop = SZNS_LKS_ORIGIN.y - row * tileSizeM;
+        const lksTileRight = lksTileLeft + tileSizeM;
+        const lksTileBottom = lksTileTop - tileSizeM;
+
+        const tileNorthWest = lks94ToWGS84(lksTileLeft, lksTileTop);
+        const tileSouthEast = lks94ToWGS84(lksTileRight, lksTileBottom);
+        const tileNorthWestPoint = map.project(L.latLng(tileNorthWest.lat, tileNorthWest.lng), coords.z);
+        const tileSouthEastPoint = map.project(L.latLng(tileSouthEast.lat, tileSouthEast.lng), coords.z);
+
+        const imgLeft = tileNorthWestPoint.x - nwPoint.x;
+        const imgTop = tileNorthWestPoint.y - nwPoint.y;
+        const imgWidth = tileSouthEastPoint.x - tileNorthWestPoint.x;
+        const imgHeight = tileSouthEastPoint.y - tileNorthWestPoint.y;
+
+        const img = document.createElement("img");
+        img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${row}/${col}`;
+        img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;mix-blend-mode:multiply;`;
+        pendingCount++;
+        img.onload = onLoadOrError;
+        img.onerror = onLoadOrError;
+        el.appendChild(img);
+      }
+    }
+
+    if (pendingCount === 0) done(null, el);
+    return el;
   },
 });
 
@@ -141,6 +226,94 @@ const EsoDujosTileLayer = L.TileLayer.extend({
   },
 });
 
+const wgs84ToLKS94 = (lat: number, lng: number): { x: number; y: number } => {
+  const a = 6378137.0;
+  const f = 1 / 298.257222101;
+  const e2 = 2 * f - f * f;
+  const k0 = 0.9998;
+  const lng0 = (24.0 * Math.PI) / 180;
+  const fe = 500000;
+
+  const phi = (lat * Math.PI) / 180;
+  const lam = (lng * Math.PI) / 180;
+  const sinP = Math.sin(phi);
+  const cosP = Math.cos(phi);
+  const tanP = Math.tan(phi);
+
+  const N = a / Math.sqrt(1 - e2 * sinP * sinP);
+  const T = tanP * tanP;
+  const C = (e2 / (1 - e2)) * cosP * cosP;
+  const A = (lam - lng0) * cosP;
+  const M =
+    a *
+    ((1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 * e2 * e2) / 256) * phi -
+      ((3 * e2) / 8 + (3 * e2 * e2) / 32 + (45 * e2 * e2 * e2) / 1024) * Math.sin(2 * phi) +
+      ((15 * e2 * e2) / 256 + (45 * e2 * e2 * e2) / 1024) * Math.sin(4 * phi) -
+      ((35 * e2 * e2 * e2) / 3072) * Math.sin(6 * phi));
+
+  const x =
+    fe +
+    k0 *
+      N *
+      (A +
+        ((1 - T + C) * A * A * A) / 6 +
+        ((5 - 18 * T + T * T + 72 * C - 58 * (e2 / (1 - e2))) * A * A * A * A * A) / 120);
+  const y =
+    k0 *
+    (M +
+      N *
+        tanP *
+        ((A * A) / 2 +
+          ((5 - T + 9 * C + 4 * C * C) * A * A * A * A) / 24 +
+          ((61 - 58 * T + T * T + 600 * C - 330 * (e2 / (1 - e2))) * A * A * A * A * A * A) / 720));
+
+  return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
+};
+
+const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
+  const a = 6378137.0;
+  const f = 1 / 298.257222101;
+  const e2 = 2 * f - f * f;
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const k0 = 0.9998;
+  const lng0 = (24.0 * Math.PI) / 180;
+  const fe = 500000;
+
+  const M = y / k0;
+  const mu = M / (a * (1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 * e2 * e2) / 256));
+
+  const phi1 =
+    mu +
+    ((3 * e1) / 2 - (27 * e1 * e1 * e1) / 32) * Math.sin(2 * mu) +
+    ((21 * e1 * e1) / 16 - (55 * e1 * e1 * e1 * e1) / 32) * Math.sin(4 * mu) +
+    ((151 * e1 * e1 * e1) / 96) * Math.sin(6 * mu);
+
+  const sinP1 = Math.sin(phi1);
+  const cosP1 = Math.cos(phi1);
+  const tanP1 = Math.tan(phi1);
+  const N1 = a / Math.sqrt(1 - e2 * sinP1 * sinP1);
+  const T1 = tanP1 * tanP1;
+  const C1 = (e2 / (1 - e2)) * cosP1 * cosP1;
+  const R1 = (a * (1 - e2)) / Math.pow(1 - e2 * sinP1 * sinP1, 1.5);
+  const D = (x - fe) / (N1 * k0);
+
+  const lat =
+    phi1 -
+    ((N1 * tanP1) / R1) *
+      ((D * D) / 2 -
+        ((5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * (e2 / (1 - e2))) * D * D * D * D) / 24 +
+        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * (e2 / (1 - e2)) - 3 * C1 * C1) * D * D * D * D * D * D) / 720);
+
+  const lng =
+    lng0 +
+    (D -
+      ((1 + 2 * T1 + C1) * D * D * D) / 6 +
+      ((5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * (e2 / (1 - e2)) + 24 * T1 * T1) * D * D * D * D * D) / 120) /
+      cosP1;
+
+  return { lat: (lat * 180) / Math.PI, lng: (lng * 180) / Math.PI };
+};
+
 // SZNS identify via ArcGIS /identify
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
@@ -153,16 +326,15 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 
     const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
-    const identifyUrl =
+    const url =
       `${SZNS_BASE}/identify?geometry=${pt.x},${pt.y}` +
       `&geometryType=esriGeometryPoint&sr=3857` +
-      `&layers=visible&tolerance=8` +
+      `&layers=all&tolerance=5` +
       `&mapExtent=${mapExtent}` +
       `&imageDisplay=${size.x},${size.y},96` +
       `&returnGeometry=false&f=json`;
 
-    const resp = await fetch(buildProxyJsonUrl(identifyUrl));
-    if (!resp.ok) throw new Error(`Identify request failed with ${resp.status}`);
+    const resp = await fetch(url);
     const data = await resp.json();
 
     if (data?.results && data.results.length > 0) {
@@ -342,13 +514,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               if (!sznsLayerRef.current) {
                 sznsLayerRef.current = new (SznsTileLayer as any)({
-                  minZoom: 12,
+                  minZoom: 15,
                   maxZoom: 19,
-                  opacity: 0.92,
                   zIndex: OVERLAY_ZINDEX,
-                  updateWhenZooming: true,
-                  updateWhenIdle: false,
-                  keepBuffer: 4,
+                  updateWhenZooming: false,
                 }) as L.TileLayer;
               }
               sznsLayerRef.current!.addTo(map);
