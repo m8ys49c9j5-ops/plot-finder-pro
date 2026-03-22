@@ -36,8 +36,6 @@ const KADASTRAS_BASE = "https://www.geoportal.lt/mapproxy/rc_kadastro_zemelapis/
 const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/MapServer";
 const FOREST_BASE = "https://www.geoportal.lt/mapproxy/vmt_mkd/MapServer";
 const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer";
-const SZNS_BASE = "https://www.geoportal.lt/arcgis/rest/services/NZT/SZNS_DR10LT/MapServer";
-
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -124,132 +122,9 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SZNS_LKS_ORIGIN = { x: 18900, y: 6258000 };
-const SZNS_LKS_TILE_SIZE = 512;
-const SZNS_FULL_EXTENT = {
-  xmin: 189017.85510000214,
-  ymin: 5973241.050000006,
-  xmax: 680153.2719000028,
-  ymax: 6257863.444000006,
-};
-const SZNS_LKS_RESOLUTIONS = [
-  1587.5031750063501, 793.7515875031751, 529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167,
-  26.458386250105836, 13.229193125052918, 6.614596562526459, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167,
-  0.26458386250105836,
-];
-
-const SznsTileLayer = L.GridLayer.extend({
-  createTile: function (coords: L.Coords, done: Function) {
-    const map = (this as any)._map as L.Map;
-    const tileSize = 256;
-    const sourceTileSize = SZNS_LKS_TILE_SIZE;
-
-    const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
-    const nePoint = nwPoint.add(new L.Point(tileSize, 0));
-    const swPoint = nwPoint.add(new L.Point(0, tileSize));
-    const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
-
-    const corners = [nwPoint, nePoint, swPoint, sePoint]
-      .map((point) => map.unproject(point, coords.z))
-      .map((latLng) => wgs84ToLKS94(latLng.lat, latLng.lng));
-
-    const minX = Math.min(...corners.map((corner) => corner.x));
-    const maxX = Math.max(...corners.map((corner) => corner.x));
-    const minY = Math.min(...corners.map((corner) => corner.y));
-    const maxY = Math.max(...corners.map((corner) => corner.y));
-
-    const groundResX = (maxX - minX) / tileSize;
-    const groundResY = (maxY - minY) / tileSize;
-    const groundRes = (groundResX + groundResY) / 2;
-
-    let lksZoom = 9;
-    let minDiff = Infinity;
-    SZNS_LKS_RESOLUTIONS.forEach((r, i) => {
-      const diff = Math.abs(r - groundRes);
-      if (diff < minDiff) {
-        minDiff = diff;
-        lksZoom = i;
-      }
-    });
-    lksZoom = Math.max(5, Math.min(12, lksZoom));
-
-    const lksRes = SZNS_LKS_RESOLUTIONS[lksZoom];
-    const tileSizeM = sourceTileSize * lksRes;
-
-    const maxCol = Math.ceil((SZNS_FULL_EXTENT.xmax - SZNS_LKS_ORIGIN.x) / tileSizeM) - 1;
-    const maxRow = Math.ceil((SZNS_LKS_ORIGIN.y - SZNS_FULL_EXTENT.ymin) / tileSizeM) - 1;
-
-    const startCol = Math.max(0, Math.floor((minX - SZNS_LKS_ORIGIN.x) / tileSizeM) - 1);
-    const endCol = Math.min(maxCol, Math.floor((maxX - SZNS_LKS_ORIGIN.x) / tileSizeM) + 1);
-    const startRow = Math.max(0, Math.floor((SZNS_LKS_ORIGIN.y - maxY) / tileSizeM) - 1);
-    const endRow = Math.min(maxRow, Math.floor((SZNS_LKS_ORIGIN.y - minY) / tileSizeM) + 1);
-
-    const el = document.createElement("div");
-    el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
-
-    let pendingCount = 0;
-    const onLoadOrError = () => {
-      pendingCount--;
-      if (pendingCount <= 0) done(null, el);
-    };
-
-    for (let row = startRow; row <= endRow; row++) {
-      for (let col = startCol; col <= endCol; col++) {
-        if (col < 0 || row < 0) continue;
-
-        const lksTileLeft = SZNS_LKS_ORIGIN.x + col * tileSizeM;
-        const lksTileTop = SZNS_LKS_ORIGIN.y - row * tileSizeM;
-        const lksTileRight = lksTileLeft + tileSizeM;
-        const lksTileBottom = lksTileTop - tileSizeM;
-
-        if (
-          lksTileRight <= SZNS_FULL_EXTENT.xmin ||
-          lksTileLeft >= SZNS_FULL_EXTENT.xmax ||
-          lksTileBottom >= SZNS_FULL_EXTENT.ymax ||
-          lksTileTop <= SZNS_FULL_EXTENT.ymin
-        ) {
-          continue;
-        }
-
-        const tileNorthWest = lks94ToWGS84(lksTileLeft, lksTileTop);
-        const tileNorthEast = lks94ToWGS84(lksTileRight, lksTileTop);
-        const tileSouthWest = lks94ToWGS84(lksTileLeft, lksTileBottom);
-        const tileSouthEast = lks94ToWGS84(lksTileRight, lksTileBottom);
-        const tileNorthWestPoint = map.project(L.latLng(tileNorthWest.lat, tileNorthWest.lng), coords.z).subtract(nwPoint);
-        const tileNorthEastPoint = map.project(L.latLng(tileNorthEast.lat, tileNorthEast.lng), coords.z).subtract(nwPoint);
-        const tileSouthWestPoint = map.project(L.latLng(tileSouthWest.lat, tileSouthWest.lng), coords.z).subtract(nwPoint);
-        const tileSouthEastPoint = map.project(L.latLng(tileSouthEast.lat, tileSouthEast.lng), coords.z).subtract(nwPoint);
-
-        const projectedMinX = Math.min(tileNorthWestPoint.x, tileNorthEastPoint.x, tileSouthWestPoint.x, tileSouthEastPoint.x);
-        const projectedMaxX = Math.max(tileNorthWestPoint.x, tileNorthEastPoint.x, tileSouthWestPoint.x, tileSouthEastPoint.x);
-        const projectedMinY = Math.min(tileNorthWestPoint.y, tileNorthEastPoint.y, tileSouthWestPoint.y, tileSouthEastPoint.y);
-        const projectedMaxY = Math.max(tileNorthWestPoint.y, tileNorthEastPoint.y, tileSouthWestPoint.y, tileSouthEastPoint.y);
-
-        if (projectedMaxX <= 0 || projectedMinX >= tileSize || projectedMaxY <= 0 || projectedMinY >= tileSize) {
-          continue;
-        }
-
-        const a = (tileNorthEastPoint.x - tileNorthWestPoint.x) / sourceTileSize;
-        const b = (tileNorthEastPoint.y - tileNorthWestPoint.y) / sourceTileSize;
-        const c = (tileSouthWestPoint.x - tileNorthWestPoint.x) / sourceTileSize;
-        const d = (tileSouthWestPoint.y - tileNorthWestPoint.y) / sourceTileSize;
-        const tx = tileNorthWestPoint.x;
-        const ty = tileNorthWestPoint.y;
-
-        const img = document.createElement("img");
-        img.src = `${SZNS_CACHE_BASE}/tile/${lksZoom}/${row}/${col}`;
-        img.alt = "";
-        img.decoding = "async";
-        img.style.cssText = `position:absolute;left:0;top:0;width:${sourceTileSize}px;height:${sourceTileSize}px;transform-origin:0 0;transform:matrix(${a},${b},${c},${d},${tx},${ty});mix-blend-mode:multiply;pointer-events:none;`;
-        pendingCount++;
-        img.onload = onLoadOrError;
-        img.onerror = onLoadOrError;
-        el.appendChild(img);
-      }
-    }
-
-    if (pendingCount === 0) done(null, el);
-    return el;
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildExportProxyUrl(SZNS_CACHE_BASE, coords, (this as any)._map as L.Map, "png32", true);
   },
 });
 
@@ -554,14 +429,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             sznsActiveRef.current = nowActive;
             if (nowActive) {
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)({
-                  minZoom: 14,
-                  maxZoom: 19,
+                sznsLayerRef.current = new (SznsTileLayer as any)("", {
+                  maxZoom: 22,
+                  maxNativeZoom: 18,
+                  opacity: 0.7,
                   zIndex: OVERLAY_ZINDEX,
-                  keepBuffer: 4,
-                  updateWhenIdle: true,
-                  updateWhenZooming: false,
-                }) as L.TileLayer;
+                });
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
