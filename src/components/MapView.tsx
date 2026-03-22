@@ -137,21 +137,16 @@ const SznsTileLayer = L.TileLayer.extend({
     const map = (this as any)._map as L.Map;
     if (!map) return "";
 
-    const tileSize = 256;
-    const nwPoint = new L.Point(coords.x * tileSize, coords.y * tileSize);
-    const sePoint = new L.Point((coords.x + 1) * tileSize, (coords.y + 1) * tileSize);
+    const allLayers = Array.from({length: 76}, (_, i) => i).join(',');
 
-    const nwLatLng = map.unproject(nwPoint, coords.z);
-    const seLatLng = map.unproject(sePoint, coords.z);
-
-    const nwLKS = wgs84ToLKS94(nwLatLng.lat, nwLatLng.lng);
-    const seLKS = wgs84ToLKS94(seLatLng.lat, seLatLng.lng);
-
-    const bbox = `${nwLKS.x},${seLKS.y},${seLKS.x},${nwLKS.y}`;
-
-    const exportUrl = `${SZNS_BASE}/export?bbox=${bbox}&bboxSR=3346&imageSR=3857&size=${tileSize},${tileSize}&format=png32&transparent=true&f=image`;
-
-    return buildMapProxyUrl(exportUrl);
+    return buildExportProxyUrl(
+      SZNS_BASE,
+      coords,
+      map,
+      "png32",
+      true,
+      `show:${allLayers}`
+    );
   },
 });
 
