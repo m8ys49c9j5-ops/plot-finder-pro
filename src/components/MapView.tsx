@@ -257,7 +257,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
     const url =
-      `${SZNS_CACHE_BASE}/identify?geometry=${pt.x},${pt.y}` +
+      `${SZNS_DYNAMIC_BASE}/identify?geometry=${pt.x},${pt.y}` +
       `&geometryType=esriGeometryPoint&sr=3346` +
       `&layers=all&tolerance=8` +
       `&mapExtent=${mapExtent}` +
