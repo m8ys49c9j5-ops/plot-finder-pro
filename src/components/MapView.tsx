@@ -41,6 +41,9 @@ const SZNS_BASE = "https://www.geoportal.lt/arcgis/rest/services/NZT/SZNS_DR10LT
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SZNS_CACHE_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+
+const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
 // Fire-and-forget analytics insert
 const logSearchAnalytics = (queryInput: string, searchType: string, isSuccessful: boolean, userId?: string) => {
@@ -73,7 +76,7 @@ const buildExportProxyUrl = (
   const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
   let exportUrl = `${baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize},${tileSize}&format=${format}&transparent=${transparent}&f=image`;
   if (layers) exportUrl += `&layers=${encodeURIComponent(layers)}`;
-  return `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(exportUrl)}`;
+  return buildMapProxyUrl(exportUrl);
 };
 
 const buildDirectExportUrl = (
@@ -123,6 +126,12 @@ const MeliorTileLayer = L.TileLayer.extend({
 
 const SZNS_LKS_ORIGIN = { x: 18900, y: 6258000 };
 const SZNS_LKS_TILE_SIZE = 512;
+const SZNS_FULL_EXTENT = {
+  xmin: 189017.85510000214,
+  ymin: 5973241.050000006,
+  xmax: 680153.2719000028,
+  ymax: 6257863.444000006,
+};
 const SZNS_LKS_RESOLUTIONS = [
   1587.5031750063501, 793.7515875031751, 529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167,
   26.458386250105836, 13.229193125052918, 6.614596562526459, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167,
@@ -133,6 +142,7 @@ const SznsTileLayer = L.GridLayer.extend({
   createTile: function (coords: L.Coords, done: Function) {
     const map = (this as any)._map as L.Map;
     const tileSize = 256;
+    const sourceTileSize = SZNS_LKS_TILE_SIZE;
 
     const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
     const nePoint = nwPoint.add(new L.Point(tileSize, 0));
@@ -164,12 +174,15 @@ const SznsTileLayer = L.GridLayer.extend({
     lksZoom = Math.max(5, Math.min(12, lksZoom));
 
     const lksRes = SZNS_LKS_RESOLUTIONS[lksZoom];
-    const tileSizeM = SZNS_LKS_TILE_SIZE * lksRes;
+    const tileSizeM = sourceTileSize * lksRes;
 
-    const startCol = Math.floor((minX - SZNS_LKS_ORIGIN.x) / tileSizeM);
-    const endCol = Math.floor((maxX - SZNS_LKS_ORIGIN.x) / tileSizeM);
-    const startRow = Math.floor((SZNS_LKS_ORIGIN.y - maxY) / tileSizeM);
-    const endRow = Math.floor((SZNS_LKS_ORIGIN.y - minY) / tileSizeM);
+    const maxCol = Math.ceil((SZNS_FULL_EXTENT.xmax - SZNS_LKS_ORIGIN.x) / tileSizeM) - 1;
+    const maxRow = Math.ceil((SZNS_LKS_ORIGIN.y - SZNS_FULL_EXTENT.ymin) / tileSizeM) - 1;
+
+    const startCol = Math.max(0, Math.floor((minX - SZNS_LKS_ORIGIN.x) / tileSizeM) - 1);
+    const endCol = Math.min(maxCol, Math.floor((maxX - SZNS_LKS_ORIGIN.x) / tileSizeM) + 1);
+    const startRow = Math.max(0, Math.floor((SZNS_LKS_ORIGIN.y - maxY) / tileSizeM) - 1);
+    const endRow = Math.min(maxRow, Math.floor((SZNS_LKS_ORIGIN.y - minY) / tileSizeM) + 1);
 
     const el = document.createElement("div");
     el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
@@ -189,19 +202,45 @@ const SznsTileLayer = L.GridLayer.extend({
         const lksTileRight = lksTileLeft + tileSizeM;
         const lksTileBottom = lksTileTop - tileSizeM;
 
-        const tileNorthWest = lks94ToWGS84(lksTileLeft, lksTileTop);
-        const tileSouthEast = lks94ToWGS84(lksTileRight, lksTileBottom);
-        const tileNorthWestPoint = map.project(L.latLng(tileNorthWest.lat, tileNorthWest.lng), coords.z);
-        const tileSouthEastPoint = map.project(L.latLng(tileSouthEast.lat, tileSouthEast.lng), coords.z);
+        if (
+          lksTileRight <= SZNS_FULL_EXTENT.xmin ||
+          lksTileLeft >= SZNS_FULL_EXTENT.xmax ||
+          lksTileBottom >= SZNS_FULL_EXTENT.ymax ||
+          lksTileTop <= SZNS_FULL_EXTENT.ymin
+        ) {
+          continue;
+        }
 
-        const imgLeft = tileNorthWestPoint.x - nwPoint.x;
-        const imgTop = tileNorthWestPoint.y - nwPoint.y;
-        const imgWidth = tileSouthEastPoint.x - tileNorthWestPoint.x;
-        const imgHeight = tileSouthEastPoint.y - tileNorthWestPoint.y;
+        const tileNorthWest = lks94ToWGS84(lksTileLeft, lksTileTop);
+        const tileNorthEast = lks94ToWGS84(lksTileRight, lksTileTop);
+        const tileSouthWest = lks94ToWGS84(lksTileLeft, lksTileBottom);
+        const tileSouthEast = lks94ToWGS84(lksTileRight, lksTileBottom);
+        const tileNorthWestPoint = map.project(L.latLng(tileNorthWest.lat, tileNorthWest.lng), coords.z).subtract(nwPoint);
+        const tileNorthEastPoint = map.project(L.latLng(tileNorthEast.lat, tileNorthEast.lng), coords.z).subtract(nwPoint);
+        const tileSouthWestPoint = map.project(L.latLng(tileSouthWest.lat, tileSouthWest.lng), coords.z).subtract(nwPoint);
+        const tileSouthEastPoint = map.project(L.latLng(tileSouthEast.lat, tileSouthEast.lng), coords.z).subtract(nwPoint);
+
+        const projectedMinX = Math.min(tileNorthWestPoint.x, tileNorthEastPoint.x, tileSouthWestPoint.x, tileSouthEastPoint.x);
+        const projectedMaxX = Math.max(tileNorthWestPoint.x, tileNorthEastPoint.x, tileSouthWestPoint.x, tileSouthEastPoint.x);
+        const projectedMinY = Math.min(tileNorthWestPoint.y, tileNorthEastPoint.y, tileSouthWestPoint.y, tileSouthEastPoint.y);
+        const projectedMaxY = Math.max(tileNorthWestPoint.y, tileNorthEastPoint.y, tileSouthWestPoint.y, tileSouthEastPoint.y);
+
+        if (projectedMaxX <= 0 || projectedMinX >= tileSize || projectedMaxY <= 0 || projectedMinY >= tileSize) {
+          continue;
+        }
+
+        const a = (tileNorthEastPoint.x - tileNorthWestPoint.x) / sourceTileSize;
+        const b = (tileNorthEastPoint.y - tileNorthWestPoint.y) / sourceTileSize;
+        const c = (tileSouthWestPoint.x - tileNorthWestPoint.x) / sourceTileSize;
+        const d = (tileSouthWestPoint.y - tileNorthWestPoint.y) / sourceTileSize;
+        const tx = tileNorthWestPoint.x;
+        const ty = tileNorthWestPoint.y;
 
         const img = document.createElement("img");
-        img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${row}/${col}`;
-        img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;mix-blend-mode:multiply;`;
+        img.src = `${SZNS_CACHE_BASE}/tile/${lksZoom}/${row}/${col}`;
+        img.alt = "";
+        img.decoding = "async";
+        img.style.cssText = `position:absolute;left:0;top:0;width:${sourceTileSize}px;height:${sourceTileSize}px;transform-origin:0 0;transform:matrix(${a},${b},${c},${d},${tx},${ty});mix-blend-mode:multiply;pointer-events:none;`;
         pendingCount++;
         img.onload = onLoadOrError;
         img.onerror = onLoadOrError;
@@ -267,7 +306,7 @@ const wgs84ToLKS94 = (lat: number, lng: number): { x: number; y: number } => {
           ((5 - T + 9 * C + 4 * C * C) * A * A * A * A) / 24 +
           ((61 - 58 * T + T * T + 600 * C - 330 * (e2 / (1 - e2))) * A * A * A * A * A * A) / 720));
 
-  return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
+  return { x, y };
 };
 
 const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
@@ -320,21 +359,21 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const bounds = map.getBounds();
     const size = map.getSize();
 
-    const sw = map.options.crs!.project(bounds.getSouthWest());
-    const ne = map.options.crs!.project(bounds.getNorthEast());
-    const pt = map.options.crs!.project(latlng);
+    const sw = wgs84ToLKS94(bounds.getSouthWest().lat, bounds.getSouthWest().lng);
+    const ne = wgs84ToLKS94(bounds.getNorthEast().lat, bounds.getNorthEast().lng);
+    const pt = wgs84ToLKS94(latlng.lat, latlng.lng);
 
     const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
     const url =
-      `${SZNS_BASE}/identify?geometry=${pt.x},${pt.y}` +
-      `&geometryType=esriGeometryPoint&sr=3857` +
-      `&layers=all&tolerance=5` +
+      `${SZNS_CACHE_BASE}/identify?geometry=${pt.x},${pt.y}` +
+      `&geometryType=esriGeometryPoint&sr=3346` +
+      `&layers=all&tolerance=8` +
       `&mapExtent=${mapExtent}` +
       `&imageDisplay=${size.x},${size.y},96` +
       `&returnGeometry=false&f=json`;
 
-    const resp = await fetch(url);
+    const resp = await fetch(buildMapProxyUrl(url));
     const data = await resp.json();
 
     if (data?.results && data.results.length > 0) {
@@ -342,10 +381,11 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
         .map((r: any) => {
           const p = r.attributes || {};
           const layerName = r.layerName || "";
-          const salyga = p["SPECIALIOJI_SALYGA"] || p["SPEC_SALYGA"] || p["PAVADINIMAS"] || layerName;
+          const salyga = p["SPECIALIOJI_SALYGA"] || p["SPEC_SALYGA"] || p["PAVADINIMAS"] || p["PAVADINIM"] || layerName;
           const plotas = p["PLOTAS_HA"] || p["PLOTAS"];
           const statusas = p["STATUSAS"] || "";
           const unikalus = p["UNIKALUS_NR"] || p["UNR"] || "";
+          const nuoroda = p["NUORODA"] || "";
 
           return `
           <div style="padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">
@@ -355,6 +395,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
               ${statusas ? `<span style="font-size:10px;background:${statusas === "Patvirtinta" ? "#dcfce7" : "#fef9c3"};padding:1px 6px;border-radius:4px;color:#334;">${statusas}</span>` : ""}
               ${unikalus ? `<span style="font-size:10px;color:#888;">Nr. ${unikalus}</span>` : ""}
             </div>
+            ${nuoroda ? `<div style="margin-top:6px;"><a href="${nuoroda}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#0f766e;text-decoration:none;">Atidaryti aprašą</a></div>` : ""}
           </div>
         `;
         })
@@ -514,9 +555,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               if (!sznsLayerRef.current) {
                 sznsLayerRef.current = new (SznsTileLayer as any)({
-                  minZoom: 15,
+                  minZoom: 14,
                   maxZoom: 19,
                   zIndex: OVERLAY_ZINDEX,
+                  keepBuffer: 4,
+                  updateWhenIdle: true,
                   updateWhenZooming: false,
                 }) as L.TileLayer;
               }
