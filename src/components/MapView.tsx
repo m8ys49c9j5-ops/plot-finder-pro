@@ -150,49 +150,54 @@ const SznsTileLayer = L.GridLayer.extend({
     let minDiff = Infinity;
     SZNS_LKS_RESOLUTIONS.forEach((r, i) => {
       const diff = Math.abs(r - groundRes);
-      if (diff < minDiff) {
-        minDiff = diff;
-        lksZoom = i;
-      }
+      if (diff < minDiff) { minDiff = diff; lksZoom = i; }
     });
     lksZoom = Math.max(5, Math.min(12, lksZoom));
 
     const lksRes = SZNS_LKS_RESOLUTIONS[lksZoom];
     const tileSizeM = SZNS_LKS_TILE_SIZE * lksRes;
 
-    const centerLks = {
-      x: (nwLks.x + seLks.x) / 2,
-      y: (nwLks.y + seLks.y) / 2,
-    };
-
-    const lksTileCol = Math.floor((centerLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
-    const lksTileRow = Math.floor((SZNS_LKS_ORIGIN.y - centerLks.y) / tileSizeM);
-
-    const lksTileLeft = SZNS_LKS_ORIGIN.x + lksTileCol * tileSizeM;
-    const lksTileTop = SZNS_LKS_ORIGIN.y - lksTileRow * tileSizeM;
-
     const pxPerMeterX = tileSize / Math.abs(seLks.x - nwLks.x);
     const pxPerMeterY = tileSize / Math.abs(nwLks.y - seLks.y);
 
-    const imgLeft = (lksTileLeft - nwLks.x) * pxPerMeterX;
-    const imgTop = (nwLks.y - lksTileTop) * pxPerMeterY;
-    const imgWidth = tileSizeM * pxPerMeterX;
-    const imgHeight = tileSizeM * pxPerMeterY;
+    // Find ALL LKS tiles that overlap this Leaflet slot (NW→SE corners, not just center)
+    const startCol = Math.floor((nwLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const endCol   = Math.floor((seLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const startRow = Math.floor((SZNS_LKS_ORIGIN.y - nwLks.y) / tileSizeM);
+    const endRow   = Math.floor((SZNS_LKS_ORIGIN.y - seLks.y) / tileSizeM);
 
     const el = document.createElement("div");
     el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
 
-    if (lksTileCol >= 0 && lksTileRow >= 0) {
-      const img = document.createElement("img");
-      img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${lksTileRow}/${lksTileCol}`;
-      img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;opacity:0.75;`;
-      img.onload = () => done(null, el);
-      img.onerror = () => done(null, el);
-      el.appendChild(img);
-    } else {
-      done(null, el);
+    let pendingCount = 0;
+    const onLoadOrError = () => {
+      pendingCount--;
+      if (pendingCount <= 0) done(null, el);
+    };
+
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        if (col < 0 || row < 0) continue;
+
+        const lksTileLeft = SZNS_LKS_ORIGIN.x + col * tileSizeM;
+        const lksTileTop  = SZNS_LKS_ORIGIN.y - row * tileSizeM;
+
+        const imgLeft   = Math.round((lksTileLeft - nwLks.x) * pxPerMeterX);
+        const imgTop    = Math.round((nwLks.y - lksTileTop) * pxPerMeterY);
+        const imgWidth  = Math.round(tileSizeM * pxPerMeterX) + 1;
+        const imgHeight = Math.round(tileSizeM * pxPerMeterY) + 1;
+
+        const img = document.createElement("img");
+        img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${row}/${col}`;
+        img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;opacity:0.75;`;
+        pendingCount++;
+        img.onload = onLoadOrError;
+        img.onerror = onLoadOrError;
+        el.appendChild(img);
+      }
     }
 
+    if (pendingCount === 0) done(null, el);
     return el;
   },
 });
