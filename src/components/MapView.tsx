@@ -192,7 +192,7 @@ const SznsTileLayer = L.GridLayer.extend({
 
         const img = document.createElement("img");
         img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${row}/${col}`;
-        img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;opacity:0.75;`;
+        img.style.cssText = `position:absolute;left:${imgLeft}px;top:${imgTop}px;width:${imgWidth}px;height:${imgHeight}px;mix-blend-mode:multiply;`;
         pendingCount++;
         img.onload = onLoadOrError;
         img.onerror = onLoadOrError;
