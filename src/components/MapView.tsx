@@ -150,7 +150,10 @@ const SznsTileLayer = L.GridLayer.extend({
     let minDiff = Infinity;
     SZNS_LKS_RESOLUTIONS.forEach((r, i) => {
       const diff = Math.abs(r - groundRes);
-      if (diff < minDiff) { minDiff = diff; lksZoom = i; }
+      if (diff < minDiff) {
+        minDiff = diff;
+        lksZoom = i;
+      }
     });
     lksZoom = Math.max(5, Math.min(12, lksZoom));
 
@@ -162,9 +165,9 @@ const SznsTileLayer = L.GridLayer.extend({
 
     // Find ALL LKS tiles that overlap this Leaflet slot (NW→SE corners, not just center)
     const startCol = Math.floor((nwLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
-    const endCol   = Math.floor((seLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
+    const endCol = Math.floor((seLks.x - SZNS_LKS_ORIGIN.x) / tileSizeM);
     const startRow = Math.floor((SZNS_LKS_ORIGIN.y - nwLks.y) / tileSizeM);
-    const endRow   = Math.floor((SZNS_LKS_ORIGIN.y - seLks.y) / tileSizeM);
+    const endRow = Math.floor((SZNS_LKS_ORIGIN.y - seLks.y) / tileSizeM);
 
     const el = document.createElement("div");
     el.style.cssText = `width:${tileSize}px;height:${tileSize}px;overflow:hidden;position:relative;`;
@@ -180,11 +183,11 @@ const SznsTileLayer = L.GridLayer.extend({
         if (col < 0 || row < 0) continue;
 
         const lksTileLeft = SZNS_LKS_ORIGIN.x + col * tileSizeM;
-        const lksTileTop  = SZNS_LKS_ORIGIN.y - row * tileSizeM;
+        const lksTileTop = SZNS_LKS_ORIGIN.y - row * tileSizeM;
 
-        const imgLeft   = Math.round((lksTileLeft - nwLks.x) * pxPerMeterX);
-        const imgTop    = Math.round((nwLks.y - lksTileTop) * pxPerMeterY);
-        const imgWidth  = Math.round(tileSizeM * pxPerMeterX) + 1;
+        const imgLeft = Math.round((lksTileLeft - nwLks.x) * pxPerMeterX);
+        const imgTop = Math.round((nwLks.y - lksTileTop) * pxPerMeterY);
+        const imgWidth = Math.round(tileSizeM * pxPerMeterX) + 1;
         const imgHeight = Math.round(tileSizeM * pxPerMeterY) + 1;
 
         const img = document.createElement("img");
@@ -501,7 +504,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             sznsActiveRef.current = nowActive;
             if (nowActive) {
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)({ minZoom: 14, maxZoom: 19, zIndex: OVERLAY_ZINDEX, updateWhenZooming: false }) as L.TileLayer;
+                sznsLayerRef.current = new (SznsTileLayer as any)({
+                  minZoom: 15,
+                  maxZoom: 19,
+                  zIndex: OVERLAY_ZINDEX,
+                  updateWhenZooming: false,
+                }) as L.TileLayer;
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
