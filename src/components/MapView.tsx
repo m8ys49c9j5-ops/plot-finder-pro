@@ -219,6 +219,9 @@ const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
     + (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*(e2/(1-e2)) + 24*T1*T1) * D*D*D*D*D/120
   ) / cosP1;
 
+  return { lat: lat * 180 / Math.PI, lng: lng * 180 / Math.PI };
+};
+
 // SZNS identify via ArcGIS /identify
 const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
   try {
