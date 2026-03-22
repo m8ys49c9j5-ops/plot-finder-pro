@@ -185,10 +185,10 @@ const SznsTileLayer = L.GridLayer.extend({
         const lksTileLeft = SZNS_LKS_ORIGIN.x + col * tileSizeM;
         const lksTileTop = SZNS_LKS_ORIGIN.y - row * tileSizeM;
 
-        const imgLeft = Math.round((lksTileLeft - nwLks.x) * pxPerMeterX);
-        const imgTop = Math.round((nwLks.y - lksTileTop) * pxPerMeterY);
-        const imgWidth = Math.round(tileSizeM * pxPerMeterX) + 1;
-        const imgHeight = Math.round(tileSizeM * pxPerMeterY) + 1;
+        const imgLeft = (lksTileLeft - nwLks.x) * pxPerMeterX;
+        const imgTop = (nwLks.y - lksTileTop) * pxPerMeterY;
+        const imgWidth = tileSizeM * pxPerMeterX;
+        const imgHeight = tileSizeM * pxPerMeterY;
 
         const img = document.createElement("img");
         img.src = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/tile/${lksZoom}/${row}/${col}`;
