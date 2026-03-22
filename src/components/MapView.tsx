@@ -37,7 +37,7 @@ const ORTHO_BASE = "https://www.geoportal.lt/mapproxy/nzt_ort10lt_recent_public/
 const FOREST_BASE = "https://www.geoportal.lt/mapproxy/vmt_mkd/MapServer";
 const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer";
 const SZNS_BASE = "https://www.geoportal.lt/arcgis/rest/services/NZT/SZNS_DR10LT/MapServer";
-const SZNS_WMS_BASE = "https://www.geoportal.lt/mapproxy/am_uetk_szns";
+
 
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
