@@ -446,6 +446,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (nowActive) {
               if (!sznsLayerRef.current) {
                 sznsLayerRef.current = new (SznsTileLayer as any)("", {
+                  minZoom: 14,
                   maxZoom: 22,
                   maxNativeZoom: 18,
                   opacity: 0.7,
