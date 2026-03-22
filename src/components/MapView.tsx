@@ -122,16 +122,11 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const createSznsLayer = () =>
-  L.tileLayer.wms(SZNS_WMS_BASE, {
-    layers: "patvirtintos_teritorijos,ruosiamos_tvirtinimui_teritorijos",
-    format: "image/png",
-    transparent: true,
-    version: "1.1.1",
-    maxZoom: 19,
-    opacity: 0.7,
-    zIndex: 200,
-  });
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    return buildDirectExportUrl(SZNS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+  },
+});
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
