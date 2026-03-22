@@ -39,7 +39,7 @@ const MELIOR_BASE = "https://www.geoportal.lt/mapproxy/nzt_mel_dr10lt/MapServer"
 const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapServer";
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SZNS_CACHE_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const SZNS_DYNAMIC_BASE = "https://www.geoportal.lt/arcgis/rest/services/NZT/SZNS_DR10LT/MapServer";
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -102,43 +102,57 @@ const buildDirectExportUrl = (
 
 const OrthoTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(ORTHO_BASE, coords, (this as any)._map as L.Map, "jpg", false);
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(ORTHO_BASE, coords, map, "jpg", false);
   },
 });
 
 const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:15,21,27,33");
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
   },
 });
 
 const ForestTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildDirectExportUrl(FOREST_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildDirectExportUrl(FOREST_BASE, coords, map, "png32", true);
   },
 });
 
 const MeliorTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildDirectExportUrl(MELIOR_BASE, coords, (this as any)._map as L.Map, "png32", true, "show:6");
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildDirectExportUrl(MELIOR_BASE, coords, map, "png32", true, "show:6");
   },
 });
 
 const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(SZNS_CACHE_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(SZNS_DYNAMIC_BASE, coords, map, "png32", true);
   },
 });
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(ESO_ELEKTRA_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(ESO_ELEKTRA_BASE, coords, map, "png32", true);
   },
 });
 
 const EsoDujosTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
-    return buildExportProxyUrl(ESO_DUJOS_BASE, coords, (this as any)._map as L.Map, "png32", true);
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(ESO_DUJOS_BASE, coords, map, "png32", true);
   },
 });
 
@@ -243,7 +257,7 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
     const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
     const url =
-      `${SZNS_CACHE_BASE}/identify?geometry=${pt.x},${pt.y}` +
+      `${SZNS_DYNAMIC_BASE}/identify?geometry=${pt.x},${pt.y}` +
       `&geometryType=esriGeometryPoint&sr=3346` +
       `&layers=all&tolerance=8` +
       `&mapExtent=${mapExtent}` +
