@@ -65,8 +65,9 @@ const buildExportProxyUrl = (
   layers?: string,
   tileSize = 256,
 ) => {
-  const nwPoint = coords.scaleBy(new L.Point(tileSize, tileSize));
-  const sePoint = nwPoint.add(new L.Point(tileSize, tileSize));
+  // Do not mutate the original coords object!
+  const nwPoint = new L.Point(coords.x * tileSize, coords.y * tileSize);
+  const sePoint = new L.Point((coords.x + 1) * tileSize, (coords.y + 1) * tileSize);
   const nw = map.unproject(nwPoint, coords.z);
   const se = map.unproject(sePoint, coords.z);
   const nwMerc = L.CRS.EPSG3857.project(nw);
