@@ -501,11 +501,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             sznsActiveRef.current = nowActive;
             if (nowActive) {
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)({
-                  minZoom: 14,
-                  maxZoom: 19,
-                  zIndex: OVERLAY_ZINDEX,
-                }) as L.TileLayer;
+                sznsLayerRef.current = new (SznsTileLayer as any)({ minZoom: 14, maxZoom: 19, zIndex: OVERLAY_ZINDEX, updateWhenZooming: false }) as L.TileLayer;
               }
               sznsLayerRef.current!.addTo(map);
               bringKadastroToFront();
