@@ -142,23 +142,22 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    const map = (this as any)._map as L.Map;
-    if (!map) return "";
-
-    const allLayers = Array.from({length: 76}, (_, i) => i).join(',');
-
-    return buildExportProxyUrl(
-      SZNS_BASE,
-      coords,
-      map,
-      "png32",
-      true,
-      `show:${allLayers}`
-    );
-  },
-});
+const createSznsTileLayer = (layerIds: number[]) => {
+  return L.TileLayer.extend({
+    getTileUrl: function (coords: L.Coords) {
+      const map = (this as any)._map as L.Map;
+      if (!map) return "";
+      return buildExportProxyUrl(
+        SZNS_BASE,
+        coords,
+        map,
+        "png32",
+        true,
+        `show:${layerIds.join(',')}`
+      );
+    },
+  });
+};
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
