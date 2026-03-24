@@ -278,12 +278,16 @@ const PRICING = [
 
 const FAQ_ITEMS = [
   {
-    q: "Iš kur gaunami duomenys?",
-    a: "Visi duomenys gaunami iš oficialių Lietuvos šaltinių: INSPIRE geoportalas, Registrų centras (NT registras) ir Valstybinė žemės tarnyba. Mes juos surenkame ir pateikiame suprantamai.",
+    q: "Ar jūsū duomenys tikslūs ir patikimi?",
+    a: "Visi duomenys gaunami iš oficialių Lietuvos šaltinių, kuriuos kompanijos specialistai apdoroja, įvertina ir pateikia jums supaprastinta forma.",
   },
   {
-    q: "Ar duomenys atnaujinami?",
-    a: "Taip. Kiekvieną kartą pateikiame naujausius duomenis tiesiai iš šaltinio. Rinkos vertė atnaujinama pagal oficialų Registrų centro masinį vertinimą.",
+    q: "Kaip dažnai atnaujinama informacija?",
+    a: "Kiekvieną kartą pateikiame naujausius duomenis. Duomenis atnaujiname kartą per mėnesį.",
+  },
+  {
+    q: "Kokią informaciją pateikiate mokamoje ataskaitoje?",
+    a: "Mokamoje ataskaitoje jūs gaunate pilną išaiškinimą dėl specialiųjų sąlygų ir specialistų/profesionalų pateiktą išvadą.",
   },
   {
     q: "Ar kreditai turi galiojimo datą?",
@@ -292,10 +296,6 @@ const FAQ_ITEMS = [
   {
     q: "Ar galima naudoti verslo tikslais?",
     a: "Taip. Ataskaitos skirtos tiek privatiems asmenims, tiek NT agentams, advokatams, statybų įmonėms ir investuotojams.",
-  },
-  {
-    q: "Kaip veikia žemėlapio identifikavimas?",
-    a: "Spustelėkite bet kurį tašką žemėlapyje – sistema automatiškai nustato, kuriam sklypui tas taškas priklauso, ir parodo jo ribas bei duomenis.",
   },
 ];
 
