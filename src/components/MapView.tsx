@@ -143,30 +143,49 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const createSznsTileLayer = (layerIds: number[]) => {
-  return L.TileLayer.extend({
-    getTileUrl: function (coords: L.Coords) {
-      const map = (this as any)._map as L.Map;
-      if (!map) return "";
-      return buildExportProxyUrl(
-        SZNS_BASE,
-        coords,
-        map,
-        "png32",
-        true,
-        `show:${layerIds.join(',')}`
-      );
-    },
-  });
+// WMTS tile matrix parameters for rc_szns (EPSG:3346, 512px tiles)
+const SZNS_WMTS_ORIGIN_X = 18900.0;
+const SZNS_WMTS_ORIGIN_Y = 6258000.0;
+const SZNS_WMTS_SCALES = [
+  5669654, 2834827, 1889885, 944942, 472471, 188988,
+  94494, 47247, 23624, 9449, 4725, 1890, 945,
+];
+const SZNS_WMTS_PX = 0.00028;
+
+const getMapScale = (map: L.Map): number => {
+  const lat = map.getCenter().lat;
+  const zoom = map.getZoom();
+  const mpp = 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+  return mpp / SZNS_WMTS_PX;
 };
 
-const UetkSznsTileLayer = L.TileLayer.extend({
+const SznsWmtsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    return buildExportProxyUrl(UETK_SZNS_BASE, coords, map, "png32", true);
+    const tileSize = 256;
+    const cx = (coords.x + 0.5) * tileSize;
+    const cy = (coords.y + 0.5) * tileSize;
+    const center = map.unproject([cx, cy], coords.z);
+    const lks = wgs84ToLKS94(center.lat, center.lng);
+
+    // Pick best WMTS zoom
+    const scale = getMapScale(map);
+    let wmtsZ = 0;
+    for (let i = SZNS_WMTS_SCALES.length - 1; i >= 0; i--) {
+      if (scale <= SZNS_WMTS_SCALES[i] * 1.5) { wmtsZ = i; break; }
+    }
+
+    const tileSpan = SZNS_WMTS_SCALES[wmtsZ] * SZNS_WMTS_PX * 512;
+    const col = Math.floor((lks.x - SZNS_WMTS_ORIGIN_X) / tileSpan);
+    const row = Math.floor((SZNS_WMTS_ORIGIN_Y - lks.y) / tileSpan);
+    if (col < 0 || row < 0) return "";
+
+    const url = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/WMTS?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=SZNS_pub_cache&STYLE=default&TILEMATRIXSET=default028mm&TILEMATRIX=${wmtsZ}&TILEROW=${row}&TILECOL=${col}&FORMAT=image/png`;
+    return buildMapProxyUrl(url);
   },
 });
+
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
