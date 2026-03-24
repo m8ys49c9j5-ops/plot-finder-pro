@@ -50,6 +50,7 @@ const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapSer
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const UETK_SZNS_BASE = "https://www.geoportal.lt/mapproxy/am_uetk_szns/MapServer";
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
