@@ -484,7 +484,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               sznsLayerRefs.current[key] = null;
               // Update sznsActiveRef — true if any group still on
               sznsActiveRef.current = Object.values(sznsLayerRefs.current).some(l => l && map.hasLayer(l));
-              if (!sznsActiveRef.current) map.closePopup();
+              if (!sznsActiveRef.current) {
+                map.closePopup();
+                // Remove UETK SZNS overlay when no SZNS groups active
+                if (uetkSznsLayerRef.current && map.hasLayer(uetkSznsLayerRef.current)) {
+                  map.removeLayer(uetkSznsLayerRef.current);
+                }
+              }
               return false;
             }
             if (map.getZoom() < 16) {
@@ -498,6 +504,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             sznsLayerRefs.current[key] = layer;
             layer.addTo(map);
             sznsActiveRef.current = true;
+            // Add UETK SZNS overlay when first SZNS group is enabled
+            if (!uetkSznsLayerRef.current) {
+              uetkSznsLayerRef.current = new (UetkSznsTileLayer as any)("", {
+                minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
+                opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+              });
+            }
+            if (!map.hasLayer(uetkSznsLayerRef.current!)) {
+              uetkSznsLayerRef.current!.addTo(map);
+            }
             bringKadastroToFront();
             return true;
           }
