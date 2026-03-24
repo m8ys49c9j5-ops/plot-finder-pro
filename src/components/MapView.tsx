@@ -368,6 +368,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       szns_sanitary: null, szns_nature: null, szns_defense: null,
     });
     const sznsActiveRef = useRef(false);
+    const uetkSznsLayerRef = useRef<L.TileLayer | null>(null);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
 
