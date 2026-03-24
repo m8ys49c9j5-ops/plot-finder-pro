@@ -248,12 +248,24 @@ const WHY_ITEMS = [
 ];
 
 const REPORT_FEATURES = [
-  { icon: <IconTarget />, title: "Kadastrinis & Unikalus Nr.", desc: "Tikslus sklypo identifikatorius iš NT registro" },
-  { icon: <IconRuler />, title: "Juridinis plotas", desc: "Registruotas plotas hektarais, tikslumas iki 4 ženklų" },
+  {
+    icon: <IconTarget />,
+    title: "Kadastrinis & Unikalus Nr.",
+    desc: "Nurodomi to paties sklypo kadastrinis ir unikalus numeriai",
+  },
+  {
+    icon: <IconRuler />,
+    title: "Sklypo plotas",
+    desc: "Pateikiamas juridinis sklypo plotas hektarais, 1 kv. m tikslumu",
+  },
   { icon: <IconMap />, title: "Interaktyvus žemėlapis", desc: "Tikslios sklypo ribos kadastro ir ortofoto žemėlapyje" },
-  { icon: <IconEuro />, title: "Rinkos vertė", desc: "Automatiškai surinkta masinė vertė iš RC registro" },
+  {
+    icon: <IconEuro />,
+    title: "Sklypo vidutinė rinkos vertė",
+    desc: "Vertė nustatyta pagal masinį vertinimą, vertinimo data nurodyta ataskaitoje",
+  },
   { icon: <IconSatellite />, title: "Ortofoto vaizdas", desc: "Palydovinis vaizdas su sklypo kontūrais" },
-  { icon: <IconCheck />, title: "Žemės paskirtis", desc: "Oficiali paskirtis ir naudojimo kategorija" },
+  { icon: <IconCheck />, title: "Esama žemės sklypo paskirtis", desc: "" },
   { icon: <IconMapPin />, title: "Sklypo adresas", desc: "" },
   { icon: <IconTarget />, title: "Koordinatės", desc: "Nurodomos sklypo centro koordinatės" },
 ];
