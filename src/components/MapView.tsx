@@ -160,6 +160,14 @@ const createSznsTileLayer = (layerIds: number[]) => {
   });
 };
 
+const UetkSznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(UETK_SZNS_BASE, coords, map, "png32", true);
+  },
+});
+
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
