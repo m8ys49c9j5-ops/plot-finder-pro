@@ -40,8 +40,6 @@ const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapSer
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
-/** GeoServer WMS endpoint (GetMap is more reliable here than generic /ows with 1.3.0). */
-const INSPIRE_CP_WMS = "https://www.inspire-geoportal.lt/geoserver/cp/wms";
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -102,36 +100,6 @@ const buildDirectExportUrl = (
   return exportUrl;
 };
 
-const buildWmsProxyUrl = (
-  baseUrl: string,
-  coords: L.Coords,
-  map: L.Map,
-  layerName: string,
-  styleName?: string,
-  tileSize = 256,
-) => {
-  const nwPoint = new L.Point(coords.x * tileSize, coords.y * tileSize);
-  const sePoint = new L.Point((coords.x + 1) * tileSize, (coords.y + 1) * tileSize);
-  const nw = map.unproject(nwPoint, coords.z);
-  const se = map.unproject(sePoint, coords.z);
-  const nwMerc = L.CRS.EPSG3857.project(nw);
-  const seMerc = L.CRS.EPSG3857.project(se);
-  const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
-
-  const style = styleName ?? "";
-  // WMS 1.1.1 + SRS=EPSG:3857 avoids axis-order quirks; BBOX = minx,miny,maxx,maxy
-  const wmsUrl =
-    `${baseUrl}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap` +
-    `&LAYERS=${encodeURIComponent(layerName)}` +
-    `&STYLES=${encodeURIComponent(style)}` +
-    `&FORMAT=image/png&TRANSPARENT=true` +
-    `&SRS=EPSG:3857` +
-    `&BBOX=${bbox}` +
-    `&WIDTH=${tileSize}&HEIGHT=${tileSize}`;
-
-  return buildMapProxyUrl(wmsUrl);
-};
-
 const OrthoTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
@@ -144,16 +112,7 @@ const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    // Hide all RC „sklypai“ sublayers (15,21,27,33) — they embed cadastral text; outlines come from INSPIRE WMS.
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "hide:15,21,27,33");
-  },
-});
-
-const InspireParcelOutlineTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    const map = (this as any)._map as L.Map;
-    if (!map) return "";
-    return buildWmsProxyUrl(INSPIRE_CP_WMS, coords, map, "CP.CadastralParcel", "CP.CadastralParcel.Default");
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
   },
 });
 
@@ -170,6 +129,24 @@ const MeliorTileLayer = L.TileLayer.extend({
     const map = (this as any)._map as L.Map;
     if (!map) return "";
     return buildDirectExportUrl(MELIOR_BASE, coords, map, "png32", true, "show:6");
+  },
+});
+
+const SznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+
+    const allLayers = Array.from({length: 76}, (_, i) => i).join(',');
+
+    return buildExportProxyUrl(
+      SZNS_BASE,
+      coords,
+      map,
+      "png32",
+      true,
+      `show:${allLayers}`
+    );
   },
 });
 
@@ -232,65 +209,6 @@ const wgs84ToLKS94 = (lat: number, lng: number): { x: number; y: number } => {
 
   return { x, y };
 };
-
-/** RC SŽNS is a single fused LKS94 (EPSG:3346) tile cache; /export returns 500 — use /tile with 512×512 cells. */
-const SZNS_ARCGIS_TILE_PX = 512;
-const SZNS_TILE_ORIGIN_X = 18900;
-const SZNS_TILE_ORIGIN_Y = 6258000;
-const SZNS_LOD_RESOLUTIONS: readonly { level: number; resolution: number }[] = [
-              { level: 0, resolution: 1587.5031750063501 },
-              { level: 1, resolution: 793.7515875031751 },
-              { level: 2, resolution: 529.1677250021168 },
-              { level: 3, resolution: 264.5838625010584 },
-              { level: 4, resolution: 132.2919312505292 },
-              { level: 5, resolution: 52.91677250021167 },
-              { level: 6, resolution: 26.458386250105836 },
-              { level: 7, resolution: 13.229193125052918 },
-              { level: 8, resolution: 6.614596562526459 },
-              { level: 9, resolution: 2.6458386250105836 },
-              { level: 10, resolution: 1.3229193125052918 },
-              { level: 11, resolution: 0.5291677250021167 },
-              { level: 12, resolution: 0.26458386250105836 },
-            ] as const;
-
-const SZNS_EMPTY_TILE =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2WZQoAAAAASUVORK5CYII=";
-
-function pickSznsLodLevel(leafletZoom: number, latDeg: number): number {
-  const cosLat = Math.max(0.25, Math.abs(Math.cos((latDeg * Math.PI) / 180)));
-  const target = (40075016.68557849 * cosLat) / (SZNS_ARCGIS_TILE_PX * Math.pow(2, leafletZoom));
-  let best = 12;
-  let bestDiff = Infinity;
-  for (const { level, resolution } of SZNS_LOD_RESOLUTIONS) {
-    const diff = Math.abs(resolution / target - 1);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = level;
-    }
-  }
-  return best;
-}
-
-const SznsLksCacheTileLayer = L.TileLayer.extend({
-  options: { tileSize: SZNS_ARCGIS_TILE_PX },
-
-  getTileUrl: function (coords: L.Coords) {
-    const map = (this as any)._map as L.Map;
-    if (!map) return SZNS_EMPTY_TILE;
-    const layer = this as L.TileLayer;
-    const bounds = (layer as any)._tileCoordsToBounds(coords);
-    const nw = bounds.getNorthWest();
-    const lks = wgs84ToLKS94(nw.lat, nw.lng);
-    const level = pickSznsLodLevel(coords.z, nw.lat);
-    const lod = SZNS_LOD_RESOLUTIONS.find((e) => e.level === level);
-    if (!lod) return SZNS_EMPTY_TILE;
-    const res = lod.resolution;
-    const col = Math.floor((lks.x - SZNS_TILE_ORIGIN_X) / (res * SZNS_ARCGIS_TILE_PX));
-    const row = Math.floor((SZNS_TILE_ORIGIN_Y - lks.y) / (res * SZNS_ARCGIS_TILE_PX));
-    if (col < 0 || row < 0 || level < 0 || level > 12) return SZNS_EMPTY_TILE;
-    return buildMapProxyUrl(`${SZNS_BASE}/tile/${level}/${row}/${col}`);
-  },
-});
 
 const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
   const a = 6378137.0;
@@ -423,7 +341,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     const geoportalTileRef = useRef<L.TileLayer | null>(null);
     const orthoLayerRef = useRef<L.TileLayer | null>(null);
     const kadastroLayerRef = useRef<L.TileLayer | null>(null);
-    const inspireParcelOutlineRef = useRef<L.TileLayer | null>(null);
 
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
@@ -449,15 +366,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     const bringKadastroToFront = () => {
       if (kadastroLayerRef.current && mapRef.current?.hasLayer(kadastroLayerRef.current)) {
         kadastroLayerRef.current.bringToFront();
-      }
-      if (inspireParcelOutlineRef.current && mapRef.current?.hasLayer(inspireParcelOutlineRef.current)) {
-        inspireParcelOutlineRef.current.bringToFront();
-      }
-    };
-
-    const bringSznsToFront = () => {
-      if (sznsLayerRef.current && mapRef.current?.hasLayer(sznsLayerRef.current)) {
-        sznsLayerRef.current.bringToFront();
       }
     };
 
@@ -502,8 +410,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
 
         const OVERLAY_ZINDEX = 200;
         const KADASTRO_ZINDEX = 300;
-        const INSPIRE_PARCEL_ZINDEX = 350;
-        const SZNS_ZINDEX = 450;
 
         const toggle = (
           layerRef: React.MutableRefObject<L.TileLayer | null>,
@@ -526,9 +432,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "parcels": {
             if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) {
               map.removeLayer(kadastroLayerRef.current);
-              if (inspireParcelOutlineRef.current && map.hasLayer(inspireParcelOutlineRef.current)) {
-                map.removeLayer(inspireParcelOutlineRef.current);
-              }
               return false;
             }
             if (!kadastroLayerRef.current) {
@@ -539,19 +442,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
                 attribution: "Kadastro žemėlapis",
               });
             }
-            if (!inspireParcelOutlineRef.current) {
-              inspireParcelOutlineRef.current = new (InspireParcelOutlineTileLayer as any)("", {
-                minZoom: 12,
-                maxZoom: 19,
-                opacity: 1,
-                zIndex: INSPIRE_PARCEL_ZINDEX,
-                attribution: "Parcels © INSPIRE/Geoportal",
-              });
-            }
             kadastroLayerRef.current.addTo(map);
-            inspireParcelOutlineRef.current.addTo(map);
             bringKadastroToFront();
-            bringSznsToFront();
             return true;
           }
           case "forest":
@@ -566,16 +458,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
                 toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
               }
               if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsLksCacheTileLayer as any)("", {
-                  minZoom: 7,
+                sznsLayerRef.current = new (SznsTileLayer as any)("", {
+                  minZoom: 16,
                   maxZoom: 22,
                   maxNativeZoom: 19,
                   opacity: 0.7,
-                  zIndex: SZNS_ZINDEX,
+                  zIndex: OVERLAY_ZINDEX,
                 });
               }
               sznsLayerRef.current!.addTo(map);
-              bringSznsToFront();
+              bringKadastroToFront();
             } else {
               if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
                 map.removeLayer(sznsLayerRef.current);
@@ -608,7 +500,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             esoElektraLayerRef.current.addTo(map);
             esoDujosLayerRef.current.addTo(map);
             bringKadastroToFront();
-            bringSznsToFront();
             return true;
           }
           default:
