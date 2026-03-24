@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Mail } from "lucide-react";
+import { Mail, ChevronRight } from "lucide-react";
 import FeedbackPopup from "@/components/FeedbackPopup";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
-import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
+import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType, SZNS_GROUPS } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +27,6 @@ const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.Eleme
   { key: "parcels", label: "Sklypai", Icon: LayoutGrid },
   { key: "forest", label: "Miškai", Icon: Trees },
   { key: "melior", label: "Melioracija", Icon: Droplets },
-  { key: "szns", label: "SZNS", Icon: ShieldAlert },
   { key: "energy", label: "Tinklai", Icon: Zap },
 ];
 
@@ -43,9 +42,15 @@ const Index = () => {
     parcels: false,
     forest: false,
     melior: false,
-    szns: false,
     energy: false,
+    szns_infra: false,
+    szns_transport: false,
+    szns_culture: false,
+    szns_sanitary: false,
+    szns_nature: false,
+    szns_defense: false,
   });
+  const [sznsExpanded, setSznsExpanded] = useState(false);
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
