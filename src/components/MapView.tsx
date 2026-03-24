@@ -493,42 +493,29 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns_sanitary":
           case "szns_nature":
           case "szns_defense": {
-            const group = SZNS_GROUPS.find(g => g.key === key)!;
-            const ref = sznsLayerRefs.current[key];
-            if (ref && map.hasLayer(ref)) {
-              map.removeLayer(ref);
-              sznsLayerRefs.current[key] = null;
-              // Update sznsActiveRef — true if any group still on
-              sznsActiveRef.current = Object.values(sznsLayerRefs.current).some(l => l && map.hasLayer(l));
+            const groups = sznsActiveGroups.current;
+            if (groups.has(key)) {
+              groups.delete(key);
+              sznsActiveRef.current = groups.size > 0;
               if (!sznsActiveRef.current) {
-                map.closePopup();
-                // Remove UETK SZNS overlay when no SZNS groups active
-                if (uetkSznsLayerRef.current && map.hasLayer(uetkSznsLayerRef.current)) {
-                  map.removeLayer(uetkSznsLayerRef.current);
+                if (sznsWmtsLayerRef.current && map.hasLayer(sznsWmtsLayerRef.current)) {
+                  map.removeLayer(sznsWmtsLayerRef.current);
                 }
+                map.closePopup();
               }
               return false;
             }
-            if (map.getZoom() < 16) {
-              toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
-            }
-            const TileClass = createSznsTileLayer(group.layerIds);
-            const layer = new (TileClass as any)("", {
-              minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
-              opacity: 0.7, zIndex: OVERLAY_ZINDEX,
-            });
-            sznsLayerRefs.current[key] = layer;
-            layer.addTo(map);
+            groups.add(key);
             sznsActiveRef.current = true;
-            // Add UETK SZNS overlay when first SZNS group is enabled
-            if (!uetkSznsLayerRef.current) {
-              uetkSznsLayerRef.current = new (UetkSznsTileLayer as any)("", {
-                minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
-                opacity: 0.7, zIndex: OVERLAY_ZINDEX + 50,
+            if (!sznsWmtsLayerRef.current) {
+              sznsWmtsLayerRef.current = new (SznsWmtsTileLayer as any)("", {
+                minZoom: 14, maxZoom: 22, maxNativeZoom: 19,
+                opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+                tileSize: 512,
               });
             }
-            if (!map.hasLayer(uetkSznsLayerRef.current!)) {
-              uetkSznsLayerRef.current!.addTo(map);
+            if (!map.hasLayer(sznsWmtsLayerRef.current!)) {
+              sznsWmtsLayerRef.current!.addTo(map);
             }
             bringKadastroToFront();
             return true;
