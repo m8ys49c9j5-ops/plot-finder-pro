@@ -50,7 +50,7 @@ const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapSer
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
-const UETK_SZNS_BASE = "https://www.geoportal.lt/mapproxy/am_uetk_szns/MapServer";
+
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -143,30 +143,49 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const createSznsTileLayer = (layerIds: number[]) => {
-  return L.TileLayer.extend({
-    getTileUrl: function (coords: L.Coords) {
-      const map = (this as any)._map as L.Map;
-      if (!map) return "";
-      return buildExportProxyUrl(
-        SZNS_BASE,
-        coords,
-        map,
-        "png32",
-        true,
-        `show:${layerIds.join(',')}`
-      );
-    },
-  });
+// WMTS tile matrix parameters for rc_szns (EPSG:3346, 512px tiles)
+const SZNS_WMTS_ORIGIN_X = 18900.0;
+const SZNS_WMTS_ORIGIN_Y = 6258000.0;
+const SZNS_WMTS_SCALES = [
+  5669654, 2834827, 1889885, 944942, 472471, 188988,
+  94494, 47247, 23624, 9449, 4725, 1890, 945,
+];
+const SZNS_WMTS_PX = 0.00028;
+
+const getMapScale = (map: L.Map): number => {
+  const lat = map.getCenter().lat;
+  const zoom = map.getZoom();
+  const mpp = 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+  return mpp / SZNS_WMTS_PX;
 };
 
-const UetkSznsTileLayer = L.TileLayer.extend({
+const SznsWmtsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    return buildExportProxyUrl(UETK_SZNS_BASE, coords, map, "png32", true);
+    const tileSize = 256;
+    const cx = (coords.x + 0.5) * tileSize;
+    const cy = (coords.y + 0.5) * tileSize;
+    const center = map.unproject([cx, cy], coords.z);
+    const lks = wgs84ToLKS94(center.lat, center.lng);
+
+    // Pick best WMTS zoom
+    const scale = getMapScale(map);
+    let wmtsZ = 0;
+    for (let i = SZNS_WMTS_SCALES.length - 1; i >= 0; i--) {
+      if (scale <= SZNS_WMTS_SCALES[i] * 1.5) { wmtsZ = i; break; }
+    }
+
+    const tileSpan = SZNS_WMTS_SCALES[wmtsZ] * SZNS_WMTS_PX * 512;
+    const col = Math.floor((lks.x - SZNS_WMTS_ORIGIN_X) / tileSpan);
+    const row = Math.floor((SZNS_WMTS_ORIGIN_Y - lks.y) / tileSpan);
+    if (col < 0 || row < 0) return "";
+
+    const url = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/WMTS?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=SZNS_pub_cache&STYLE=default&TILEMATRIXSET=default028mm&TILEMATRIX=${wmtsZ}&TILEROW=${row}&TILECOL=${col}&FORMAT=image/png`;
+    return buildMapProxyUrl(url);
   },
 });
+
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
@@ -363,12 +382,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRefs = useRef<Record<SznsGroupKey, L.TileLayer | null>>({
-      szns_infra: null, szns_transport: null, szns_culture: null,
-      szns_sanitary: null, szns_nature: null, szns_defense: null,
-    });
+    const sznsWmtsLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsActiveGroups = useRef<Set<SznsGroupKey>>(new Set());
     const sznsActiveRef = useRef(false);
-    const uetkSznsLayerRef = useRef<L.TileLayer | null>(null);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
 
@@ -477,42 +493,29 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "szns_sanitary":
           case "szns_nature":
           case "szns_defense": {
-            const group = SZNS_GROUPS.find(g => g.key === key)!;
-            const ref = sznsLayerRefs.current[key];
-            if (ref && map.hasLayer(ref)) {
-              map.removeLayer(ref);
-              sznsLayerRefs.current[key] = null;
-              // Update sznsActiveRef — true if any group still on
-              sznsActiveRef.current = Object.values(sznsLayerRefs.current).some(l => l && map.hasLayer(l));
+            const groups = sznsActiveGroups.current;
+            if (groups.has(key)) {
+              groups.delete(key);
+              sznsActiveRef.current = groups.size > 0;
               if (!sznsActiveRef.current) {
-                map.closePopup();
-                // Remove UETK SZNS overlay when no SZNS groups active
-                if (uetkSznsLayerRef.current && map.hasLayer(uetkSznsLayerRef.current)) {
-                  map.removeLayer(uetkSznsLayerRef.current);
+                if (sznsWmtsLayerRef.current && map.hasLayer(sznsWmtsLayerRef.current)) {
+                  map.removeLayer(sznsWmtsLayerRef.current);
                 }
+                map.closePopup();
               }
               return false;
             }
-            if (map.getZoom() < 16) {
-              toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
-            }
-            const TileClass = createSznsTileLayer(group.layerIds);
-            const layer = new (TileClass as any)("", {
-              minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
-              opacity: 0.7, zIndex: OVERLAY_ZINDEX,
-            });
-            sznsLayerRefs.current[key] = layer;
-            layer.addTo(map);
+            groups.add(key);
             sznsActiveRef.current = true;
-            // Add UETK SZNS overlay when first SZNS group is enabled
-            if (!uetkSznsLayerRef.current) {
-              uetkSznsLayerRef.current = new (UetkSznsTileLayer as any)("", {
-                minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
-                opacity: 0.7, zIndex: OVERLAY_ZINDEX + 50,
+            if (!sznsWmtsLayerRef.current) {
+              sznsWmtsLayerRef.current = new (SznsWmtsTileLayer as any)("", {
+                minZoom: 14, maxZoom: 22, maxNativeZoom: 19,
+                opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+                tileSize: 512,
               });
             }
-            if (!map.hasLayer(uetkSznsLayerRef.current!)) {
-              uetkSznsLayerRef.current!.addTo(map);
+            if (!map.hasLayer(sznsWmtsLayerRef.current!)) {
+              sznsWmtsLayerRef.current!.addTo(map);
             }
             bringKadastroToFront();
             return true;
