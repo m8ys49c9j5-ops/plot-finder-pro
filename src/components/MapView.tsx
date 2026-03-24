@@ -461,31 +461,35 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             return toggle(forestLayerRef, ForestTileLayer);
           case "melior":
             return toggle(meliorLayerRef, MeliorTileLayer);
-          case "szns": {
-            const nowActive = !sznsActiveRef.current;
-            sznsActiveRef.current = nowActive;
-            if (nowActive) {
-              if (map.getZoom() < 16) {
-                toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
-              }
-              if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                  minZoom: 16,
-                  maxZoom: 22,
-                  maxNativeZoom: 19,
-                  opacity: 0.7,
-                  zIndex: OVERLAY_ZINDEX,
-                });
-              }
-              sznsLayerRef.current!.addTo(map);
-              bringKadastroToFront();
-            } else {
-              if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
-                map.removeLayer(sznsLayerRef.current);
-              }
-              map.closePopup();
+          case "szns_infra":
+          case "szns_transport":
+          case "szns_culture":
+          case "szns_sanitary":
+          case "szns_nature":
+          case "szns_defense": {
+            const group = SZNS_GROUPS.find(g => g.key === key)!;
+            const ref = sznsLayerRefs.current[key];
+            if (ref && map.hasLayer(ref)) {
+              map.removeLayer(ref);
+              sznsLayerRefs.current[key] = null;
+              // Update sznsActiveRef — true if any group still on
+              sznsActiveRef.current = Object.values(sznsLayerRefs.current).some(l => l && map.hasLayer(l));
+              if (!sznsActiveRef.current) map.closePopup();
+              return false;
             }
-            return nowActive;
+            if (map.getZoom() < 16) {
+              toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
+            }
+            const TileClass = createSznsTileLayer(group.layerIds);
+            const layer = new (TileClass as any)("", {
+              minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
+              opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+            });
+            sznsLayerRefs.current[key] = layer;
+            layer.addTo(map);
+            sznsActiveRef.current = true;
+            bringKadastroToFront();
+            return true;
           }
           case "energy": {
             const isOn = esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current);
