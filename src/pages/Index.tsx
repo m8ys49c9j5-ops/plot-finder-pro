@@ -47,6 +47,7 @@ const Index = () => {
     energy: false,
   });
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
