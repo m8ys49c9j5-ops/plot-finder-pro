@@ -354,11 +354,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRef = useRef<L.TileLayer | null>(null);
-    // SZNS also uses identify on click
+    const sznsLayerRefs = useRef<Record<SznsGroupKey, L.TileLayer | null>>({
+      szns_infra: null, szns_transport: null, szns_culture: null,
+      szns_sanitary: null, szns_nature: null, szns_defense: null,
+    });
+    const sznsActiveRef = useRef(false);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsActiveRef = useRef(false);
 
     const { user, credits, refreshCredits } = useAuth();
     const { config } = useAppConfig();
