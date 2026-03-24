@@ -50,6 +50,7 @@ const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapSer
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const UETK_SZNS_BASE = "https://www.geoportal.lt/mapproxy/am_uetk_szns/MapServer";
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -158,6 +159,14 @@ const createSznsTileLayer = (layerIds: number[]) => {
     },
   });
 };
+
+const UetkSznsTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildExportProxyUrl(UETK_SZNS_BASE, coords, map, "png32", true);
+  },
+});
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
@@ -359,6 +368,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       szns_sanitary: null, szns_nature: null, szns_defense: null,
     });
     const sznsActiveRef = useRef(false);
+    const uetkSznsLayerRef = useRef<L.TileLayer | null>(null);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
 
@@ -474,7 +484,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               sznsLayerRefs.current[key] = null;
               // Update sznsActiveRef — true if any group still on
               sznsActiveRef.current = Object.values(sznsLayerRefs.current).some(l => l && map.hasLayer(l));
-              if (!sznsActiveRef.current) map.closePopup();
+              if (!sznsActiveRef.current) {
+                map.closePopup();
+                // Remove UETK SZNS overlay when no SZNS groups active
+                if (uetkSznsLayerRef.current && map.hasLayer(uetkSznsLayerRef.current)) {
+                  map.removeLayer(uetkSznsLayerRef.current);
+                }
+              }
               return false;
             }
             if (map.getZoom() < 16) {
@@ -488,6 +504,16 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             sznsLayerRefs.current[key] = layer;
             layer.addTo(map);
             sznsActiveRef.current = true;
+            // Add UETK SZNS overlay when first SZNS group is enabled
+            if (!uetkSznsLayerRef.current) {
+              uetkSznsLayerRef.current = new (UetkSznsTileLayer as any)("", {
+                minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
+                opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+              });
+            }
+            if (!map.hasLayer(uetkSznsLayerRef.current!)) {
+              uetkSznsLayerRef.current!.addTo(map);
+            }
             bringKadastroToFront();
             return true;
           }
