@@ -142,6 +142,48 @@ const Index = () => {
   }, [user]);
 
   const activeCount = Object.values(activeOverlays).filter(Boolean).length;
+  const anySznsActive = SZNS_GROUPS.some(g => activeOverlays[g.key]);
+
+  const renderSznsGroup = (compact: boolean) => {
+    const sz = compact ? "h-4 w-4" : "h-4 w-4";
+    const textSz = compact ? "text-[11px]" : "text-xs";
+    const pad = compact ? "p-2" : "p-2.5";
+    const gap = compact ? "gap-1.5" : "gap-2";
+    return (
+      <>
+        <button
+          onClick={() => setSznsExpanded(v => !v)}
+          className={`glass-panel rounded-xl ${pad} shadow-lg transition-colors flex items-center ${gap} ${
+            anySznsActive
+              ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+              : "hover:bg-muted/60"
+          }`}
+        >
+          <ShieldAlert className={`${sz} ${anySznsActive ? "text-primary" : "text-foreground"}`} />
+          <span className={`${textSz} font-medium ${anySznsActive ? "text-primary" : "text-foreground"}`}>
+            SŽNS
+          </span>
+          <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${sznsExpanded ? "rotate-90" : ""}`} />
+        </button>
+        {sznsExpanded && SZNS_GROUPS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => handleToggleOverlay(key)}
+            className={`glass-panel rounded-xl ${pad} shadow-lg transition-colors flex items-center ${gap} ${compact ? "ml-2" : "ml-3"} ${
+              activeOverlays[key]
+                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                : "hover:bg-muted/60"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeOverlays[key] ? "bg-primary" : "bg-muted-foreground/40"}`} />
+            <span className={`${textSz} font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
+              {label}
+            </span>
+          </button>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
