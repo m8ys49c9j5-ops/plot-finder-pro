@@ -382,12 +382,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRefs = useRef<Record<SznsGroupKey, L.TileLayer | null>>({
-      szns_infra: null, szns_transport: null, szns_culture: null,
-      szns_sanitary: null, szns_nature: null, szns_defense: null,
-    });
+    const sznsWmtsLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsActiveGroups = useRef<Set<SznsGroupKey>>(new Set());
     const sznsActiveRef = useRef(false);
-    const uetkSznsLayerRef = useRef<L.TileLayer | null>(null);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
 
