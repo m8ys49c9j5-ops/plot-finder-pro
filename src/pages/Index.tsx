@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Mail } from "lucide-react";
+import { Mail, ChevronRight } from "lucide-react";
 import FeedbackPopup from "@/components/FeedbackPopup";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
-import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
+import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType, SZNS_GROUPS } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +27,6 @@ const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.Eleme
   { key: "parcels", label: "Sklypai", Icon: LayoutGrid },
   { key: "forest", label: "Miškai", Icon: Trees },
   { key: "melior", label: "Melioracija", Icon: Droplets },
-  { key: "szns", label: "SZNS", Icon: ShieldAlert },
   { key: "energy", label: "Tinklai", Icon: Zap },
 ];
 
@@ -43,9 +42,15 @@ const Index = () => {
     parcels: false,
     forest: false,
     melior: false,
-    szns: false,
     energy: false,
+    szns_infra: false,
+    szns_transport: false,
+    szns_culture: false,
+    szns_sanitary: false,
+    szns_nature: false,
+    szns_defense: false,
   });
+  const [sznsExpanded, setSznsExpanded] = useState(false);
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const mapViewRef = useRef<MapViewHandle>(null);
@@ -137,6 +142,48 @@ const Index = () => {
   }, [user]);
 
   const activeCount = Object.values(activeOverlays).filter(Boolean).length;
+  const anySznsActive = SZNS_GROUPS.some(g => activeOverlays[g.key]);
+
+  const renderSznsGroup = (compact: boolean) => {
+    const sz = compact ? "h-4 w-4" : "h-4 w-4";
+    const textSz = compact ? "text-[11px]" : "text-xs";
+    const pad = compact ? "p-2" : "p-2.5";
+    const gap = compact ? "gap-1.5" : "gap-2";
+    return (
+      <>
+        <button
+          onClick={() => setSznsExpanded(v => !v)}
+          className={`glass-panel rounded-xl ${pad} shadow-lg transition-colors flex items-center ${gap} ${
+            anySznsActive
+              ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+              : "hover:bg-muted/60"
+          }`}
+        >
+          <ShieldAlert className={`${sz} ${anySznsActive ? "text-primary" : "text-foreground"}`} />
+          <span className={`${textSz} font-medium ${anySznsActive ? "text-primary" : "text-foreground"}`}>
+            SŽNS
+          </span>
+          <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${sznsExpanded ? "rotate-90" : ""}`} />
+        </button>
+        {sznsExpanded && SZNS_GROUPS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => handleToggleOverlay(key)}
+            className={`glass-panel rounded-xl ${pad} shadow-lg transition-colors flex items-center ${gap} ${compact ? "ml-2" : "ml-3"} ${
+              activeOverlays[key]
+                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                : "hover:bg-muted/60"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeOverlays[key] ? "bg-primary" : "bg-muted-foreground/40"}`} />
+            <span className={`${textSz} font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
+              {label}
+            </span>
+          </button>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
@@ -219,6 +266,7 @@ const Index = () => {
                 </span>
               </button>
             ))}
+            {renderSznsGroup(true)}
           </div>
         </div>
       </div>
@@ -257,6 +305,7 @@ const Index = () => {
             </span>
           </button>
         ))}
+        {renderSznsGroup(false)}
       </div>
 
       {/* Social + mail icons & Attribution */}

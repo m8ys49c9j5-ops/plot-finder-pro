@@ -9,7 +9,17 @@ import { getSessionId } from "@/lib/sessionId";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
-export type OverlayLayerType = "parcels" | "forest" | "melior" | "szns" | "energy";
+export type SznsGroupKey = "szns_infra" | "szns_transport" | "szns_culture" | "szns_sanitary" | "szns_nature" | "szns_defense";
+export type OverlayLayerType = "parcels" | "forest" | "melior" | "energy" | SznsGroupKey;
+
+export const SZNS_GROUPS: { key: SznsGroupKey; label: string; layerIds: number[] }[] = [
+  { key: "szns_infra", label: "Inžineriniai", layerIds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16] },
+  { key: "szns_transport", label: "Susisiekimas", layerIds: [18,19,20,21,22] },
+  { key: "szns_culture", label: "Kultūra / Gamta", layerIds: [24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50] },
+  { key: "szns_sanitary", label: "Sanitariniai", layerIds: [52,53,54,55,56] },
+  { key: "szns_nature", label: "Gamtos obj.", layerIds: [58,59,60,61,62,63,64,65,66,67,68,69] },
+  { key: "szns_defense", label: "Valst. apsauga", layerIds: [71,72,73,74,75,76] },
+];
 
 export interface MapViewHandle {
   setLayerType: (type: MapLayerType) => void;
@@ -132,23 +142,22 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SznsTileLayer = L.TileLayer.extend({
-  getTileUrl: function (coords: L.Coords) {
-    const map = (this as any)._map as L.Map;
-    if (!map) return "";
-
-    const allLayers = Array.from({length: 76}, (_, i) => i).join(',');
-
-    return buildExportProxyUrl(
-      SZNS_BASE,
-      coords,
-      map,
-      "png32",
-      true,
-      `show:${allLayers}`
-    );
-  },
-});
+const createSznsTileLayer = (layerIds: number[]) => {
+  return L.TileLayer.extend({
+    getTileUrl: function (coords: L.Coords) {
+      const map = (this as any)._map as L.Map;
+      if (!map) return "";
+      return buildExportProxyUrl(
+        SZNS_BASE,
+        coords,
+        map,
+        "png32",
+        true,
+        `show:${layerIds.join(',')}`
+      );
+    },
+  });
+};
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
@@ -345,11 +354,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsLayerRef = useRef<L.TileLayer | null>(null);
-    // SZNS also uses identify on click
+    const sznsLayerRefs = useRef<Record<SznsGroupKey, L.TileLayer | null>>({
+      szns_infra: null, szns_transport: null, szns_culture: null,
+      szns_sanitary: null, szns_nature: null, szns_defense: null,
+    });
+    const sznsActiveRef = useRef(false);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
     const esoDujosLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsActiveRef = useRef(false);
 
     const { user, credits, refreshCredits } = useAuth();
     const { config } = useAppConfig();
@@ -450,31 +461,35 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             return toggle(forestLayerRef, ForestTileLayer);
           case "melior":
             return toggle(meliorLayerRef, MeliorTileLayer);
-          case "szns": {
-            const nowActive = !sznsActiveRef.current;
-            sznsActiveRef.current = nowActive;
-            if (nowActive) {
-              if (map.getZoom() < 16) {
-                toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
-              }
-              if (!sznsLayerRef.current) {
-                sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                  minZoom: 16,
-                  maxZoom: 22,
-                  maxNativeZoom: 19,
-                  opacity: 0.7,
-                  zIndex: OVERLAY_ZINDEX,
-                });
-              }
-              sznsLayerRef.current!.addTo(map);
-              bringKadastroToFront();
-            } else {
-              if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
-                map.removeLayer(sznsLayerRef.current);
-              }
-              map.closePopup();
+          case "szns_infra":
+          case "szns_transport":
+          case "szns_culture":
+          case "szns_sanitary":
+          case "szns_nature":
+          case "szns_defense": {
+            const group = SZNS_GROUPS.find(g => g.key === key)!;
+            const ref = sznsLayerRefs.current[key];
+            if (ref && map.hasLayer(ref)) {
+              map.removeLayer(ref);
+              sznsLayerRefs.current[key] = null;
+              // Update sznsActiveRef — true if any group still on
+              sznsActiveRef.current = Object.values(sznsLayerRefs.current).some(l => l && map.hasLayer(l));
+              if (!sznsActiveRef.current) map.closePopup();
+              return false;
             }
-            return nowActive;
+            if (map.getZoom() < 16) {
+              toast.info("Priartinkite žemėlapį, kad pamatytumėte SŽNS zonas");
+            }
+            const TileClass = createSznsTileLayer(group.layerIds);
+            const layer = new (TileClass as any)("", {
+              minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
+              opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+            });
+            sznsLayerRefs.current[key] = layer;
+            layer.addTo(map);
+            sznsActiveRef.current = true;
+            bringKadastroToFront();
+            return true;
           }
           case "energy": {
             const isOn = esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current);
