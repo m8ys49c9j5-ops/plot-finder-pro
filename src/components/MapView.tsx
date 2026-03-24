@@ -40,6 +40,7 @@ const ESO_ELEKTRA_BASE = "https://www.geoportal.lt/mapproxy/ESO_DB_Public/MapSer
 const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapServer";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
+const INSPIRE_CP_WMS = "https://www.inspire-geoportal.lt/geoserver/cp/ows";
 
 const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -100,6 +101,34 @@ const buildDirectExportUrl = (
   return exportUrl;
 };
 
+const buildWmsProxyUrl = (
+  baseUrl: string,
+  coords: L.Coords,
+  map: L.Map,
+  layerName: string,
+  styleName?: string,
+  tileSize = 256,
+) => {
+  const nwPoint = new L.Point(coords.x * tileSize, coords.y * tileSize);
+  const sePoint = new L.Point((coords.x + 1) * tileSize, (coords.y + 1) * tileSize);
+  const nw = map.unproject(nwPoint, coords.z);
+  const se = map.unproject(sePoint, coords.z);
+  const nwMerc = L.CRS.EPSG3857.project(nw);
+  const seMerc = L.CRS.EPSG3857.project(se);
+  const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
+
+  const style = styleName ?? "";
+  const wmsUrl =
+    `${baseUrl}?service=WMS&version=1.3.0&request=GetMap` +
+    `&layers=${encodeURIComponent(layerName)}` +
+    `&styles=${encodeURIComponent(style)}` +
+    `&format=image/png&transparent=true` +
+    `&crs=EPSG:3857&bbox=${bbox}` +
+    `&width=${tileSize}&height=${tileSize}`;
+
+  return buildMapProxyUrl(wmsUrl);
+};
+
 const OrthoTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
@@ -112,7 +141,16 @@ const KadastroTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27,33");
+    // Keep broad cadastral context; layer 33 text is replaced by outline-only WMS overlay.
+    return buildExportProxyUrl(KADASTRAS_BASE, coords, map, "png32", true, "show:15,21,27");
+  },
+});
+
+const InspireParcelOutlineTileLayer = L.TileLayer.extend({
+  getTileUrl: function (coords: L.Coords) {
+    const map = (this as any)._map as L.Map;
+    if (!map) return "";
+    return buildWmsProxyUrl(INSPIRE_CP_WMS, coords, map, "CP.CadastralParcel", "CP.CadastralParcel.Default");
   },
 });
 
@@ -137,7 +175,8 @@ const SznsTileLayer = L.TileLayer.extend({
     const map = (this as any)._map as L.Map;
     if (!map) return "";
 
-    const allLayers = Array.from({length: 76}, (_, i) => i).join(',');
+    // Skip group layers (0), request only feature layers.
+    const allLayers = Array.from({ length: 76 }, (_, i) => i + 1).join(",");
 
     return buildExportProxyUrl(
       SZNS_BASE,
@@ -341,6 +380,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     const geoportalTileRef = useRef<L.TileLayer | null>(null);
     const orthoLayerRef = useRef<L.TileLayer | null>(null);
     const kadastroLayerRef = useRef<L.TileLayer | null>(null);
+    const inspireParcelOutlineRef = useRef<L.TileLayer | null>(null);
 
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
@@ -366,6 +406,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     const bringKadastroToFront = () => {
       if (kadastroLayerRef.current && mapRef.current?.hasLayer(kadastroLayerRef.current)) {
         kadastroLayerRef.current.bringToFront();
+      }
+      if (inspireParcelOutlineRef.current && mapRef.current?.hasLayer(inspireParcelOutlineRef.current)) {
+        inspireParcelOutlineRef.current.bringToFront();
+      }
+    };
+
+    const bringSznsToFront = () => {
+      if (sznsLayerRef.current && mapRef.current?.hasLayer(sznsLayerRef.current)) {
+        sznsLayerRef.current.bringToFront();
       }
     };
 
@@ -410,6 +459,8 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
 
         const OVERLAY_ZINDEX = 200;
         const KADASTRO_ZINDEX = 300;
+        const INSPIRE_PARCEL_ZINDEX = 350;
+        const SZNS_ZINDEX = 450;
 
         const toggle = (
           layerRef: React.MutableRefObject<L.TileLayer | null>,
@@ -432,6 +483,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
           case "parcels": {
             if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) {
               map.removeLayer(kadastroLayerRef.current);
+              if (inspireParcelOutlineRef.current && map.hasLayer(inspireParcelOutlineRef.current)) {
+                map.removeLayer(inspireParcelOutlineRef.current);
+              }
               return false;
             }
             if (!kadastroLayerRef.current) {
@@ -442,8 +496,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
                 attribution: "Kadastro žemėlapis",
               });
             }
+            if (!inspireParcelOutlineRef.current) {
+              inspireParcelOutlineRef.current = new (InspireParcelOutlineTileLayer as any)("", {
+                minZoom: 16,
+                maxZoom: 19,
+                opacity: 1,
+                zIndex: INSPIRE_PARCEL_ZINDEX,
+                attribution: "Parcels © INSPIRE/Geoportal",
+              });
+            }
             kadastroLayerRef.current.addTo(map);
+            inspireParcelOutlineRef.current.addTo(map);
             bringKadastroToFront();
+            bringSznsToFront();
             return true;
           }
           case "forest":
@@ -459,15 +524,15 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               }
               if (!sznsLayerRef.current) {
                 sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                  minZoom: 16,
+                  minZoom: 7,
                   maxZoom: 22,
                   maxNativeZoom: 19,
                   opacity: 0.7,
-                  zIndex: OVERLAY_ZINDEX,
+                  zIndex: SZNS_ZINDEX,
                 });
               }
               sznsLayerRef.current!.addTo(map);
-              bringKadastroToFront();
+              bringSznsToFront();
             } else {
               if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
                 map.removeLayer(sznsLayerRef.current);
@@ -500,6 +565,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             esoElektraLayerRef.current.addTo(map);
             esoDujosLayerRef.current.addTo(map);
             bringKadastroToFront();
+            bringSznsToFront();
             return true;
           }
           default:
