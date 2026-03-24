@@ -508,7 +508,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (!uetkSznsLayerRef.current) {
               uetkSznsLayerRef.current = new (UetkSznsTileLayer as any)("", {
                 minZoom: 16, maxZoom: 22, maxNativeZoom: 19,
-                opacity: 0.7, zIndex: OVERLAY_ZINDEX,
+                opacity: 0.7, zIndex: OVERLAY_ZINDEX + 50,
               });
             }
             if (!map.hasLayer(uetkSznsLayerRef.current!)) {
