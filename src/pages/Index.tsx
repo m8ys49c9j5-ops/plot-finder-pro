@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Mail } from "lucide-react";
+import FeedbackPopup from "@/components/FeedbackPopup";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
 import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
