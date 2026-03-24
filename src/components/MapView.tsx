@@ -155,30 +155,24 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-const SznsWmsTileLayer = L.TileLayer.extend({
+const SznsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    const tileSize = this.options.tileSize || 256;
-    const nwPoint = new L.Point(coords.x * tileSize, coords.y * tileSize);
-    const sePoint = new L.Point((coords.x + 1) * tileSize, (coords.y + 1) * tileSize);
-    const nw = map.unproject(nwPoint, coords.z);
-    const se = map.unproject(sePoint, coords.z);
-    const nwMerc = L.CRS.EPSG3857.project(nw);
-    const seMerc = L.CRS.EPSG3857.project(se);
-    const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
 
-    let layerIdsStr = "0"; // Numatytasis šakninis sluoksnis
+    let layerIdsStr = "";
     if (this.options && typeof this.options.getActiveLayerIds === "function") {
       const ids = this.options.getActiveLayerIds();
       if (ids && ids.length > 0) {
-        layerIdsStr = ids.join(",");
+        layerIdsStr = "show:" + ids.join(",");
+      } else {
+        // Return a transparent 1x1 pixel data URI to avoid 404 requests when no layers selected
+        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
       }
     }
 
-    const url = `${SZNS_BASE}/WMSServer?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${layerIdsStr}&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=${tileSize}&WIDTH=${tileSize}&CRS=EPSG:3857&BBOX=${bbox}`;
-
-    return buildMapProxyUrl(url);
+    // Utilize the standard ArcGIS export endpoint identically to how Kadastras is generated
+    return buildExportProxyUrl(SZNS_BASE, coords, map, "png32", true, layerIdsStr);
   },
 });
 
@@ -287,7 +281,7 @@ const lks94ToWGS84 = (x: number, y: number): { lat: number; lng: number } => {
 };
 
 // SZNS identify via ArcGIS /identify
-const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
+const identifySZNS = async (latlng: L.LatLng, map: L.Map, activeGroupKeys: string[]) => {
   try {
     const bounds = map.getBounds();
     const size = map.getSize();
@@ -298,10 +292,19 @@ const identifySZNS = async (latlng: L.LatLng, map: L.Map) => {
 
     const mapExtent = `${sw.x},${sw.y},${ne.x},${ne.y}`;
 
+    // Dinamiškai filtruojame identify užklausą tik aktyviems sluoksniams
+    let layerStr = "all";
+    if (activeGroupKeys && activeGroupKeys.length > 0) {
+      const activeIds = SZNS_GROUPS.filter((g) => activeGroupKeys.includes(g.key)).flatMap((g) => g.layerIds);
+      if (activeIds.length > 0) {
+        layerStr = `visible:${activeIds.join(",")}`;
+      }
+    }
+
     const url =
       `${SZNS_BASE}/identify?geometry=${pt.x},${pt.y}` +
       `&geometryType=esriGeometryPoint&sr=3346` +
-      `&layers=all&tolerance=8` +
+      `&layers=${layerStr}&tolerance=8` +
       `&mapExtent=${mapExtent}` +
       `&imageDisplay=${size.x},${size.y},96` +
       `&returnGeometry=false&f=json`;
@@ -377,7 +380,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsWmsLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveGroups = useRef<Set<SznsGroupKey>>(new Set());
     const sznsActiveRef = useRef(false);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
@@ -493,26 +496,25 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               groups.delete(key);
               sznsActiveRef.current = groups.size > 0;
               if (!sznsActiveRef.current) {
-                if (sznsWmsLayerRef.current && map.hasLayer(sznsWmsLayerRef.current)) {
-                  map.removeLayer(sznsWmsLayerRef.current);
+                if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
+                  map.removeLayer(sznsLayerRef.current);
                 }
                 map.closePopup();
               } else {
                 // Jeigu yra dar kitų aktyvių grupių - perpiešiame sluoksnį su atnaujintais ID
-                if (sznsWmsLayerRef.current) sznsWmsLayerRef.current.redraw();
+                if (sznsLayerRef.current) sznsLayerRef.current.redraw();
               }
               return false;
             }
             groups.add(key);
             sznsActiveRef.current = true;
-            if (!sznsWmsLayerRef.current) {
-              sznsWmsLayerRef.current = new (SznsWmsTileLayer as any)("", {
+            if (!sznsLayerRef.current) {
+              sznsLayerRef.current = new (SznsTileLayer as any)("", {
                 minZoom: 14,
                 maxZoom: 22,
                 maxNativeZoom: 19,
                 opacity: 0.7,
                 zIndex: OVERLAY_ZINDEX,
-                tileSize: 256,
                 getActiveLayerIds: () => {
                   const activeKeys = Array.from(sznsActiveGroups.current);
                   const activeGroups = SZNS_GROUPS.filter((g) => activeKeys.includes(g.key));
@@ -520,11 +522,11 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
                 },
               });
             }
-            if (!map.hasLayer(sznsWmsLayerRef.current!)) {
-              sznsWmsLayerRef.current!.addTo(map);
+            if (!map.hasLayer(sznsLayerRef.current!)) {
+              sznsLayerRef.current!.addTo(map);
             } else {
               // Jeigu layeris jau žemėlapyje - priverčiame atsiųsti naują tile set'ą
-              sznsWmsLayerRef.current!.redraw();
+              sznsLayerRef.current!.redraw();
             }
             bringKadastroToFront();
             return true;
@@ -593,7 +595,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       // Map click handler — SZNS details
       map.on("click", (e: L.LeafletMouseEvent) => {
         if (sznsActiveRef.current) {
-          identifySZNS(e.latlng, map);
+          identifySZNS(e.latlng, map, Array.from(sznsActiveGroups.current));
         }
       });
 
