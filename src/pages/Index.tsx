@@ -266,6 +266,7 @@ const Index = () => {
                 </span>
               </button>
             ))}
+            {renderSznsGroup(true)}
           </div>
         </div>
       </div>
@@ -304,6 +305,7 @@ const Index = () => {
             </span>
           </button>
         ))}
+        {renderSznsGroup(false)}
       </div>
 
       {/* Social + mail icons & Attribution */}
