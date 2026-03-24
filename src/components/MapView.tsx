@@ -9,16 +9,28 @@ import { getSessionId } from "@/lib/sessionId";
 import type { ParcelData } from "./ParcelSidebar";
 
 export type MapLayerType = "standard" | "ortho";
-export type SznsGroupKey = "szns_infra" | "szns_transport" | "szns_culture" | "szns_sanitary" | "szns_nature" | "szns_defense";
+export type SznsGroupKey =
+  | "szns_infra"
+  | "szns_transport"
+  | "szns_culture"
+  | "szns_sanitary"
+  | "szns_nature"
+  | "szns_defense";
 export type OverlayLayerType = "parcels" | "forest" | "melior" | "energy" | SznsGroupKey;
 
 export const SZNS_GROUPS: { key: SznsGroupKey; label: string; layerIds: number[] }[] = [
-  { key: "szns_infra", label: "Inžineriniai", layerIds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16] },
-  { key: "szns_transport", label: "Susisiekimas", layerIds: [18,19,20,21,22] },
-  { key: "szns_culture", label: "Kultūra / Gamta", layerIds: [24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50] },
-  { key: "szns_sanitary", label: "Sanitariniai", layerIds: [52,53,54,55,56] },
-  { key: "szns_nature", label: "Gamtos obj.", layerIds: [58,59,60,61,62,63,64,65,66,67,68,69] },
-  { key: "szns_defense", label: "Valst. apsauga", layerIds: [71,72,73,74,75,76] },
+  { key: "szns_infra", label: "Inžineriniai", layerIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] },
+  { key: "szns_transport", label: "Susisiekimas", layerIds: [18, 19, 20, 21, 22] },
+  {
+    key: "szns_culture",
+    label: "Kultūra / Gamta",
+    layerIds: [
+      24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+    ],
+  },
+  { key: "szns_sanitary", label: "Sanitariniai", layerIds: [52, 53, 54, 55, 56] },
+  { key: "szns_nature", label: "Gamtos obj.", layerIds: [58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69] },
+  { key: "szns_defense", label: "Valst. apsauga", layerIds: [71, 72, 73, 74, 75, 76] },
 ];
 
 export interface MapViewHandle {
@@ -51,8 +63,8 @@ const ESO_DUJOS_BASE = "https://www.geoportal.lt/mapproxy/ESO_DUJOS_Public/MapSe
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SZNS_BASE = "https://www.geoportal.lt/mapproxy/rc_szns/MapServer";
 
-
-const buildMapProxyUrl = (targetUrl: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
+const buildMapProxyUrl = (targetUrl: string) =>
+  `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(targetUrl)}`;
 
 // Fire-and-forget analytics insert
 const logSearchAnalytics = (queryInput: string, searchType: string, isSuccessful: boolean, userId?: string) => {
@@ -143,49 +155,32 @@ const MeliorTileLayer = L.TileLayer.extend({
   },
 });
 
-// WMTS tile matrix parameters for rc_szns (EPSG:3346, 512px tiles)
-const SZNS_WMTS_ORIGIN_X = 18900.0;
-const SZNS_WMTS_ORIGIN_Y = 6258000.0;
-const SZNS_WMTS_SCALES = [
-  5669654, 2834827, 1889885, 944942, 472471, 188988,
-  94494, 47247, 23624, 9449, 4725, 1890, 945,
-];
-const SZNS_WMTS_PX = 0.00028;
-
-const getMapScale = (map: L.Map): number => {
-  const lat = map.getCenter().lat;
-  const zoom = map.getZoom();
-  const mpp = 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom + 8);
-  return mpp / SZNS_WMTS_PX;
-};
-
-const SznsWmtsTileLayer = L.TileLayer.extend({
+const SznsWmsTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
     const map = (this as any)._map as L.Map;
     if (!map) return "";
-    const tileSize = 256;
-    const cx = (coords.x + 0.5) * tileSize;
-    const cy = (coords.y + 0.5) * tileSize;
-    const center = map.unproject([cx, cy], coords.z);
-    const lks = wgs84ToLKS94(center.lat, center.lng);
+    const tileSize = this.options.tileSize || 256;
+    const nwPoint = new L.Point(coords.x * tileSize, coords.y * tileSize);
+    const sePoint = new L.Point((coords.x + 1) * tileSize, (coords.y + 1) * tileSize);
+    const nw = map.unproject(nwPoint, coords.z);
+    const se = map.unproject(sePoint, coords.z);
+    const nwMerc = L.CRS.EPSG3857.project(nw);
+    const seMerc = L.CRS.EPSG3857.project(se);
+    const bbox = `${nwMerc.x},${seMerc.y},${seMerc.x},${nwMerc.y}`;
 
-    // Pick best WMTS zoom
-    const scale = getMapScale(map);
-    let wmtsZ = 0;
-    for (let i = SZNS_WMTS_SCALES.length - 1; i >= 0; i--) {
-      if (scale <= SZNS_WMTS_SCALES[i] * 1.5) { wmtsZ = i; break; }
+    let layerIdsStr = "0"; // Numatytasis šakninis sluoksnis
+    if (this.options && typeof this.options.getActiveLayerIds === "function") {
+      const ids = this.options.getActiveLayerIds();
+      if (ids && ids.length > 0) {
+        layerIdsStr = ids.join(",");
+      }
     }
 
-    const tileSpan = SZNS_WMTS_SCALES[wmtsZ] * SZNS_WMTS_PX * 512;
-    const col = Math.floor((lks.x - SZNS_WMTS_ORIGIN_X) / tileSpan);
-    const row = Math.floor((SZNS_WMTS_ORIGIN_Y - lks.y) / tileSpan);
-    if (col < 0 || row < 0) return "";
+    const url = `${SZNS_BASE}/WMSServer?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${layerIdsStr}&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=${tileSize}&WIDTH=${tileSize}&CRS=EPSG:3857&BBOX=${bbox}`;
 
-    const url = `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/WMTS?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=SZNS_pub_cache&STYLE=default&TILEMATRIXSET=default028mm&TILEMATRIX=${wmtsZ}&TILEROW=${row}&TILECOL=${col}&FORMAT=image/png`;
     return buildMapProxyUrl(url);
   },
 });
-
 
 const EsoElektraTileLayer = L.TileLayer.extend({
   getTileUrl: function (coords: L.Coords) {
@@ -382,7 +377,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
     // Overlay layer refs
     const forestLayerRef = useRef<L.TileLayer | null>(null);
     const meliorLayerRef = useRef<L.TileLayer | null>(null);
-    const sznsWmtsLayerRef = useRef<L.TileLayer | null>(null);
+    const sznsWmsLayerRef = useRef<L.TileLayer | null>(null);
     const sznsActiveGroups = useRef<Set<SznsGroupKey>>(new Set());
     const sznsActiveRef = useRef(false);
     const esoElektraLayerRef = useRef<L.TileLayer | null>(null);
@@ -498,24 +493,38 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               groups.delete(key);
               sznsActiveRef.current = groups.size > 0;
               if (!sznsActiveRef.current) {
-                if (sznsWmtsLayerRef.current && map.hasLayer(sznsWmtsLayerRef.current)) {
-                  map.removeLayer(sznsWmtsLayerRef.current);
+                if (sznsWmsLayerRef.current && map.hasLayer(sznsWmsLayerRef.current)) {
+                  map.removeLayer(sznsWmsLayerRef.current);
                 }
                 map.closePopup();
+              } else {
+                // Jeigu yra dar kitų aktyvių grupių - perpiešiame sluoksnį su atnaujintais ID
+                if (sznsWmsLayerRef.current) sznsWmsLayerRef.current.redraw();
               }
               return false;
             }
             groups.add(key);
             sznsActiveRef.current = true;
-            if (!sznsWmtsLayerRef.current) {
-              sznsWmtsLayerRef.current = new (SznsWmtsTileLayer as any)("", {
-                minZoom: 14, maxZoom: 22, maxNativeZoom: 19,
-                opacity: 0.7, zIndex: OVERLAY_ZINDEX,
-                tileSize: 512,
+            if (!sznsWmsLayerRef.current) {
+              sznsWmsLayerRef.current = new (SznsWmsTileLayer as any)("", {
+                minZoom: 14,
+                maxZoom: 22,
+                maxNativeZoom: 19,
+                opacity: 0.7,
+                zIndex: OVERLAY_ZINDEX,
+                tileSize: 256,
+                getActiveLayerIds: () => {
+                  const activeKeys = Array.from(sznsActiveGroups.current);
+                  const activeGroups = SZNS_GROUPS.filter((g) => activeKeys.includes(g.key));
+                  return activeGroups.flatMap((g) => g.layerIds);
+                },
               });
             }
-            if (!map.hasLayer(sznsWmtsLayerRef.current!)) {
-              sznsWmtsLayerRef.current!.addTo(map);
+            if (!map.hasLayer(sznsWmsLayerRef.current!)) {
+              sznsWmsLayerRef.current!.addTo(map);
+            } else {
+              // Jeigu layeris jau žemėlapyje - priverčiame atsiųsti naują tile set'ą
+              sznsWmsLayerRef.current!.redraw();
             }
             bringKadastroToFront();
             return true;
