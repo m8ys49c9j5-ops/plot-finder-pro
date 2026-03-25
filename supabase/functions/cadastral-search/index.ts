@@ -260,14 +260,15 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
     }
 
     // ── Step D: Build full hierarchical address ──
-    // Format: [gatvė ir namo nr.], [kaimas/miestas], [seniūnija sen.], [rajonas r. sav.]
+    // Format: [gatvė ir namo nr.], [gyvenviete k.], [seniūnija sen.], [rajonas r. sav.]
     const seniunija = props.seniunijos_pavad || props.seniunija || "";
     const savivaldybe = props.sav_pavadinimas || "";
     const kaimas = props.kaimas_miestas || "";
+    const kaimasFormatted = kaimas && !kaimas.toLowerCase().includes(" k.") ? `${kaimas} k.` : kaimas;
 
     const addressParts = [
       streetPart,
-      kaimas,
+      kaimasFormatted,
       seniunija && !seniunija.toLowerCase().includes("sen.") ? `${seniunija} sen.` : seniunija,
       savivaldybe && !savivaldybe.toLowerCase().includes("sav.") ? `${savivaldybe} r. sav.` : savivaldybe,
     ].filter((p) => p && String(p).trim().length > 0);

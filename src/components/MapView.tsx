@@ -687,6 +687,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         if (success) {
           const feature = data.features[0];
           const props = feature.properties || {};
+          console.log("Parcel props:", JSON.stringify(props, null, 2));
 
           const cadastralNr =
             props.nationalCadastralReference || props.kadastro_nr || props.NTR_ID?.toString() || query.trim();
