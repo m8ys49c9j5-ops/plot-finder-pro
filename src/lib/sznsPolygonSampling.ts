@@ -89,40 +89,41 @@ export function normalizeSznsResult(raw: any): SznsZone | null {
 function generateSamplePoints(
   geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
 ): GeoJSON.Feature<GeoJSON.Point>[] {
-  const bbox = turf.bbox(geometry);
-  const width = bbox[2] - bbox[0];
-  const height = bbox[3] - bbox[1];
+  const bboxArr = turf.bbox(geometry);
+  const width = bboxArr[2] - bboxArr[0];
+  const height = bboxArr[3] - bboxArr[1];
   const maxDim = Math.max(width, height);
 
   const divisions = [5, 10, 20];
   let points: GeoJSON.Feature<GeoJSON.Point>[] = [];
 
+  const makePoly = () =>
+    geometry.type === "MultiPolygon"
+      ? turf.multiPolygon(geometry.coordinates)
+      : turf.polygon(geometry.coordinates);
+
   for (const div of divisions) {
     const cellSize = maxDim / div;
     if (cellSize <= 0) continue;
 
-    const grid = turf.pointGrid(bbox as turf.BBox, cellSize, {
+    const grid = turf.pointGrid(bboxArr as [number, number, number, number], cellSize, {
       units: "degrees",
     });
 
-    const poly = geometry.type === "MultiPolygon"
-      ? turf.multiPolygon(geometry.coordinates)
-      : turf.polygon(geometry.coordinates);
+    const poly = makePoly();
 
     points = grid.features.filter((pt) =>
-      turf.booleanPointInPolygon(pt, poly),
+      turf.booleanPointInPolygon(pt, poly as any),
     );
 
     if (points.length > 0 && points.length <= 50) break;
     if (points.length > 50) {
-      // Too many — try next (larger) division won't help, so trim grid
-      // Use a coarser grid: increase cell size
       const coarserSize = maxDim / Math.max(3, Math.floor(div / 2));
-      const coarserGrid = turf.pointGrid(bbox as turf.BBox, coarserSize, {
+      const coarserGrid = turf.pointGrid(bboxArr as [number, number, number, number], coarserSize, {
         units: "degrees",
       });
       points = coarserGrid.features.filter((pt) =>
-        turf.booleanPointInPolygon(pt, poly),
+        turf.booleanPointInPolygon(pt, poly as any),
       );
       if (points.length > 50) points = points.slice(0, 50);
       break;
@@ -131,10 +132,7 @@ function generateSamplePoints(
 
   // If still no points, use centroid as fallback
   if (points.length === 0) {
-    const poly = geometry.type === "MultiPolygon"
-      ? turf.multiPolygon(geometry.coordinates)
-      : turf.polygon(geometry.coordinates);
-    points = [turf.centroid(poly)];
+    points = [turf.centroid(makePoly() as any)];
   }
 
   return points;
