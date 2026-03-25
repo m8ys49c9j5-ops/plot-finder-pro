@@ -445,6 +445,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
 
         const OVERLAY_ZINDEX = 200;
         const KADASTRO_ZINDEX = 300;
+        const SZNS_ZINDEX = 400;
 
         const toggle = (
           layerRef: React.MutableRefObject<L.TileLayer | null>,
@@ -508,13 +509,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             }
             groups.add(key);
             sznsActiveRef.current = true;
+            // Remove other overlays so SZNS is clearly visible
+            if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) map.removeLayer(kadastroLayerRef.current);
+            if (forestLayerRef.current && map.hasLayer(forestLayerRef.current)) map.removeLayer(forestLayerRef.current);
+            if (meliorLayerRef.current && map.hasLayer(meliorLayerRef.current)) map.removeLayer(meliorLayerRef.current);
+            if (esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current)) map.removeLayer(esoElektraLayerRef.current);
+            if (esoDujosLayerRef.current && map.hasLayer(esoDujosLayerRef.current)) map.removeLayer(esoDujosLayerRef.current);
             if (!sznsLayerRef.current) {
               sznsLayerRef.current = new (SznsTileLayer as any)("", {
                 minZoom: 14,
                 maxZoom: 22,
                 maxNativeZoom: 19,
                 opacity: 0.7,
-                zIndex: OVERLAY_ZINDEX,
+                zIndex: SZNS_ZINDEX,
                 getActiveLayerIds: () => {
                   const activeKeys = Array.from(sznsActiveGroups.current);
                   const activeGroups = SZNS_GROUPS.filter((g) => activeKeys.includes(g.key));
@@ -525,10 +532,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             if (!map.hasLayer(sznsLayerRef.current!)) {
               sznsLayerRef.current!.addTo(map);
             } else {
-              // Jeigu layeris jau žemėlapyje - priverčiame atsiųsti naują tile set'ą
               sznsLayerRef.current!.redraw();
             }
-            bringKadastroToFront();
+            sznsLayerRef.current!.bringToFront();
             return true;
           }
           case "szns": {
@@ -547,13 +553,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             // Turn on all
             SZNS_GROUPS.forEach(g => groups.add(g.key));
             sznsActiveRef.current = true;
+            // Remove other overlays so SZNS is clearly visible
+            if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) map.removeLayer(kadastroLayerRef.current);
+            if (forestLayerRef.current && map.hasLayer(forestLayerRef.current)) map.removeLayer(forestLayerRef.current);
+            if (meliorLayerRef.current && map.hasLayer(meliorLayerRef.current)) map.removeLayer(meliorLayerRef.current);
+            if (esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current)) map.removeLayer(esoElektraLayerRef.current);
+            if (esoDujosLayerRef.current && map.hasLayer(esoDujosLayerRef.current)) map.removeLayer(esoDujosLayerRef.current);
             if (!sznsLayerRef.current) {
               sznsLayerRef.current = new (SznsTileLayer as any)("", {
                 minZoom: 14,
                 maxZoom: 22,
                 maxNativeZoom: 19,
                 opacity: 0.7,
-                zIndex: OVERLAY_ZINDEX,
+                zIndex: SZNS_ZINDEX,
                 getActiveLayerIds: () => {
                   const activeKeys = Array.from(sznsActiveGroups.current);
                   const activeGroups = SZNS_GROUPS.filter((g) => activeKeys.includes(g.key));
@@ -566,7 +578,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             } else {
               sznsLayerRef.current!.redraw();
             }
-            bringKadastroToFront();
+            sznsLayerRef.current!.bringToFront();
             return true;
           }
           case "energy": {
