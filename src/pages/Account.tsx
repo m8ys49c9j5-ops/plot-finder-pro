@@ -6,7 +6,7 @@ import {
   ArrowLeft, Layers, MapPin,
   Bookmark, BookmarkCheck, Trash2, ExternalLink,
   Loader2, Clock, Search as SearchIcon, User,
-  Calendar, BarChart2, LogOut, Coins,
+  Calendar, BarChart2, LogOut, Coins, ChevronDown, ChevronUp, Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -92,6 +92,7 @@ export default function Account() {
   const [activeTab, setActiveTab] = useState<TabType>("history");
   const [filter, setFilter] = useState<FilterType>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
@@ -181,7 +182,11 @@ export default function Account() {
   };
 
   const handleOpenReport = (cadastralNumber: string, lat?: number | null, lng?: number | null, address?: string | null) => {
-    navigate("/", { state: { openReport: { cadastralNumber, lat, lng, address } } });
+    navigate("/map", { state: { openReport: { cadastralNumber, lat, lng, address } } });
+  };
+
+  const handleOpenOnMap = (cadastralNumber: string) => {
+    navigate("/map", { state: { searchQuery: cadastralNumber } });
   };
 
   const handleSignOut = async () => {
@@ -330,75 +335,106 @@ export default function Account() {
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                     {month}
                   </div>
-                  {items.map(entry => (
-                    <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/40 transition-colors mb-1">
-                      {entry.lat && entry.lng
-                        ? <MapThumb lat={entry.lat} lng={entry.lng} />
-                        : (
-                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                            <MapPin className="h-5 w-5 text-muted-foreground/40" />
+                    {items.map(entry => {
+                      const isExpanded = expandedId === entry.id;
+                      return (
+                      <div key={entry.id} className="rounded-xl hover:bg-muted/40 transition-colors mb-1.5 border border-transparent hover:border-border">
+                        <div
+                          className="flex items-center gap-3 p-3.5 cursor-pointer"
+                          onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                        >
+                          {entry.lat && entry.lng
+                            ? <MapThumb lat={entry.lat} lng={entry.lng} />
+                            : (
+                              <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                <MapPin className="h-5 w-5 text-muted-foreground/40" />
+                              </div>
+                            )
+                          }
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-base font-semibold text-foreground">
+                                {entry.cadastral_number}
+                              </span>
+                              {entry.is_unlocked && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                                  Atrakinta
+                                </span>
+                              )}
+                            </div>
+                            {entry.address && (
+                              <p className="text-sm text-muted-foreground truncate mt-0.5">{entry.address}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-1">
+                              <Clock className="h-3 w-3" />
+                              {new Date(entry.created_at).toLocaleString("lt-LT", {
+                                day: "2-digit", month: "2-digit", year: "numeric",
+                                hour: "2-digit", minute: "2-digit",
+                              })}
+                              {entry.search_method && (
+                                <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                  {METHOD_LABELS[entry.search_method] ?? entry.search_method}
+                                </span>
+                              )}
+                            </p>
                           </div>
-                        )
-                      }
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm font-semibold text-foreground">
-                            {entry.cadastral_number}
-                          </span>
-                          {entry.is_unlocked && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                              Atrakinta
-                            </span>
-                          )}
-                          {entry.search_method && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                              {METHOD_LABELS[entry.search_method] ?? entry.search_method}
-                            </span>
-                          )}
+                          <div className="flex-shrink-0">
+                            {isExpanded
+                              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            }
+                          </div>
                         </div>
-                        {entry.address && (
-                          <p className="text-xs text-muted-foreground truncate">{entry.address}</p>
+
+                        {isExpanded && (
+                          <div className="px-3.5 pb-3.5 pt-0 border-t border-border/50 mt-0">
+                            <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-muted-foreground">
+                              {entry.lat != null && entry.lng != null && (
+                                <div className="bg-muted/50 rounded-lg p-2">
+                                  <span className="font-medium text-foreground block">Koordinatės</span>
+                                  {entry.lat.toFixed(5)}, {entry.lng.toFixed(5)}
+                                </div>
+                              )}
+                              <div className="bg-muted/50 rounded-lg p-2">
+                                <span className="font-medium text-foreground block">Būsena</span>
+                                {entry.is_unlocked ? "Atrakinta" : "Neperžiūrėta"}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-3">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleOpenOnMap(entry.cadastral_number); }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+                              >
+                                <Navigation className="h-3.5 w-3.5" />
+                                Rodyti žemėlapyje
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleBookmarkToggle(entry); }}
+                                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                                title={bookmarkSet.has(entry.cadastral_number) ? "Pašalinti" : "Išsaugoti"}
+                              >
+                                {bookmarkSet.has(entry.cadastral_number)
+                                  ? <BookmarkCheck className="h-4 w-4 text-primary" />
+                                  : <Bookmark className="h-4 w-4 text-muted-foreground" />
+                                }
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteHistory(entry.id); }}
+                                disabled={deletingId === entry.id}
+                                className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors ml-auto"
+                                title="Ištrinti"
+                              >
+                                {deletingId === entry.id
+                                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                                  : <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                }
+                              </button>
+                            </div>
+                          </div>
                         )}
-                        <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1 mt-0.5">
-                          <Clock className="h-3 w-3" />
-                          {new Date(entry.created_at).toLocaleString("lt-LT", {
-                            day: "2-digit", month: "2-digit", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => handleBookmarkToggle(entry)}
-                          className="p-2 rounded-lg hover:bg-muted transition-colors"
-                          title={bookmarkSet.has(entry.cadastral_number) ? "Pašalinti" : "Išsaugoti"}
-                        >
-                          {bookmarkSet.has(entry.cadastral_number)
-                            ? <BookmarkCheck className="h-4 w-4 text-primary" />
-                            : <Bookmark className="h-4 w-4 text-muted-foreground" />
-                          }
-                        </button>
-                        <button
-                          onClick={() => handleOpenReport(entry.cadastral_number, entry.lat, entry.lng, entry.address)}
-                          className="p-2 rounded-lg hover:bg-muted transition-colors"
-                          title="Atidaryti ataskaitą"
-                        >
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteHistory(entry.id)}
-                          disabled={deletingId === entry.id}
-                          className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
-                          title="Ištrinti"
-                        >
-                          {deletingId === entry.id
-                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                            : <Trash2 className="h-4 w-4 text-muted-foreground" />
-                          }
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                    })}
                 </div>
               ))
             )}
