@@ -16,7 +16,7 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
   if (!open) return null;
 
   return (
-    <div className="fixed top-20 left-4 z-[1100] w-[340px] max-h-[60vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl animate-fade-in max-sm:left-2 max-sm:right-2 max-sm:w-auto max-sm:top-auto max-sm:bottom-4">
+    <div className="fixed top-[340px] left-4 z-[1100] w-[340px] max-h-[50vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl animate-fade-in max-sm:left-2 max-sm:right-2 max-sm:w-auto max-sm:top-auto max-sm:bottom-4">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border">
         <div className="min-w-0">
