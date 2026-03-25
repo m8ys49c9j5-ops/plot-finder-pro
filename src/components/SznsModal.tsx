@@ -1,18 +1,16 @@
-import { X, ExternalLink, Loader2 } from "lucide-react";
-
-interface SznsResult {
-  layerName: string;
-  attributes: Record<string, any>;
-}
+import { X, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
+import type { SznsZone } from "@/lib/sznsPolygonSampling";
 
 interface SznsModalProps {
   open: boolean;
   onClose: () => void;
-  results: SznsResult[] | null;
+  zones: SznsZone[] | null;
   loading: boolean;
+  failed?: boolean;
+  pointsQueried?: number;
 }
 
-const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
+const SznsModal = ({ open, onClose, zones, loading, failed, pointsQueried }: SznsModalProps) => {
   if (!open) return null;
 
   return (
@@ -23,6 +21,11 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
           <h2 className="text-sm font-display font-bold text-foreground truncate">
             Specialiosios sąlygos
           </h2>
+          {!loading && zones && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Tikrinta taškų: {pointsQueried ?? 0}
+            </p>
+          )}
         </div>
         <button
           onClick={onClose}
@@ -37,11 +40,20 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
         {loading && (
           <div className="flex items-center justify-center gap-3 py-6">
             <Loader2 className="h-5 w-5 text-primary animate-spin" />
-            <span className="text-sm text-muted-foreground">Ieškoma...</span>
+            <span className="text-sm text-muted-foreground">Skenuojamas sklypas...</span>
           </div>
         )}
 
-        {!loading && results && results.length === 0 && (
+        {!loading && failed && (
+          <div className="flex items-center gap-2 py-6 justify-center">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <span className="text-sm text-muted-foreground">
+              Užklausa nepavyko. Bandykite dar kartą.
+            </span>
+          </div>
+        )}
+
+        {!loading && !failed && zones && zones.length === 0 && (
           <div className="text-center py-6">
             <p className="text-sm text-muted-foreground">
               Šiame sklype specialiųjų sąlygų nerasta.
@@ -49,32 +61,29 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
           </div>
         )}
 
-        {!loading && results && results.length > 0 && (
+        {!loading && !failed && zones && zones.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              Rasta: {results.length}
+              Rasta zonų: {zones.length}
             </p>
-            {results.map((r, i) => {
-              const p = r.attributes || {};
-              const salyga =
-                p["SPECIALIOJI_SALYGA"] ||
-                p["SPEC_SALYGA"] ||
-                p["PAVADINIMAS"] ||
-                p["PAVADINIM"] ||
-                r.layerName ||
-                "—";
-              const kodas = p["KODAS"] || p["UNIK_NR"] || p["OBJECTID"] || "";
-              const plotas = p["PLOTAS_HA"] || p["PLOTAS"] || "";
-              const nuoroda = p["NUORODA"] || "";
+            {zones.map((zone) => {
+              const r = zone.restrictions || {};
+              const kodas = r["KODAS"] || r["UNIK_NR"] || r["UNIKALUS_NR"] || r["OBJECTID"] || "";
+              const plotas = r["PLOTAS_HA"] || r["PLOTAS"] || "";
+              const nuoroda = r["NUORODA"] || "";
+              const statusas = r["STATUSAS"] || "";
 
               return (
                 <div
-                  key={i}
+                  key={zone.id}
                   className="rounded-lg bg-muted/40 p-2.5 space-y-1"
                 >
                   <p className="text-xs font-semibold text-foreground leading-snug">
-                    {salyga}
+                    {zone.name}
                   </p>
+                  {zone.type && zone.type !== zone.name && (
+                    <p className="text-[10px] text-muted-foreground">{zone.type}</p>
+                  )}
                   <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
                     {kodas && (
                       <span className="bg-muted rounded px-1.5 py-0.5">
@@ -84,6 +93,11 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
                     {plotas && (
                       <span className="bg-muted rounded px-1.5 py-0.5">
                         {plotas} ha
+                      </span>
+                    )}
+                    {statusas && (
+                      <span className={`rounded px-1.5 py-0.5 ${statusas === "Patvirtinta" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                        {statusas}
                       </span>
                     )}
                   </div>
