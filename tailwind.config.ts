@@ -95,6 +95,10 @@ export default {
           from: { transform: "translateY(100%)" },
           to: { transform: "translateY(0)" },
         },
+        "slide-in-left": {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -103,6 +107,7 @@ export default {
         "slide-out-right": "slide-out-right 0.3s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
         "slide-in-up": "slide-in-up 0.3s ease-out",
+        "slide-in-left": "slide-in-left 0.3s ease-out",
       },
     },
   },
