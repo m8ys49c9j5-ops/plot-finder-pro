@@ -4,6 +4,7 @@ import FeedbackPopup from "@/components/FeedbackPopup";
 import SznsModal from "@/components/SznsModal";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
+import { fetchSznsForPolygon, type SznsZone, type SznsPolygonResult } from "@/lib/sznsPolygonSampling";
 import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,8 +60,11 @@ const Index = () => {
 
   // SZNS modal state
   const [sznsModalOpen, setSznsModalOpen] = useState(false);
-  const [sznsResults, setSznsResults] = useState<any[] | null>(null);
+  const [sznsResults, setSznsResults] = useState<SznsZone[] | null>(null);
   const [sznsLoading, setSznsLoading] = useState(false);
+  const [sznsFailed, setSznsFailed] = useState(false);
+  const [sznsPointsQueried, setSznsPointsQueried] = useState(0);
+  const sznsRequestIdRef = useRef(0);
 
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
@@ -113,49 +117,44 @@ const Index = () => {
   }, []);
 
   const handleSznsClick = useCallback(async () => {
-    if (selectedParcel && selectedParcel.lat && selectedParcel.lng) {
-      // Query SZNS identify for this parcel
-      setSznsModalOpen(true);
-      setSznsLoading(true);
-      setSznsResults(null);
+    // Must have a selected parcel with valid geometry
+    const geom = selectedFeature?.geometry;
+    if (!geom || (geom.type !== "Polygon" && geom.type !== "MultiPolygon")) {
+      // No valid geometry — just toggle the overlay layer
+      handleToggleOverlay("szns");
+      return;
+    }
 
-      try {
-        const lat = selectedParcel.lat;
-        const lng = selectedParcel.lng;
-        const delta = 0.002;
-        const minX = lng - delta;
-        const minY = lat - delta;
-        const maxX = lng + delta;
-        const maxY = lat + delta;
+    const requestId = ++sznsRequestIdRef.current;
+    setSznsModalOpen(true);
+    setSznsLoading(true);
+    setSznsResults(null);
+    setSznsFailed(false);
+    setSznsPointsQueried(0);
 
-        const identifyUrl =
-          `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/identify` +
-          `?geometry=${lng},${lat}` +
-          `&geometryType=esriGeometryPoint` +
-          `&sr=4326` +
-          `&layers=all` +
-          `&tolerance=20` +
-          `&mapExtent=${minX},${minY},${maxX},${maxY}` +
-          `&imageDisplay=800,600,96` +
-          `&returnGeometry=false` +
-          `&f=json`;
+    try {
+      const abortSignal = { cancelled: false };
+      // Cancel on unmount / new request
+      const result: SznsPolygonResult = await fetchSznsForPolygon(geom, abortSignal);
 
-        const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
-        const resp = await fetch(proxyUrl);
-        const data = await resp.json();
-        setSznsResults(data?.results || []);
-      } catch (e) {
-        console.error("SZNS query error:", e);
-        toast.error("SŽNS užklausa nepavyko");
-        setSznsResults([]);
-      } finally {
+      // Race condition guard
+      if (requestId !== sznsRequestIdRef.current) return;
+
+      setSznsResults(result.zones);
+      setSznsFailed(result.failed);
+      setSznsPointsQueried(result.pointsQueried);
+    } catch (e) {
+      if (requestId !== sznsRequestIdRef.current) return;
+      console.error("SZNS polygon query error:", e);
+      toast.error("SŽNS užklausa nepavyko");
+      setSznsResults([]);
+      setSznsFailed(true);
+    } finally {
+      if (requestId === sznsRequestIdRef.current) {
         setSznsLoading(false);
       }
-    } else {
-      // No parcel selected — just toggle the layer
-      handleToggleOverlay("szns");
     }
-  }, [selectedParcel, handleToggleOverlay]);
+  }, [selectedFeature, handleToggleOverlay]);
 
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
@@ -355,8 +354,10 @@ const Index = () => {
       <SznsModal
         open={sznsModalOpen}
         onClose={() => setSznsModalOpen(false)}
-        results={sznsResults}
+        zones={sznsResults}
         loading={sznsLoading}
+        failed={sznsFailed}
+        pointsQueried={sznsPointsQueried}
       />
 
       {/* Floating button to reopen parcel sidebar */}
