@@ -16,34 +16,33 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
   if (!open) return null;
 
   return (
-    <div className="fixed top-0 left-0 bottom-0 w-[380px] z-[1100] flex flex-col bg-card border-r border-border shadow-2xl animate-slide-in-left max-sm:w-full">
+    <div className="fixed top-20 left-4 z-[1100] w-[340px] max-h-[60vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl animate-fade-in max-sm:left-2 max-sm:right-2 max-sm:w-auto max-sm:top-auto max-sm:bottom-4">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">SŽNS</p>
-          <h2 className="text-base font-display font-bold text-foreground mt-0.5">
-            Specialiosios žemės naudojimo sąlygos
+      <div className="flex items-center justify-between p-3 border-b border-border">
+        <div className="min-w-0">
+          <h2 className="text-sm font-display font-bold text-foreground truncate">
+            Specialiosios sąlygos
           </h2>
         </div>
         <button
           onClick={onClose}
-          className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0 ml-2"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-3">
         {loading && (
-          <div className="flex items-center justify-center gap-3 py-8">
+          <div className="flex items-center justify-center gap-3 py-6">
             <Loader2 className="h-5 w-5 text-primary animate-spin" />
-            <span className="text-sm text-muted-foreground">Ieškoma sąlygų...</span>
+            <span className="text-sm text-muted-foreground">Ieškoma...</span>
           </div>
         )}
 
         {!loading && results && results.length === 0 && (
-          <div className="text-center py-8">
+          <div className="text-center py-6">
             <p className="text-sm text-muted-foreground">
               Šiame sklype specialiųjų sąlygų nerasta.
             </p>
@@ -51,9 +50,9 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
         )}
 
         {!loading && results && results.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              Rasta sąlygų: {results.length}
+              Rasta: {results.length}
             </p>
             {results.map((r, i) => {
               const p = r.attributes || {};
@@ -71,12 +70,12 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
               return (
                 <div
                   key={i}
-                  className="rounded-lg bg-muted/40 p-3 space-y-1.5"
+                  className="rounded-lg bg-muted/40 p-2.5 space-y-1"
                 >
-                  <p className="text-sm font-semibold text-foreground leading-snug">
+                  <p className="text-xs font-semibold text-foreground leading-snug">
                     {salyga}
                   </p>
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
                     {kodas && (
                       <span className="bg-muted rounded px-1.5 py-0.5">
                         Nr. {kodas}
@@ -93,16 +92,16 @@ const SznsModal = ({ open, onClose, results, loading }: SznsModalProps) => {
                       href={nuoroda}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                      className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Atidaryti aprašą
+                      Aprašas
                     </a>
                   )}
                 </div>
               );
             })}
-            <p className="text-[10px] text-muted-foreground mt-2">
+            <p className="text-[10px] text-muted-foreground mt-1">
               © NŽT / Registrų centras
             </p>
           </div>
