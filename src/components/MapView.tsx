@@ -172,7 +172,7 @@ const SznsTileLayer = L.TileLayer.extend({
     }
 
     // Utilize the standard ArcGIS export endpoint identically to how Kadastras is generated
-    return buildExportProxyUrl(SZNS_BASE, coords, map, "png32", true, layerIdsStr);
+    return buildDirectExportUrl(SZNS_BASE, coords, map, "png32", true, layerIdsStr);
   },
 });
 
@@ -509,15 +509,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             }
             groups.add(key);
             sznsActiveRef.current = true;
-            // Remove other overlays so SZNS is clearly visible
-            if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) map.removeLayer(kadastroLayerRef.current);
-            if (forestLayerRef.current && map.hasLayer(forestLayerRef.current)) map.removeLayer(forestLayerRef.current);
-            if (meliorLayerRef.current && map.hasLayer(meliorLayerRef.current)) map.removeLayer(meliorLayerRef.current);
-            if (esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current)) map.removeLayer(esoElektraLayerRef.current);
-            if (esoDujosLayerRef.current && map.hasLayer(esoDujosLayerRef.current)) map.removeLayer(esoDujosLayerRef.current);
             if (!sznsLayerRef.current) {
               sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                minZoom: 14,
+                minZoom: 8,
                 maxZoom: 22,
                 maxNativeZoom: 19,
                 opacity: 0.7,
@@ -553,15 +547,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             // Turn on all
             SZNS_GROUPS.forEach(g => groups.add(g.key));
             sznsActiveRef.current = true;
-            // Remove other overlays so SZNS is clearly visible
-            if (kadastroLayerRef.current && map.hasLayer(kadastroLayerRef.current)) map.removeLayer(kadastroLayerRef.current);
-            if (forestLayerRef.current && map.hasLayer(forestLayerRef.current)) map.removeLayer(forestLayerRef.current);
-            if (meliorLayerRef.current && map.hasLayer(meliorLayerRef.current)) map.removeLayer(meliorLayerRef.current);
-            if (esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current)) map.removeLayer(esoElektraLayerRef.current);
-            if (esoDujosLayerRef.current && map.hasLayer(esoDujosLayerRef.current)) map.removeLayer(esoDujosLayerRef.current);
             if (!sznsLayerRef.current) {
               sznsLayerRef.current = new (SznsTileLayer as any)("", {
-                minZoom: 14,
+                minZoom: 8,
                 maxZoom: 22,
                 maxNativeZoom: 19,
                 opacity: 0.7,
