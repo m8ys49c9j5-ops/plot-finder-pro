@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Mail, ChevronRight } from "lucide-react";
 import FeedbackPopup from "@/components/FeedbackPopup";
+import SznsModal from "@/components/SznsModal";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SearchBar from "@/components/SearchBar";
-import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType, SZNS_GROUPS } from "@/components/MapView";
+import MapView, { type MapViewHandle, type MapLayerType, type OverlayLayerType } from "@/components/MapView";
 import ParcelSidebar, { type ParcelData } from "@/components/ParcelSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,16 +19,18 @@ import {
   ShieldAlert,
   Zap,
   LayoutGrid,
-  ChevronDown,
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.ElementType }[] = [
   { key: "parcels", label: "Sklypai", Icon: LayoutGrid },
   { key: "forest", label: "Miškai", Icon: Trees },
   { key: "melior", label: "Melioracija", Icon: Droplets },
   { key: "energy", label: "Tinklai", Icon: Zap },
+  { key: "szns", label: "Specialiosios sąlygos", Icon: ShieldAlert },
 ];
 
 const Index = () => {
@@ -43,6 +46,7 @@ const Index = () => {
     forest: false,
     melior: false,
     energy: false,
+    szns: false,
     szns_infra: false,
     szns_transport: false,
     szns_culture: false,
@@ -50,9 +54,14 @@ const Index = () => {
     szns_nature: false,
     szns_defense: false,
   });
-  const [sznsExpanded, setSznsExpanded] = useState(false);
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  // SZNS modal state
+  const [sznsModalOpen, setSznsModalOpen] = useState(false);
+  const [sznsResults, setSznsResults] = useState<any[] | null>(null);
+  const [sznsLoading, setSznsLoading] = useState(false);
+
   const mapViewRef = useRef<MapViewHandle>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -103,6 +112,51 @@ const Index = () => {
     }
   }, []);
 
+  const handleSznsClick = useCallback(async () => {
+    if (selectedParcel && selectedParcel.lat && selectedParcel.lng) {
+      // Query SZNS identify for this parcel
+      setSznsModalOpen(true);
+      setSznsLoading(true);
+      setSznsResults(null);
+
+      try {
+        const lat = selectedParcel.lat;
+        const lng = selectedParcel.lng;
+        const delta = 0.002;
+        const minX = lng - delta;
+        const minY = lat - delta;
+        const maxX = lng + delta;
+        const maxY = lat + delta;
+
+        const identifyUrl =
+          `https://www.geoportal.lt/mapproxy/rc_szns/MapServer/identify` +
+          `?geometry=${lng},${lat}` +
+          `&geometryType=esriGeometryPoint` +
+          `&sr=4326` +
+          `&layers=all` +
+          `&tolerance=20` +
+          `&mapExtent=${minX},${minY},${maxX},${maxY}` +
+          `&imageDisplay=800,600,96` +
+          `&returnGeometry=false` +
+          `&f=json`;
+
+        const proxyUrl = `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(identifyUrl)}`;
+        const resp = await fetch(proxyUrl);
+        const data = await resp.json();
+        setSznsResults(data?.results || []);
+      } catch (e) {
+        console.error("SZNS query error:", e);
+        toast.error("SŽNS užklausa nepavyko");
+        setSznsResults([]);
+      } finally {
+        setSznsLoading(false);
+      }
+    } else {
+      // No parcel selected — just toggle the layer
+      handleToggleOverlay("szns");
+    }
+  }, [selectedParcel, handleToggleOverlay]);
+
   const handleSearch = useCallback((query: string) => {
     setIsSearching(true);
     setSearchQuery(query);
@@ -140,50 +194,6 @@ const Index = () => {
       p_session_id: sessionId,
     });
   }, [user]);
-
-  const activeCount = Object.values(activeOverlays).filter(Boolean).length;
-  const anySznsActive = SZNS_GROUPS.some(g => activeOverlays[g.key]);
-
-  const renderSznsGroup = (compact: boolean) => {
-    const sz = compact ? "h-4 w-4" : "h-4 w-4";
-    const textSz = compact ? "text-[11px]" : "text-xs";
-    const pad = compact ? "p-2" : "p-2.5";
-    const gap = compact ? "gap-1.5" : "gap-2";
-    return (
-      <>
-        <button
-          onClick={() => setSznsExpanded(v => !v)}
-          className={`glass-panel rounded-xl ${pad} shadow-lg transition-colors flex items-center ${gap} ${
-            anySznsActive
-              ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-              : "hover:bg-muted/60"
-          }`}
-        >
-          <ShieldAlert className={`${sz} ${anySznsActive ? "text-primary" : "text-foreground"}`} />
-          <span className={`${textSz} font-medium ${anySznsActive ? "text-primary" : "text-foreground"}`}>
-            SŽNS
-          </span>
-          <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${sznsExpanded ? "rotate-90" : ""}`} />
-        </button>
-        {sznsExpanded && SZNS_GROUPS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => handleToggleOverlay(key)}
-            className={`glass-panel rounded-xl ${pad} shadow-lg transition-colors flex items-center ${gap} ${compact ? "ml-2" : "ml-3"} ${
-              activeOverlays[key]
-                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-                : "hover:bg-muted/60"
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${activeOverlays[key] ? "bg-primary" : "bg-muted-foreground/40"}`} />
-            <span className={`${textSz} font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
-              {label}
-            </span>
-          </button>
-        ))}
-      </>
-    );
-  };
 
   return (
     <div className="h-screen w-screen relative overflow-hidden bg-background">
@@ -235,7 +245,7 @@ const Index = () => {
             <SearchBar onSearch={handleSearch} isLoading={isSearching} />
           </div>
 
-          {/* Layer buttons — below search on mobile, left side on desktop */}
+          {/* Layer buttons — below search on mobile */}
           <div className="pointer-events-auto flex flex-wrap gap-1.5 justify-center md:hidden">
             <button
               onClick={toggleLayer}
@@ -250,23 +260,26 @@ const Index = () => {
                 {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
               </span>
             </button>
-            {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                onClick={() => handleToggleOverlay(key)}
-                className={`glass-panel rounded-xl p-2 shadow-lg transition-colors flex items-center gap-1.5 ${
-                  activeOverlays[key]
-                    ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-                    : "hover:bg-muted/60"
-                }`}
-              >
-                <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
-                <span className={`text-[11px] font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
-                  {label}
-                </span>
-              </button>
-            ))}
-            {renderSznsGroup(true)}
+            {OVERLAY_BUTTONS.map(({ key, label, Icon }) => {
+              const isActive = key === "szns" ? activeOverlays.szns : activeOverlays[key];
+              const onClick = key === "szns" ? handleSznsClick : () => handleToggleOverlay(key);
+              return (
+                <button
+                  key={key}
+                  onClick={onClick}
+                  className={`glass-panel rounded-xl p-2 shadow-lg transition-colors flex items-center gap-1.5 ${
+                    isActive
+                      ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                      : "hover:bg-muted/60"
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-foreground"}`} />
+                  <span className={`text-[11px] font-medium ${isActive ? "text-primary" : "text-foreground"}`}>
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -288,24 +301,27 @@ const Index = () => {
           </span>
         </button>
 
-        {OVERLAY_BUTTONS.map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            onClick={() => handleToggleOverlay(key)}
-            title={label}
-            className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
-              activeOverlays[key]
-                ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-                : "hover:bg-muted/60"
-            }`}
-          >
-            <Icon className={`h-4 w-4 ${activeOverlays[key] ? "text-primary" : "text-foreground"}`} />
-            <span className={`text-xs font-medium ${activeOverlays[key] ? "text-primary" : "text-foreground"}`}>
-              {label}
-            </span>
-          </button>
-        ))}
-        {renderSznsGroup(false)}
+        {OVERLAY_BUTTONS.map(({ key, label, Icon }) => {
+          const isActive = key === "szns" ? activeOverlays.szns : activeOverlays[key];
+          const onClick = key === "szns" ? handleSznsClick : () => handleToggleOverlay(key);
+          return (
+            <button
+              key={key}
+              onClick={onClick}
+              title={label}
+              className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
+                isActive
+                  ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
+                  : "hover:bg-muted/60"
+              }`}
+            >
+              <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-foreground"}`} />
+              <span className={`text-xs font-medium ${isActive ? "text-primary" : "text-foreground"}`}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Social + mail icons & Attribution */}
@@ -335,6 +351,13 @@ const Index = () => {
       </div>
 
       <FeedbackPopup open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+
+      <SznsModal
+        open={sznsModalOpen}
+        onClose={() => setSznsModalOpen(false)}
+        results={sznsResults}
+        loading={sznsLoading}
+      />
 
       {/* Floating button to reopen parcel sidebar */}
       {!selectedParcel && lastParcel && (

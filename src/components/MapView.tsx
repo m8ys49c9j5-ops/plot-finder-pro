@@ -16,7 +16,7 @@ export type SznsGroupKey =
   | "szns_sanitary"
   | "szns_nature"
   | "szns_defense";
-export type OverlayLayerType = "parcels" | "forest" | "melior" | "energy" | SznsGroupKey;
+export type OverlayLayerType = "parcels" | "forest" | "melior" | "energy" | "szns" | SznsGroupKey;
 
 export const SZNS_GROUPS: { key: SznsGroupKey; label: string; layerIds: number[] }[] = [
   { key: "szns_infra", label: "Inžineriniai", layerIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] },
@@ -531,6 +531,44 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
             bringKadastroToFront();
             return true;
           }
+          case "szns": {
+            // Toggle ALL SZNS groups at once
+            const groups = sznsActiveGroups.current;
+            if (groups.size > 0) {
+              // Turn off all
+              groups.clear();
+              sznsActiveRef.current = false;
+              if (sznsLayerRef.current && map.hasLayer(sznsLayerRef.current)) {
+                map.removeLayer(sznsLayerRef.current);
+              }
+              map.closePopup();
+              return false;
+            }
+            // Turn on all
+            SZNS_GROUPS.forEach(g => groups.add(g.key));
+            sznsActiveRef.current = true;
+            if (!sznsLayerRef.current) {
+              sznsLayerRef.current = new (SznsTileLayer as any)("", {
+                minZoom: 14,
+                maxZoom: 22,
+                maxNativeZoom: 19,
+                opacity: 0.7,
+                zIndex: OVERLAY_ZINDEX,
+                getActiveLayerIds: () => {
+                  const activeKeys = Array.from(sznsActiveGroups.current);
+                  const activeGroups = SZNS_GROUPS.filter((g) => activeKeys.includes(g.key));
+                  return activeGroups.flatMap((g) => g.layerIds);
+                },
+              });
+            }
+            if (!map.hasLayer(sznsLayerRef.current!)) {
+              sznsLayerRef.current!.addTo(map);
+            } else {
+              sznsLayerRef.current!.redraw();
+            }
+            bringKadastroToFront();
+            return true;
+          }
           case "energy": {
             const isOn = esoElektraLayerRef.current && map.hasLayer(esoElektraLayerRef.current);
             if (isOn) {
@@ -666,6 +704,9 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               props.ADRESAS ||
               [
                 props.kaimas_miestas,
+                (props.kaimas || props.KAIMAS) && String(props.kaimas || props.KAIMAS).trim()
+                  ? `${String(props.kaimas || props.KAIMAS).trim()} k.`
+                  : null,
                 props.seniunija && String(props.seniunija).trim() ? `${props.seniunija} sen.` : null,
                 props.sav_pavadinimas && String(props.sav_pavadinimas).trim()
                   ? `${props.sav_pavadinimas} r. sav.`
