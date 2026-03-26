@@ -6,7 +6,7 @@ import {
   ArrowLeft, Layers, MapPin,
   Bookmark, BookmarkCheck, Trash2, ExternalLink,
   Loader2, Clock, Search as SearchIcon, User,
-  Calendar, BarChart2, LogOut, Coins, ChevronDown, ChevronUp, Navigation,
+  Calendar, BarChart2, LogOut, Coins, ChevronDown, ChevronUp, Navigation, Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -186,7 +186,16 @@ export default function Account() {
   };
 
   const handleOpenOnMap = (cadastralNumber: string) => {
-    navigate("/map", { state: { searchQuery: cadastralNumber } });
+    navigate(`/map?q=${encodeURIComponent(cadastralNumber)}`);
+  };
+
+  const handleShare = (cadastralNumber: string) => {
+    const url = `${window.location.origin}/map?q=${encodeURIComponent(cadastralNumber)}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success("Nuoroda nukopijuota!");
+    }).catch(() => {
+      toast.error("Nepavyko nukopijuoti nuorodos");
+    });
   };
 
   const handleSignOut = async () => {
@@ -407,6 +416,13 @@ export default function Account() {
                               >
                                 <Navigation className="h-3.5 w-3.5" />
                                 Rodyti žemėlapyje
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleShare(entry.cadastral_number); }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
+                              >
+                                <Share2 className="h-3.5 w-3.5" />
+                                Dalintis
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleBookmarkToggle(entry); }}
