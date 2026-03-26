@@ -25,10 +25,12 @@ export default function ContactDialog({ open, onClose }: ContactDialogProps) {
 
     setSending(true);
     try {
-      const { error } = await supabase.functions.invoke("send-contact-email", {
+      const { data, error } = await supabase.functions.invoke("send-contact-email", {
         body: { email: senderEmail, message: msg },
       });
-      if (error) throw error;
+      if (error || data?.error) {
+        throw new Error(error?.message || data?.error || "Nepavyko išsiųsti žinutės.");
+      }
       toast.success("Žinutė sėkmingai išsiųsta!");
       setMessage("");
       setEmail("");
