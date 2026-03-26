@@ -2,6 +2,7 @@ import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { useAuth } from "@/contexts/AuthContext";
+import ContactDialog from "@/components/ContactDialog";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconLayers = () => (
@@ -297,6 +298,10 @@ const FAQ_ITEMS = [
     q: "Ar galima naudoti verslo tikslais?",
     a: "Taip. Ataskaitos skirtos tiek privatiems asmenims, tiek NT agentams, advokatams, statybų įmonėms ir investuotojams.",
   },
+  {
+    q: "Kokie yra registracijos privalumai?",
+    a: "Registracija yra visiškai nemokama. Prisiregistravę galėsite patogiai išsaugoti savo paieškų istoriją ir bet kada prie jos sugrįžti savo paskyroje.",
+  },
 ];
 
 function FaqRow({ q, a }: { q: string; a: string }) {
@@ -324,6 +329,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const [contactOpen, setContactOpen] = useState(false);
   const { config } = useAppConfig();
 
   // ── CMS-driven content (falls back to hard-coded if key not in DB) ──────────
@@ -1103,28 +1109,16 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Right — Feedback form */}
+          {/* Right — Contact */}
           <div className="flex-1 min-w-[200px]">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Rašykite mums</h3>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const val = (e.currentTarget.elements.namedItem("feedback") as HTMLTextAreaElement)?.value;
-              if (val?.trim()) {
-                window.open(`mailto:zemeprolt@gmail.com?subject=${encodeURIComponent("ŽemėPro atsiliepimas")}&body=${encodeURIComponent(val)}`);
-              }
-            }}>
-              <textarea
-                name="feedback"
-                placeholder="Jūsų komentaras, idėja ar pasiūlymas..."
-                className="w-full text-xs rounded-lg border border-input bg-background px-3 py-2 resize-none h-20 focus:ring-1 focus:ring-primary outline-none"
-              />
-              <button type="submit" className="mt-2 w-full premium-gradient text-primary-foreground text-xs font-semibold rounded-lg py-2 hover:opacity-90 transition-opacity">
-                Siųsti
-              </button>
-            </form>
-            <a href="mailto:zemeprolt@gmail.com" className="text-xs text-muted-foreground hover:text-foreground mt-2 inline-block">
-              zemeprolt@gmail.com
-            </a>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Susisiekite</h3>
+            <p className="text-xs text-muted-foreground mb-3">Turite klausimų ar pasiūlymų? Parašykite mums!</p>
+            <button
+              onClick={() => setContactOpen(true)}
+              className="premium-gradient text-primary-foreground text-xs font-semibold rounded-lg py-2 px-4 hover:opacity-90 transition-opacity"
+            >
+              Rašykite mums
+            </button>
           </div>
         </div>
       </section>
