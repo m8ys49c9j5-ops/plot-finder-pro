@@ -1149,6 +1149,8 @@ export default function Landing() {
           © {new Date().getFullYear()} ŽemėPro
         </p>
       </footer>
+
+      <ContactDialog open={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   );
 }
