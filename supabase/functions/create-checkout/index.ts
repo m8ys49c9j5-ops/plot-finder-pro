@@ -2,11 +2,16 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://zemepro.lt";
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin");
+  return {
+    "Access-Control-Allow-Origin": origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  };
+}
 
 const TIERS: Record<string, { priceId: string; credits: number }> = {
   tier1: { priceId: "price_1T7YyxPabwpK6kjPLSEsmhD1", credits: 1 },
@@ -15,6 +20,7 @@ const TIERS: Record<string, { priceId: string; credits: number }> = {
 };
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -55,8 +61,9 @@ serve(async (req) => {
         credits: tierConfig.credits.toString(),
         tier,
       },
-      success_url: `${req.headers.get("origin")}/?payment=success`,
-      cancel_url: `${req.headers.get("origin")}/?payment=canceled`,
+      const APP_URL = Deno.env.get("APP_URL") || "https://zemepro.lt";
+      success_url: `${APP_URL}/?payment=success`,
+      cancel_url: `${APP_URL}/?payment=canceled`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

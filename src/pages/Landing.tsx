@@ -287,12 +287,12 @@ const FAQ_ITEMS = [
     a: "Kiekvieną kartą pateikiame naujausius duomenis. Duomenis atnaujiname kartą per mėnesį.",
   },
   {
-    q: "Kokią informaciją pateikiate mokamoje ataskaitoje?",
-    a: "Mokamoje ataskaitoje jūs gaunate pilną išaiškinimą dėl specialiųjų sąlygų ir specialistų/profesionalų pateiktą išvadą.",
+    q: "Kokią informaciją pateikiate ataskaitoje?",
+    a: "Šiuo metu pateikiame bazinę informaciją nemokamai: sklypo ribos, adresas, koordinatės, paskirtis. Pilna ataskaita su papildoma informacija bus prieinama netrukus mokamoje versijoje.",
   },
   {
-    q: "Ar kreditai turi galiojimo datą?",
-    a: "Ne. Kreditai lieka jūsų sąskaitoje neribotą laiką – mokate tik kai faktiškai atrakinate ataskaitą.",
+    q: "Ar planuojate mokamą versiją?",
+    a: "Taip! Mokama versija su išsamia sklypo ataskaita ir papildoma informacija bus prieinama netrukus. Šiuo metu visa bazinė informacija yra nemokama.",
   },
   {
     q: "Ar galima naudoti verslo tikslais?",

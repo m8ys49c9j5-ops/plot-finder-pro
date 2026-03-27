@@ -444,15 +444,19 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
         if (error) throw error;
         toast.success("Sėkmingai prisijungėte!");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: window.location.origin + "/map" },
         });
         if (error) throw error;
-        toast.success("Registracija sėkminga!");
-      }
-      onSuccess();
+        if (data.session) {
+          toast.success("Registracija sėkminga!");
+          onSuccess();
+        } else {
+          toast.info("Patikrinkite el. paštą. Patvirtinę nuorodą, grįžkite į šį puslapį ir prisijunkite.");
+          setIsLogin(true);
+        }
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -521,7 +525,7 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
           type="button"
           onClick={async () => {
             const { error } = await lovable.auth.signInWithOAuth("apple", {
-              redirect_uri: window.location.origin,
+              redirect_uri: import.meta.env.VITE_APP_URL || window.location.origin,
             });
             if (error) toast.error(error.message || "Apple prisijungimo klaida");
           }}
@@ -638,8 +642,11 @@ function InlinePricing({ parcel, feature }: { parcel?: ParcelFromRoute | null; f
 
 // --- FREE MODE TOGGLE ---
 // Set to true to bypass the locked/payment screen and show reports directly.
-// Set to false to restore the original locked/payment UI.
-const FREE_MODE = true;
+// TODO: set to false when paid credits go live.
+// ⚠️ ARCHITECTURE NOTE: When credits ARE enabled, the unlock gate MUST be moved
+// server-side: the unlock_parcel RPC must be the authoritative gate, and the client
+// should never render full report data until the server confirms unlock.
+const FREE_MODE = true; // TODO: set to false when paid credits go live
 
 // --- MAIN COMPONENT ---
 interface Report1Props {
@@ -663,12 +670,14 @@ export default function Report1({ parcel: parcelProp, onGoToMap, feature: featur
         try {
           setRecoveredParcel(JSON.parse(stored));
         } catch {}
+        localStorage.removeItem("pendingParcel");
       }
       const storedFeature = localStorage.getItem("pendingFeature");
       if (storedFeature) {
         try {
           setRecoveredFeature(JSON.parse(storedFeature));
         } catch {}
+        localStorage.removeItem("pendingFeature");
       }
     } else {
       localStorage.removeItem("pendingParcel");
