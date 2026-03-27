@@ -3,25 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>TikrinuNT</title>
     <meta name="description" content="Sklypu patikra">
     <meta name="author" content="Lovable" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.geoportal.lt https://*.openstreetmap.org https://*.supabase.co https://*.tile.openstreetmap.org; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://*.geoportal.lt https://nominatim.openstreetmap.org https://www.inspire-geoportal.lt https://api.resend.com https://www.registrucentras.lt https://grpk.lrv.lt https://apdorotieji-ntris.vrsa.lt;">
+    <!-- X-Frame-Options fallback for older browsers -->
+    <!-- NOTE: For full frame-ancestors protection, set Content-Security-Policy: frame-ancestors 'none' as an HTTP response header on the hosting platform -->
+    <meta http-equiv="X-Frame-Options" content="DENY">
+
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/65126b10-2da4-407c-a2df-4f0e8d3906e2/id-preview-8b9d3269--fee6973a-2d7d-4059-8c93-af4ae8fee976.lovable.app-1771515348530.png">
-
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/65126b10-2da4-407c-a2df-4f0e8d3906e2/id-preview-8b9d3269--fee6973a-2d7d-4059-8c93-af4ae8fee976.lovable.app-1771515348530.png">
     <meta property="og:title" content="TikrinuNT">
-  <meta name="twitter:title" content="TikrinuNT">
-  <meta property="og:description" content="Sklypu patikra">
-  <meta name="twitter:description" content="Sklypu patikra">
-</head>
+    <meta name="twitter:title" content="TikrinuNT">
+    <meta property="og:description" content="Sklypu patikra">
+    <meta name="twitter:description" content="Sklypu patikra">
+  </head>
 
   <body>
     <div id="root"></div>

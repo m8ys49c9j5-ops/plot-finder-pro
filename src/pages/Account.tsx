@@ -270,10 +270,16 @@ export default function Account() {
                   <BarChart2 className="h-3 w-3" /> Viso paieškų
                 </p>
               </div>
-              <div className="bg-muted/50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-foreground">{credits}</p>
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                  <Coins className="h-3 w-3" /> Likę kreditai
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <p className="text-2xl font-bold text-foreground">{credits}</p>
+                  <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 px-1.5 py-0.5 rounded-full">🔒 Netrukus</span>
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                  <Coins className="h-3 w-3" /> Kreditai
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Mokamos versijos funkcija (netrukus)
                 </p>
               </div>
             </div>
