@@ -31,7 +31,7 @@ const OVERLAY_BUTTONS: { key: OverlayLayerType; label: string; Icon: React.Eleme
   { key: "forest", label: "Miškai", Icon: Trees },
   { key: "melior", label: "Melioracija", Icon: Droplets },
   { key: "energy", label: "Tinklai", Icon: Zap },
-  { key: "szns", label: "Specialiosios sąlygos", Icon: ShieldAlert },
+  // { key: "szns", label: "Specialiosios sąlygos", Icon: ShieldAlert }, // SZNS — disabled until feature is live
 ];
 
 const Index = () => {
@@ -92,12 +92,14 @@ const Index = () => {
           const parcel = JSON.parse(stored);
           setSelectedParcel(parcel);
         } catch {}
+        localStorage.removeItem("pendingParcel");
       }
       const storedFeature = localStorage.getItem("pendingFeature");
       if (storedFeature) {
         try {
           setSelectedFeature(JSON.parse(storedFeature));
         } catch {}
+        localStorage.removeItem("pendingFeature");
       }
       window.history.replaceState({}, "", "/map");
     }
@@ -351,14 +353,15 @@ const Index = () => {
 
       <FeedbackPopup open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
-      <SznsModal
+      {/* SZNS Modal — disabled until feature is live */}
+      {/* <SznsModal
         open={sznsModalOpen}
         onClose={() => setSznsModalOpen(false)}
         zones={sznsResults}
         loading={sznsLoading}
         failed={sznsFailed}
         pointsQueried={sznsPointsQueried}
-      />
+      /> */}
 
       {/* Floating button to reopen parcel sidebar */}
       {!selectedParcel && lastParcel && (
