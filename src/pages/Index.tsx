@@ -310,7 +310,7 @@ const Index = () => {
           </button>
         </div>
         <div className="glass-panel rounded-lg px-2 py-1 text-[10px] text-muted-foreground">
-          Duomenys: Geoportal.lt · RC Kadastras
+          © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="hover:underline">OpenStreetMap</a> · <a href="https://www.geoportal.lt" target="_blank" rel="noopener noreferrer" className="hover:underline">Geoportal.lt</a> · Registrų centras · NŽT
         </div>
       </div>
 
