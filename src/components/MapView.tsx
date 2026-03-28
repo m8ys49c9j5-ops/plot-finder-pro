@@ -617,16 +617,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         center: [config.map_default_lat ?? 55.1694, config.map_default_lng ?? 23.8813],
         zoom: config.map_default_zoom ?? 8,
         zoomControl: false,
+        attributionControl: false,
       });
       L.control.zoom({ position: "bottomright" }).addTo(map);
       baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution: '',
         maxZoom: 19,
       }).addTo(map);
       geoportalTileRef.current = L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
         maxZoom: 19,
         opacity: 0.7,
-        attribution: '&copy; <a href="https://www.geoportal.lt">Geoportal.lt</a>',
+        attribution: '',
       }).addTo(map);
       // Don't add kadastro by default — user toggles it on via Sklypai button
 

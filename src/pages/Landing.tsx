@@ -165,67 +165,24 @@ const IconCheck = () => (
   </svg>
 );
 
-// ─── Map tile grid (Geoportal Lithuanian topo tiles — same as app) ─────────────
-// z=12 centred on a nice rural Lithuanian area (near Kaunas/Prienai)
-const GEOPORTAL = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
-
-function toTileXY(lat: number, lng: number, z: number) {
-  const n = Math.pow(2, z);
-  const x = Math.floor(((lng + 180) / 360) * n);
-  const latR = (lat * Math.PI) / 180;
-  const y = Math.floor(((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2) * n);
-  return { x, y };
-}
-
-function MapTileBackground() {
-  // Centre: ~54.93°N 23.95°E — rural Lithuania near Prienai (similar to screenshot)
-  const z = 12;
-  const { x: cx, y: cy } = toTileXY(54.93, 23.95, z);
-
-  const cols = 6;
-  const rows = 5;
-  const tiles: { x: number; y: number; col: number; row: number }[] = [];
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      tiles.push({
-        x: cx - Math.floor(cols / 2) + c,
-        y: cy - Math.floor(rows / 2) + r,
-        col: c,
-        row: r,
-      });
-    }
-  }
-
+// ─── Static map background for hero ──────────────────────────────────────────
+function MapBackground() {
   return (
-    <div
+    <img
+      src="https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=2337709,7089524,2937709,7389524&bboxSR=3857&imageSR=3857&size=1920,1080&format=jpg&f=image"
+      alt="Lietuvos žemėlapis"
+      draggable={false}
       style={{
         position: "absolute",
         inset: 0,
-        display: "grid",
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
-        overflow: "hidden",
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
       }}
-    >
-      {tiles.map(({ x, y, col, row }) => (
-        <img
-          key={`${col}-${row}`}
-          // Geoportal tile URL: /tile/{z}/{y}/{x} (note: y before x)
-          src={`${GEOPORTAL}/tile/${z}/${y}/${x}`}
-          alt=""
-          draggable={false}
-          style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
-          onError={(e) => {
-            // fallback to OSM if geoportal tiles fail
-            const img = e.currentTarget;
-            if (!img.src.includes("openstreetmap")) {
-              img.src = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-            }
-          }}
-        />
-      ))}
-    </div>
+      onError={(e) => {
+        e.currentTarget.src = "https://tile.openstreetmap.org/7/38/22.png";
+      }}
+    />
   );
 }
 
@@ -389,7 +346,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="bg-background text-foreground" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="bg-background text-foreground" style={{ fontFamily: "'Inter', sans-serif", overflowX: 'hidden' }}>
       <style>{`
         @keyframes lp-up {
           from { opacity: 0; transform: translateY(18px); }
@@ -424,7 +381,10 @@ export default function Landing() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 clamp(1.25rem, 4vw, 2.5rem)",
-          // No background — floats over the map
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          boxShadow: "0 1px 8px rgba(0,0,0,0.08)",
         }}
       >
         {/* Logo */}
@@ -525,16 +485,15 @@ export default function Landing() {
           position: "relative",
           width: "100%",
           height: "100vh",
-          minHeight: 560,
-          maxHeight: 860,
+          minHeight: "min(560px, 100vh)",
+          maxHeight: 760,
           overflow: "hidden",
         }}
       >
-        {/* Tile mosaic fills the entire hero */}
-        <MapTileBackground />
+        {/* Static map image fills the entire hero */}
+        <MapBackground />
 
         {/* Very subtle centre radial scrim — just enough to read text */}
-        {/* Matches screenshot: map is clearly visible, only light centre wash */}
         <div
           style={{
             position: "absolute",
@@ -554,9 +513,9 @@ export default function Landing() {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: "0 clamp(1rem, 5vw, 3rem)",
-            paddingTop: 40,
-            paddingBottom: 80,
+            padding: "0 clamp(0.75rem, 4vw, 3rem)",
+            paddingTop: 80,
+            paddingBottom: "clamp(20px, 8vh, 80px)",
           }}
         >
           {/* Title */}
@@ -626,13 +585,15 @@ export default function Landing() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
+              autoComplete="off"
+              inputMode="text"
               style={{
                 flex: 1,
                 minWidth: 0,
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                fontSize: "0.875rem",
+                fontSize: "16px",
                 color: "hsl(var(--foreground))",
               }}
             />

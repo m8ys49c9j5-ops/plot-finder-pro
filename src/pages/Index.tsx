@@ -209,11 +209,11 @@ const Index = () => {
 
       {/* Top bar — logo, account, search, then layer buttons on mobile */}
       <div className="absolute top-0 left-0 right-0 z-[900] pointer-events-none">
-        <div className="flex flex-col items-center pt-3 sm:pt-4 px-3 sm:px-4 gap-2 sm:gap-3">
+        <div className="flex flex-col items-center pt-2 sm:pt-4 px-3 sm:px-4 gap-1.5 sm:gap-3">
           <div className="pointer-events-auto flex items-center gap-2">
             <Link to="/" className="glass-panel rounded-xl px-3 sm:px-4 py-2 flex items-center gap-2 shadow-lg hover:bg-muted/60 transition-colors no-underline">
               <Layers className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground text-base sm:text-lg">
+              <span className="font-display font-bold text-foreground text-sm sm:text-lg">
                 Žemė<span className="text-gradient">Pro</span>
               </span>
             </Link>
@@ -245,59 +245,22 @@ const Index = () => {
           <div className="pointer-events-auto w-full max-w-xl px-0 sm:px-0">
             <SearchBar onSearch={handleSearch} isLoading={isSearching} />
           </div>
-
-          {/* Layer buttons — below search on mobile */}
-          <div className="pointer-events-auto flex flex-wrap gap-1.5 justify-center md:hidden">
-            <button
-              onClick={toggleLayer}
-              className="glass-panel rounded-xl p-2 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-1.5"
-            >
-              {activeLayer === "standard" ? (
-                <Satellite className="h-4 w-4 text-foreground" />
-              ) : (
-                <Map className="h-4 w-4 text-foreground" />
-              )}
-              <span className="text-[11px] font-medium text-foreground">
-                {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
-              </span>
-            </button>
-            {OVERLAY_BUTTONS.map(({ key, label, Icon }) => {
-              const isActive = key === "szns" ? activeOverlays.szns : activeOverlays[key];
-              const onClick = key === "szns" ? handleSznsClick : () => handleToggleOverlay(key);
-              return (
-                <button
-                  key={key}
-                  onClick={onClick}
-                  className={`glass-panel rounded-xl p-2 shadow-lg transition-colors flex items-center gap-1.5 ${
-                    isActive
-                      ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
-                      : "hover:bg-muted/60"
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-foreground"}`} />
-                  <span className={`text-[11px] font-medium ${isActive ? "text-primary" : "text-foreground"}`}>
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
 
-      {/* Desktop layer buttons — left side */}
-      <div className="absolute top-4 left-4 z-[900] hidden md:flex flex-col gap-1.5">
+      {/* Layer buttons — always visible, vertical stack on left side */}
+      <div className="absolute top-40 sm:top-4 left-2 sm:left-4 z-[900] flex flex-col gap-1.5">
         <button
           onClick={toggleLayer}
-          className="glass-panel rounded-xl p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
+          className="glass-panel rounded-xl p-2 sm:p-2.5 shadow-lg hover:bg-muted/60 transition-colors flex items-center gap-2"
           title={activeLayer === "standard" ? "Rodyti ortofoto" : "Rodyti žemėlapį"}
         >
           {activeLayer === "standard" ? (
-            <Satellite className="h-5 w-5 text-foreground" />
+            <Satellite className="h-4 sm:h-5 w-4 sm:w-5 text-foreground" />
           ) : (
-            <Map className="h-5 w-5 text-foreground" />
+            <Map className="h-4 sm:h-5 w-4 sm:w-5 text-foreground" />
           )}
-          <span className="text-xs font-medium text-foreground">
+          <span className="text-xs font-medium text-foreground hidden sm:inline">
             {activeLayer === "standard" ? "Ortofoto" : "Žemėlapis"}
           </span>
         </button>
@@ -310,14 +273,14 @@ const Index = () => {
               key={key}
               onClick={onClick}
               title={label}
-              className={`glass-panel rounded-xl p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
+              className={`glass-panel rounded-xl p-2 sm:p-2.5 shadow-lg transition-colors flex items-center gap-2 ${
                 isActive
                   ? "bg-primary/15 ring-1 ring-primary/40 hover:bg-primary/25"
                   : "hover:bg-muted/60"
               }`}
             >
               <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-foreground"}`} />
-              <span className={`text-xs font-medium ${isActive ? "text-primary" : "text-foreground"}`}>
+              <span className={`text-xs font-medium hidden sm:inline ${isActive ? "text-primary" : "text-foreground"}`}>
                 {label}
               </span>
             </button>
