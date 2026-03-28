@@ -1,8 +1,10 @@
-import React, { useState, FormEvent } from "react";
+import React, { useState, FormEvent, Suspense, lazy } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import ContactDialog from "@/components/ContactDialog";
+
+const HeroMap = lazy(() => import("@/components/HeroMap"));
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconLayers = () => (
@@ -165,40 +167,7 @@ const IconCheck = () => (
   </svg>
 );
 
-// ─── Static map background for hero ──────────────────────────────────────────
-function MapBackground() {
-  const mobileSrc =
-    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=1600%2C1200&format=png32&dpi=192&f=image";
-  const desktopSrc =
-    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=3840%2C2160&format=png32&dpi=192&f=image";
 
-  return (
-    <picture style={{ position: "absolute", inset: 0 }}>
-      <source media="(max-width: 768px)" srcSet={mobileSrc} />
-      <source media="(min-width: 769px)" srcSet={desktopSrc} />
-      <img
-        src={desktopSrc}
-        alt="Lietuvos žemėlapis"
-        draggable={false}
-        width={1920}
-        height={1080}
-        fetchPriority="high"
-        loading="eager"
-        decoding="async"
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-        }}
-        onError={(e) => {
-          e.currentTarget.src = "https://tile.openstreetmap.org/10/588/340.png";
-        }}
-      />
-    </picture>
-  );
-}
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const WHY_ITEMS = [
@@ -504,8 +473,10 @@ export default function Landing() {
           overflow: "hidden",
         }}
       >
-        {/* Static map image fills the entire hero */}
-        <MapBackground />
+        {/* Lazy-loaded native tile map fills the entire hero perfectly sized */}
+        <Suspense fallback={<div className="absolute inset-0 bg-secondary animate-pulse" />}>
+          <HeroMap />
+        </Suspense>
 
         {/* Very subtle centre radial scrim — just enough to read text */}
         <div

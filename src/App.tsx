@@ -8,10 +8,10 @@ import { AppConfigProvider } from "@/hooks/useAppConfig";
 import { Suspense, lazy, Component, type ReactNode } from "react";
 
 // Eager — critical path pages
-import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 
 // Lazy — loaded only when navigated to
+const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ParcelAudit = lazy(() => import("./pages/ParcelAudit"));
 const ParcelAudit2 = lazy(() => import("./pages/ParcelAudit2"));
