@@ -107,7 +107,7 @@ INSERT INTO public.app_config (key, value, label, description, group_name) VALUE
   ('content_faq_title',        '"Frequently asked questions"',                                    'FAQ Title',             'Heading for the FAQ section',                                            'content'),
   ('content_cta_title',        '"Start for free today"',                                          'Final CTA Title',       'Headline in the final CTA section',                                      'content'),
   ('content_cta_subtitle',     '"Get your first report in 60 seconds. Registration is free."',   'Final CTA Subtitle',     'Subtitle in the final CTA section',                                      'content'),
-  ('content_footer_attribution','"Data: Geoportal.lt · Registry Centre · NLA"',                  'Footer Attribution',    'Attribution text shown in the footer',                                   'content'),
+  ('content_footer_attribution','"Duomenys: ©OpenStreetMap · Geoportal.lt · Registrų centras · NŽT"',                  'Footer Attribution',    'Attribution text shown in the footer',                                   'content'),
   ('content_report_unlock_title', '"Unlock the full parcel report"',                             'Report Unlock Title',   'Heading shown on the locked report CTA card',                            'content'),
   ('content_search_placeholder', '"Enter address, cadastral number or click a parcel on the map"', 'Search Placeholder',  'Placeholder text in the search bar',                                    'content'),
   ('content_maintenance_title','"We''ll be right back"',                                          'Maintenance Title',     'Title shown during maintenance mode',                                    'content'),
