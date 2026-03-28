@@ -354,7 +354,7 @@ export default function Landing() {
           width: "100%",
           maxWidth: "100%",
           overflowX: "hidden",
-          height: "100vh",
+          height: "100dvh",
           minHeight: "min(560px, 100vh)",
           maxHeight: 760,
           overflow: "hidden",
