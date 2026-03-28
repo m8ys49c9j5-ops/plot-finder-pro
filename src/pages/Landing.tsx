@@ -365,6 +365,7 @@ export default function Landing() {
             position: "absolute",
             width: "100%",
             maxWidth: "100%",
+            boxSizing: "border-box", // ✅ FIX
             top: 0,
             left: 0,
             right: 0,
