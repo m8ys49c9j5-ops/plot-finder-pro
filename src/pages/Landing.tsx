@@ -596,13 +596,15 @@ export default function Landing() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
+              autoComplete="off"
+              inputMode="text"
               style={{
                 flex: 1,
                 minWidth: 0,
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                fontSize: "0.875rem",
+                fontSize: "16px",
                 color: "hsl(var(--foreground))",
               }}
             />
