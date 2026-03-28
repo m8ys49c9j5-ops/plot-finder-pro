@@ -3,10 +3,25 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  ArrowLeft, Layers, MapPin,
-  Bookmark, BookmarkCheck, Trash2, ExternalLink,
-  Loader2, Clock, Search as SearchIcon, User,
-  Calendar, BarChart2, LogOut, Coins, ChevronDown, ChevronUp, Navigation, Share2,
+  ArrowLeft,
+  Layers,
+  MapPin,
+  Bookmark,
+  BookmarkCheck,
+  Trash2,
+  ExternalLink,
+  Loader2,
+  Clock,
+  Search as SearchIcon,
+  User,
+  Calendar,
+  BarChart2,
+  LogOut,
+  Coins,
+  ChevronDown,
+  ChevronUp,
+  Navigation,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,20 +31,22 @@ const GEOPORTAL_BASE = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapSe
 
 function buildMapThumbUrls(lat: number, lng: number) {
   const toMerc = (lat: number, lng: number) => {
-    const x = lng * 20037508.34 / 180;
-    const y = Math.log(Math.tan((90 + lat) * Math.PI / 360))
-      / (Math.PI / 180) * 20037508.34 / 180;
+    const x = (lng * 20037508.34) / 180;
+    const y = ((Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180)) * 20037508.34) / 180;
     return { x, y };
   };
   const c = toMerc(lat, lng);
   const span = 600;
   const bbox = `${c.x - span},${c.y - span},${c.x + span},${c.y + span}`;
   const size = "128,128";
-  const proxy = (url: string) =>
-    `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
+  const proxy = (url: string) => `${SUPABASE_URL}/functions/v1/map-proxy?url=${encodeURIComponent(url)}`;
   return {
-    base: proxy(`${GEOPORTAL_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=jpg&transparent=false&f=image`),
-    kad: proxy(`${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`),
+    base: proxy(
+      `${GEOPORTAL_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=jpg&transparent=false&f=image`,
+    ),
+    kad: proxy(
+      `${KADASTRAS_BASE}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size}&format=png32&transparent=true&f=image&layers=${encodeURIComponent("show:15,21,27,33")}`,
+    ),
   };
 }
 
@@ -129,18 +146,16 @@ export default function Account() {
     }
   }, [user]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleDeleteHistory = async (id: string) => {
     setDeletingId(id);
-    const { error } = await supabase
-      .from("search_history")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user!.id);
+    const { error } = await supabase.from("search_history").delete().eq("id", id).eq("user_id", user!.id);
     if (error) toast.error("Nepavyko ištrinti");
     else {
-      setHistory(prev => prev.filter(e => e.id !== id));
+      setHistory((prev) => prev.filter((e) => e.id !== id));
       toast.success("Įrašas ištrintas");
     }
     setDeletingId(null);
@@ -150,8 +165,12 @@ export default function Account() {
     const isBookmarked = bookmarkSet.has(entry.cadastral_number);
     if (isBookmarked) {
       await supabase.from("bookmarks").delete().eq("user_id", user!.id).eq("cadastral_number", entry.cadastral_number);
-      setBookmarkSet(prev => { const n = new Set(prev); n.delete(entry.cadastral_number); return n; });
-      setBookmarks(prev => prev.filter(b => b.cadastral_number !== entry.cadastral_number));
+      setBookmarkSet((prev) => {
+        const n = new Set(prev);
+        n.delete(entry.cadastral_number);
+        return n;
+      });
+      setBookmarks((prev) => prev.filter((b) => b.cadastral_number !== entry.cadastral_number));
       toast.success("Išsaugojimas pašalintas");
     } else {
       await supabase.from("bookmarks").upsert({
@@ -161,27 +180,39 @@ export default function Account() {
         lat: entry.lat,
         lng: entry.lng,
       });
-      setBookmarkSet(prev => new Set([...prev, entry.cadastral_number]));
-      setBookmarks(prev => [{
-        id: crypto.randomUUID(),
-        cadastral_number: entry.cadastral_number,
-        address: entry.address,
-        lat: entry.lat,
-        lng: entry.lng,
-        created_at: new Date().toISOString(),
-      }, ...prev]);
+      setBookmarkSet((prev) => new Set([...prev, entry.cadastral_number]));
+      setBookmarks((prev) => [
+        {
+          id: crypto.randomUUID(),
+          cadastral_number: entry.cadastral_number,
+          address: entry.address,
+          lat: entry.lat,
+          lng: entry.lng,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
       toast.success("Išsaugota");
     }
   };
 
   const handleRemoveBookmark = async (cadastral: string) => {
     await supabase.from("bookmarks").delete().eq("user_id", user!.id).eq("cadastral_number", cadastral);
-    setBookmarkSet(prev => { const n = new Set(prev); n.delete(cadastral); return n; });
-    setBookmarks(prev => prev.filter(b => b.cadastral_number !== cadastral));
+    setBookmarkSet((prev) => {
+      const n = new Set(prev);
+      n.delete(cadastral);
+      return n;
+    });
+    setBookmarks((prev) => prev.filter((b) => b.cadastral_number !== cadastral));
     toast.success("Pašalinta iš išsaugotų");
   };
 
-  const handleOpenReport = (cadastralNumber: string, lat?: number | null, lng?: number | null, address?: string | null) => {
+  const handleOpenReport = (
+    cadastralNumber: string,
+    lat?: number | null,
+    lng?: number | null,
+    address?: string | null,
+  ) => {
     navigate("/map", { state: { openReport: { cadastralNumber, lat, lng, address } } });
   };
 
@@ -191,11 +222,14 @@ export default function Account() {
 
   const handleShare = (cadastralNumber: string) => {
     const url = `${window.location.origin}/map?q=${encodeURIComponent(cadastralNumber)}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success("Nuoroda nukopijuota!");
-    }).catch(() => {
-      toast.error("Nepavyko nukopijuoti nuorodos");
-    });
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        toast.success("Nuoroda nukopijuota!");
+      })
+      .catch(() => {
+        toast.error("Nepavyko nukopijuoti nuorodos");
+      });
   };
 
   const handleSignOut = async () => {
@@ -203,7 +237,7 @@ export default function Account() {
     navigate("/");
   };
 
-  const filteredHistory = history.filter(e => filter === "unlocked" ? e.is_unlocked : true);
+  const filteredHistory = history.filter((e) => (filter === "unlocked" ? e.is_unlocked : true));
 
   const grouped: Record<string, HistoryEntry[]> = {};
   for (const e of filteredHistory) {
@@ -257,8 +291,11 @@ export default function Account() {
                 <p className="font-semibold text-foreground">{summary.email}</p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  Registruotas {new Date(summary.registered_at).toLocaleDateString("lt-LT", {
-                    year: "numeric", month: "long", day: "numeric",
+                  Registruotas{" "}
+                  {new Date(summary.registered_at).toLocaleDateString("lt-LT", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   })}
                 </p>
               </div>
@@ -273,14 +310,14 @@ export default function Account() {
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-center">
                 <div className="flex items-center justify-center gap-1.5">
                   <p className="text-2xl font-bold text-foreground">{credits}</p>
-                  <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 px-1.5 py-0.5 rounded-full">🔒 Netrukus</span>
+                  <span className="text-[10px] font-bold bg-amber-500/15 text-amber-600 px-1.5 py-0.5 rounded-full">
+                    🔒 Netrukus
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
                   <Coins className="h-3 w-3" /> Kreditai
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Mokamos versijos funkcija (netrukus)
-                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">Mokamos versijos funkcija</p>
               </div>
             </div>
           </div>
@@ -288,10 +325,10 @@ export default function Account() {
 
         {/* Tab switcher */}
         <div className="flex border-b border-border mb-4">
-          {([
+          {[
             { key: "history" as const, label: "Paieškų istorija", icon: Clock },
             { key: "bookmarks" as const, label: "Išsaugota", icon: Bookmark },
-          ]).map(({ key, label, icon: Icon }) => (
+          ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -311,10 +348,10 @@ export default function Account() {
         {activeTab === "history" && (
           <div>
             <div className="flex items-center gap-2 mb-4">
-              {([
+              {[
                 { key: "all" as const, label: "Visos" },
                 { key: "unlocked" as const, label: "Atrakinta" },
-              ]).map(tab => (
+              ].map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setFilter(tab.key)}
@@ -327,9 +364,7 @@ export default function Account() {
                   {tab.label}
                 </button>
               ))}
-              <span className="text-xs text-muted-foreground ml-auto">
-                {filteredHistory.length} įrašai
-              </span>
+              <span className="text-xs text-muted-foreground ml-auto">{filteredHistory.length} įrašai</span>
             </div>
 
             {Object.keys(grouped).length === 0 ? (
@@ -350,22 +385,24 @@ export default function Account() {
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                     {month}
                   </div>
-                    {items.map(entry => {
-                      const isExpanded = expandedId === entry.id;
-                      return (
-                      <div key={entry.id} className="rounded-xl hover:bg-muted/40 transition-colors mb-1.5 border border-transparent hover:border-border">
+                  {items.map((entry) => {
+                    const isExpanded = expandedId === entry.id;
+                    return (
+                      <div
+                        key={entry.id}
+                        className="rounded-xl hover:bg-muted/40 transition-colors mb-1.5 border border-transparent hover:border-border"
+                      >
                         <div
                           className="flex items-center gap-3 p-3.5 cursor-pointer"
                           onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                         >
-                          {entry.lat && entry.lng
-                            ? <MapThumb lat={entry.lat} lng={entry.lng} />
-                            : (
-                              <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                                <MapPin className="h-5 w-5 text-muted-foreground/40" />
-                              </div>
-                            )
-                          }
+                          {entry.lat && entry.lng ? (
+                            <MapThumb lat={entry.lat} lng={entry.lng} />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                              <MapPin className="h-5 w-5 text-muted-foreground/40" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono text-base font-semibold text-foreground">
@@ -383,8 +420,11 @@ export default function Account() {
                             <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-1">
                               <Clock className="h-3 w-3" />
                               {new Date(entry.created_at).toLocaleString("lt-LT", {
-                                day: "2-digit", month: "2-digit", year: "numeric",
-                                hour: "2-digit", minute: "2-digit",
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
                               })}
                               {entry.search_method && (
                                 <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -394,10 +434,11 @@ export default function Account() {
                             </p>
                           </div>
                           <div className="flex-shrink-0">
-                            {isExpanded
-                              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            }
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
                           </div>
                         </div>
 
@@ -417,46 +458,60 @@ export default function Account() {
                             </div>
                             <div className="flex items-center gap-2 mt-3">
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleOpenOnMap(entry.cadastral_number); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenOnMap(entry.cadastral_number);
+                                }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
                               >
                                 <Navigation className="h-3.5 w-3.5" />
                                 Rodyti žemėlapyje
                               </button>
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleShare(entry.cadastral_number); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShare(entry.cadastral_number);
+                                }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
                               >
                                 <Share2 className="h-3.5 w-3.5" />
                                 Dalintis
                               </button>
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleBookmarkToggle(entry); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBookmarkToggle(entry);
+                                }}
                                 className="p-1.5 rounded-lg hover:bg-muted transition-colors"
                                 title={bookmarkSet.has(entry.cadastral_number) ? "Pašalinti" : "Išsaugoti"}
                               >
-                                {bookmarkSet.has(entry.cadastral_number)
-                                  ? <BookmarkCheck className="h-4 w-4 text-primary" />
-                                  : <Bookmark className="h-4 w-4 text-muted-foreground" />
-                                }
+                                {bookmarkSet.has(entry.cadastral_number) ? (
+                                  <BookmarkCheck className="h-4 w-4 text-primary" />
+                                ) : (
+                                  <Bookmark className="h-4 w-4 text-muted-foreground" />
+                                )}
                               </button>
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteHistory(entry.id); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteHistory(entry.id);
+                                }}
                                 disabled={deletingId === entry.id}
                                 className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors ml-auto"
                                 title="Ištrinti"
                               >
-                                {deletingId === entry.id
-                                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                                  : <Trash2 className="h-4 w-4 text-muted-foreground" />
-                                }
+                                {deletingId === entry.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                )}
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
                     );
-                    })}
+                  })}
                 </div>
               ))
             )}
@@ -470,26 +525,26 @@ export default function Account() {
               <div className="text-center py-16">
                 <Bookmark className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
                 <p className="font-medium text-foreground">Nėra išsaugotų sklypų</p>
-                <p className="text-sm text-muted-foreground mt-1">Spauskite žymeklio ikoną paieškų istorijoje, kad išsaugotumėte</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Spauskite žymeklio ikoną paieškų istorijoje, kad išsaugotumėte
+                </p>
               </div>
             ) : (
-              bookmarks.map(b => (
-                <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/40 transition-colors mb-1">
-                  {b.lat && b.lng
-                    ? <MapThumb lat={b.lat} lng={b.lng} />
-                    : (
-                      <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                        <MapPin className="h-5 w-5 text-muted-foreground/40" />
-                      </div>
-                    )
-                  }
+              bookmarks.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/40 transition-colors mb-1"
+                >
+                  {b.lat && b.lng ? (
+                    <MapThumb lat={b.lat} lng={b.lng} />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <MapPin className="h-5 w-5 text-muted-foreground/40" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-mono text-sm font-semibold text-foreground">
-                      {b.cadastral_number}
-                    </p>
-                    {b.address && (
-                      <p className="text-xs text-muted-foreground truncate">{b.address}</p>
-                    )}
+                    <p className="font-mono text-sm font-semibold text-foreground">{b.cadastral_number}</p>
+                    {b.address && <p className="text-xs text-muted-foreground truncate">{b.address}</p>}
                     <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1 mt-0.5">
                       <Clock className="h-3 w-3" />
                       Išsaugota {new Date(b.created_at).toLocaleDateString("lt-LT")}
