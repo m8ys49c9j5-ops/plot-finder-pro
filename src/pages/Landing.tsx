@@ -347,118 +347,6 @@ export default function Landing() {
         .lp-price:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,.1); }
       `}</style>
 
-      {/* ── NAV ──────────────────────────────────────────────────────────── */}
-      {/* Sits on top of the map with no background, exactly like screenshot */}
-      <nav
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 900,
-          height: 62,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 clamp(1.25rem, 4vw, 2.5rem)",
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          boxShadow: "0 1px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        {/* Logo */}
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-          }}
-        >
-          <span className="text-primary">
-            <IconLayers />
-          </span>
-          <span
-            className="font-display font-bold text-foreground"
-            style={{ fontSize: "1.05rem", letterSpacing: "-0.01em" }}
-          >
-            Žemė<span className="text-gradient">Pro</span>
-          </span>
-        </button>
-
-        {/* Auth buttons — exactly like screenshot */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {user ? (
-            <button
-              onClick={() => navigate("/account")}
-              style={{
-                background: "rgba(255,255,255,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                border: "1px solid rgba(0,0,0,0.15)",
-                color: "hsl(var(--foreground))",
-                borderRadius: 8,
-                padding: "7px 18px",
-                fontSize: "0.85rem",
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "background .2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-            >
-              Mano paskyra
-            </button>
-          ) : btnSignin.enabled !== false ? (
-            <button
-              onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
-              style={{
-                background: "rgba(255,255,255,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                border: "1px solid rgba(0,0,0,0.15)",
-                color: "hsl(var(--foreground))",
-                borderRadius: 8,
-                padding: "7px 18px",
-                fontSize: "0.85rem",
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "background .2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
-            >
-              {btnSignin.label ?? "Prisijungti"}
-            </button>
-          ) : null}
-          {btnTryFree.enabled !== false && (
-            <button
-              onClick={() => navigate(btnTryFree.href ?? "/map")}
-              className="premium-gradient hidden sm:inline-flex"
-              style={{
-                border: "none",
-                color: "#fff",
-                borderRadius: 8,
-                padding: "7px 18px",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "opacity .2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              {btnTryFree.label ?? "Išbandyti nemokamai"}
-            </button>
-          )}
-        </div>
-      </nav>
-
       {/* ── HERO — full-viewport map with floating text ───────────────────── */}
       <section
         style={{
@@ -470,6 +358,113 @@ export default function Landing() {
           overflow: "hidden",
         }}
       >
+        <nav
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            height: 62,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 clamp(1.25rem, 4vw, 2.5rem)",
+          }}
+        >
+          {/* Logo */}
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            <span className="text-primary">
+              <IconLayers />
+            </span>
+            <span
+              className="font-display font-bold text-foreground"
+              style={{ fontSize: "1.05rem", letterSpacing: "-0.01em" }}
+            >
+              Žemė<span className="text-gradient">Pro</span>
+            </span>
+          </button>
+
+          {/* Auth buttons */}
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {user ? (
+              <button
+                onClick={() => navigate("/account")}
+                style={{
+                  background: "rgba(255,255,255,0.85)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  color: "hsl(var(--foreground))",
+                  borderRadius: 8,
+                  padding: "7px 18px",
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "background .2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+              >
+                Mano paskyra
+              </button>
+            ) : btnSignin.enabled !== false ? (
+              <button
+                onClick={() => navigate(btnSignin.href ?? "/login", { state: { from: "/" } })}
+                style={{
+                  background: "rgba(255,255,255,0.85)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  color: "hsl(var(--foreground))",
+                  borderRadius: 8,
+                  padding: "7px 18px",
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "background .2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.85)")}
+              >
+                {btnSignin.label ?? "Prisijungti"}
+              </button>
+            ) : null}
+
+            {btnTryFree.enabled !== false && (
+              <button
+                onClick={() => navigate(btnTryFree.href ?? "/map")}
+                className="premium-gradient hidden sm:inline-flex"
+                style={{
+                  border: "none",
+                  color: "#fff",
+                  borderRadius: 8,
+                  padding: "7px 18px",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "opacity .2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                {btnTryFree.label ?? "Išbandyti nemokamai"}
+              </button>
+            )}
+          </div>
+        </nav>
+
         {/* Eagerly-loaded native tile map fills the entire hero perfectly sized */}
         <HeroMap />
 
