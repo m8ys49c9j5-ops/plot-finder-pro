@@ -545,7 +545,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               return false;
             }
             // Turn on all
-            SZNS_GROUPS.forEach(g => groups.add(g.key));
+            SZNS_GROUPS.forEach((g) => groups.add(g.key));
             sznsActiveRef.current = true;
             if (!sznsLayerRef.current) {
               sznsLayerRef.current = new (SznsTileLayer as any)("", {
@@ -621,13 +621,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       });
       L.control.zoom({ position: "bottomright" }).addTo(map);
       baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '',
+        attribution: "",
         maxZoom: 19,
       }).addTo(map);
       geoportalTileRef.current = L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
         maxZoom: 19,
         opacity: 0.7,
-        attribution: '',
+        attribution: "",
       }).addTo(map);
       // Don't add kadastro by default — user toggles it on via Sklypai button
 
@@ -731,9 +731,14 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               const center = bounds.getCenter();
               parcel.lat = center.lat;
               parcel.lng = center.lng;
+
+              const padding = isMobile
+                ? { topLeft: [80, 80], bottomRight: [80, 80] } // small symmetric padding for mobile
+                : { topLeft: [80, 120], bottomRight: [420, 80] }; // current desktop padding
+
               mapRef.current.fitBounds(bounds, {
-                paddingTopLeft: [80, 120],
-                paddingBottomRight: [420, 80],
+                paddingTopLeft: padding.topLeft,
+                paddingBottomRight: padding.bottomRight,
                 maxZoom: 17,
                 animate: true,
               });
