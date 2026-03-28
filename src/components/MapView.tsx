@@ -435,7 +435,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
         const layer = highlightGeoJSON(feature);
         if (layer) {
           const bounds = layer.getBounds();
-          mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [80, 80], maxZoom: 17 });
+          const isMobile = window.innerWidth < 640;
+          mapRef.current.fitBounds(bounds, {
+            paddingTopLeft: [80, 80],
+            paddingBottomRight: [isMobile ? 80 : 420, 80],
+            maxZoom: 17,
+          });
         }
       },
 
@@ -545,7 +550,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               return false;
             }
             // Turn on all
-            SZNS_GROUPS.forEach(g => groups.add(g.key));
+            SZNS_GROUPS.forEach((g) => groups.add(g.key));
             sznsActiveRef.current = true;
             if (!sznsLayerRef.current) {
               sznsLayerRef.current = new (SznsTileLayer as any)("", {
@@ -607,7 +612,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       const layer = highlightGeoJSON(initialFeature);
       if (layer) {
         const bounds = layer.getBounds();
-        mapRef.current.fitBounds(bounds, { paddingTopLeft: [80, 80], paddingBottomRight: [480, 80], maxZoom: 17 });
+        const isMobile = window.innerWidth < 640;
+        mapRef.current.fitBounds(bounds, {
+          paddingTopLeft: [80, 80],
+          paddingBottomRight: [isMobile ? 80 : 480, 80],
+          maxZoom: 17,
+        });
       }
     }, [initialFeature, mapReady]);
 
@@ -621,13 +631,13 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
       });
       L.control.zoom({ position: "bottomright" }).addTo(map);
       baseTileRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '',
+        attribution: "",
         maxZoom: 19,
       }).addTo(map);
       geoportalTileRef.current = L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
         maxZoom: 19,
         opacity: 0.7,
-        attribution: '',
+        attribution: "",
       }).addTo(map);
       // Don't add kadastro by default — user toggles it on via Sklypai button
 
@@ -731,9 +741,10 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(
               const center = bounds.getCenter();
               parcel.lat = center.lat;
               parcel.lng = center.lng;
+              const isMobile = window.innerWidth < 640;
               mapRef.current.fitBounds(bounds, {
-                paddingTopLeft: [80, 120],
-                paddingBottomRight: [420, 80],
+                paddingTopLeft: [80, isMobile ? 180 : 120],
+                paddingBottomRight: [isMobile ? 80 : 420, 80],
                 maxZoom: 17,
                 animate: true,
               });
