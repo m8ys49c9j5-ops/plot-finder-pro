@@ -457,6 +457,7 @@ function InlineAuthForm({ onSuccess }: { onSuccess: () => void }) {
           toast.info("Patikrinkite el. paštą. Patvirtinę nuorodą, grįžkite į šį puslapį ir prisijunkite.");
           setIsLogin(true);
         }
+      }
     } catch (error: any) {
       toast.error(error.message);
     } finally {
