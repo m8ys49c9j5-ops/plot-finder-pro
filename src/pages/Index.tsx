@@ -183,7 +183,7 @@ const Index = () => {
   );
 
   return (
-    <div className="h-screen w-screen relative overflow-hidden bg-background">
+    <div className="h-[100dvh] w-full relative overflow-hidden overscroll-none bg-background">
       <MapView
         ref={mapViewRef}
         onParcelSelect={handleParcelSelect}
