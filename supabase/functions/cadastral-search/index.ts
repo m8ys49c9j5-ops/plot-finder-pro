@@ -88,7 +88,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
       const { data: jsonbData, error: jsonbError } = await supabase
         .from("parcels")
         .select("feature, kadastro_nr, unikalus_nr")
-        .or(`kadastro_nr.ilike.%${digitsOnly}%,unikalus_nr.ilike.%${digitsOnly}%`)
+        .or(`kadastro_nr.ilike.${digitsOnly}%,unikalus_nr.ilike.${digitsOnly}%`)
         .limit(5);
 
       if (jsonbError) console.error("DB fuzzy match error:", jsonbError);
@@ -114,7 +114,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
       const { data: partialData, error: partialError } = await supabase
         .from("parcels")
         .select("feature")
-        .like("kadastro_nr", `%${cleaned}%`)
+        .like("kadastro_nr", `${cleaned}%`)
         .limit(1);
 
       if (partialError) console.error("DB partial match error:", partialError.message);
@@ -185,47 +185,45 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // ── Step A: Try DB address table for postal code + components ──
+    // ── Address Lookup (Parallelized) ──
     let dbHadData = false;
-    if (centroidLat !== null && centroidLon !== null) {
-      try {
-        const { data: nearRows } = await supabase.rpc("find_nearest_address", {
-          p_lat: centroidLat,
-          p_lon: centroidLon,
-        });
-        if (nearRows && nearRows.length > 0) {
-          const nr = nearRows[0];
-          if (nr.pasto_kodas) {
-            props.postalCode = nr.pasto_kodas;
-            console.log(`Postal code from DB: ${nr.pasto_kodas}`);
-          }
-          if (nr.gyvenviete) props.kaimas_miestas = nr.gyvenviete;
-          if (nr.savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = nr.savivaldybe;
-          if (nr.distance_m < 100) {
-            props._nearestAddress = nr.full_address;
-            props._nearestDistance = nr.distance_m;
-          }
-          dbHadData = true;
-        }
-      } catch (e) {
-        console.error("Nearest address DB lookup error:", e);
-      }
-    }
+    let streetPart = "";
 
+    const nearestPromise = (centroidLat !== null && centroidLon !== null)
+      ? supabase.rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon })
+      : Promise.resolve({ data: null, error: null });
 
-
-    // ── Step B: Try to find exact address inside plot boundaries (DB) ──
-    const { data: exactAddrRows, error: exactError } = await supabase.rpc("find_exact_address_in_parcel", {
+    const exactPromise = supabase.rpc("find_exact_address_in_parcel", {
       p_kadastro: kadastroToSearch,
     });
 
-    let streetPart = "";
-    if (!exactError && exactAddrRows && exactAddrRows.length > 0) {
-      streetPart = exactAddrRows[0].full_address || "";
-      console.log(`Exact street address found: ${streetPart}`);
-    } else if (props._nearestAddress) {
-      streetPart = props._nearestAddress;
-      console.log(`Nearest address used: ${streetPart}`);
+    try {
+      const [nearRes, exactRes] = await Promise.all([nearestPromise, exactPromise]);
+
+      if (!nearRes.error && nearRes.data && nearRes.data.length > 0) {
+        const nr = nearRes.data[0];
+        if (nr.pasto_kodas) {
+          props.postalCode = nr.pasto_kodas;
+          console.log(`Postal code from DB: ${nr.pasto_kodas}`);
+        }
+        if (nr.gyvenviete) props.kaimas_miestas = nr.gyvenviete;
+        if (nr.savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = nr.savivaldybe;
+        if (nr.distance_m < 100) {
+          props._nearestAddress = nr.full_address;
+          props._nearestDistance = nr.distance_m;
+        }
+        dbHadData = true;
+      }
+
+      if (!exactRes.error && exactRes.data && exactRes.data.length > 0) {
+        streetPart = exactRes.data[0].full_address || "";
+        console.log(`Exact street address found: ${streetPart}`);
+      } else if (props._nearestAddress) {
+        streetPart = props._nearestAddress;
+        console.log(`Nearest address used: ${streetPart}`);
+      }
+    } catch (e) {
+      console.error("Parallel address DB lookup error:", e);
     }
 
     // ── Step D: Build full hierarchical address ──
