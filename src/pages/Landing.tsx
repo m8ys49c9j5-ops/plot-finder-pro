@@ -279,7 +279,7 @@ export default function Landing() {
   const heroTrust = config.content_hero_trust ?? "Patogu  •  Greita  •  Prieinama";
   const searchPlaceholder = config.content_search_placeholder ?? "Įveskite sklypo kadastrinį arba unikalų numerį";
   const whyTitle = config.content_why_title ?? "Kodėl verta naudoti ŽemėPro?";
-  const footerAttrib = config.content_footer_attribution ?? "©OpenStreetMap · Geoportal.lt · Registrų centras · NŽT";
+  const footerAttrib = config.content_footer_attribution ?? "";
 
   // Why items from CMS
   const WHY_ITEMS_CMS = [
