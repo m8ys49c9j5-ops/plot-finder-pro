@@ -19,7 +19,7 @@ UPDATE app_config SET value = '{"enabled":true,"href":"#why","label":"Kodėl Že
 UPDATE app_config SET value = '"Gaukite pirmąją ataskaitą per 60 sekundžių. Registracija nemokama."'::jsonb WHERE key = 'content_cta_subtitle';
 UPDATE app_config SET value = '"Pradėkite nemokamai jau šiandien"'::jsonb WHERE key = 'content_cta_title';
 UPDATE app_config SET value = '"Dažniausiai užduodami klausimai"'::jsonb WHERE key = 'content_faq_title';
-UPDATE app_config SET value = '"Duomenys: Geoportal.lt · Registrų centras · VŽT"'::jsonb WHERE key = 'content_footer_attribution';
+UPDATE app_config SET value = '"Duomenys: ©OpenStreetMap · Geoportal.lt · Registrų centras · NŽT"'::jsonb WHERE key = 'content_footer_attribution';
 UPDATE app_config SET value = '"Greita ir patogi informacija apie bet kurį Lietuvos sklypą."'::jsonb WHERE key = 'content_hero_subtitle1';
 UPDATE app_config SET value = '"Patikrinkite vietą, pagrindinius duomenis ir svarbiausią informaciją per kelias sekundes."'::jsonb WHERE key = 'content_hero_subtitle2';
 UPDATE app_config SET value = '"Patogu  •  Greita  •  Prieinama"'::jsonb WHERE key = 'content_hero_trust';
