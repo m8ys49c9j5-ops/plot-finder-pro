@@ -179,10 +179,10 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
     <div className="fixed bottom-0 sm:top-0 right-0 w-full sm:w-[400px] max-h-[75vh] sm:max-h-full h-auto sm:h-full z-[1000] animate-slide-in-up sm:animate-slide-in-right rounded-t-2xl sm:rounded-none overflow-hidden">
       <div className="h-full bg-card border-l border-border shadow-2xl flex flex-col max-h-[75vh] sm:max-h-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 sm:p-5 border-b border-border">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sklypas</p>
-            <h2 className="text-lg font-display font-bold text-foreground mt-1">
+            <h2 className="text-base sm:text-lg font-display font-bold text-foreground mt-1">
               {searchInput || parcel.unikalusNr || parcel.cadastralNumber}
             </h2>
           </div>
@@ -195,7 +195,7 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-6">
           {/* Data rows — no header, no report button */}
           <div>
             <div className="space-y-3">
@@ -287,7 +287,7 @@ const InfoRow = ({ icon, label, value }: { icon: React.ReactNode; label: string;
     <div className="text-primary mt-0.5">{icon}</div>
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground break-all">{value}</p>
+      <p className="text-sm font-medium text-foreground break-words">{value}</p>
     </div>
   </div>
 );
