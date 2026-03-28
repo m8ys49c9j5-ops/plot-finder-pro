@@ -25,7 +25,12 @@ const HeroMap = () => {
       touchZoom: false,
     });
 
-    // Add exactly authentic Geoportal tile layer
+    // OSM Base Layer — guarantees opaque background beneath boundaries
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Geoportal Auth Tile Layer
     L.tileLayer(`${GEOPORTAL_BASE}/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
       opacity: 0.90, 

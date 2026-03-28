@@ -130,7 +130,7 @@ async function searchByCadastralNumber(cadastralNumber: string) {
     try {
       console.log("Trying INSPIRE WFS fallback...");
       const wfsUrl = `https://www.inspire-geoportal.lt/geoserver/cp/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=cp:CadastralParcel&count=1&outputFormat=application/json&srsName=EPSG:4326&CQL_FILTER=nationalCadastralReference%20LIKE%20'%25${encodeURIComponent(cleaned)}%25'`;
-      const wfsRes = await fetch(wfsUrl, { signal: AbortSignal.timeout(8000) });
+      const wfsRes = await fetch(wfsUrl, { signal: AbortSignal.timeout(1500) });
 
       if (wfsRes.ok) {
         const wfsData = await wfsRes.json();
@@ -185,17 +185,25 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // ── Address Lookup (Parallelized) ──
+    // ── Address Lookup (Parallelized with 1500ms Isolation Timeout) ──
     let dbHadData = false;
     let streetPart = "";
 
+    const timeoutPromise = new Promise<{data: null, error: any}>((resolve) => 
+      setTimeout(() => resolve({ data: null, error: new Error("RPC Timeout Exceeded") }), 1500)
+    );
+
     const nearestPromise = (centroidLat !== null && centroidLon !== null)
-      ? supabase.rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon })
+      ? Promise.race([
+          supabase.rpc("find_nearest_address", { p_lat: centroidLat, p_lon: centroidLon }),
+          timeoutPromise
+        ])
       : Promise.resolve({ data: null, error: null });
 
-    const exactPromise = supabase.rpc("find_exact_address_in_parcel", {
-      p_kadastro: kadastroToSearch,
-    });
+    const exactPromise = Promise.race([
+      supabase.rpc("find_exact_address_in_parcel", { p_kadastro: kadastroToSearch }),
+      timeoutPromise
+    ]);
 
     try {
       const [nearRes, exactRes] = await Promise.all([nearestPromise, exactPromise]);
