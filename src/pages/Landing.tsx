@@ -496,16 +496,15 @@ export default function Landing() {
           position: "relative",
           width: "100%",
           height: "100vh",
-          minHeight: 560,
-          maxHeight: 860,
+          minHeight: "min(560px, 100vh)",
+          maxHeight: 760,
           overflow: "hidden",
         }}
       >
-        {/* Tile mosaic fills the entire hero */}
+        {/* Static map image fills the entire hero */}
         <MapBackground />
 
         {/* Very subtle centre radial scrim — just enough to read text */}
-        {/* Matches screenshot: map is clearly visible, only light centre wash */}
         <div
           style={{
             position: "absolute",
@@ -525,9 +524,9 @@ export default function Landing() {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: "0 clamp(1rem, 5vw, 3rem)",
-            paddingTop: 40,
-            paddingBottom: 80,
+            padding: "0 clamp(0.75rem, 4vw, 3rem)",
+            paddingTop: 80,
+            paddingBottom: "clamp(20px, 8vh, 80px)",
           }}
         >
           {/* Title */}
