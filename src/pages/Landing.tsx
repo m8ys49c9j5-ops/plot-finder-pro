@@ -502,7 +502,7 @@ export default function Landing() {
         }}
       >
         {/* Tile mosaic fills the entire hero */}
-        <MapTileBackground />
+        <MapBackground />
 
         {/* Very subtle centre radial scrim — just enough to read text */}
         {/* Matches screenshot: map is clearly visible, only light centre wash */}
