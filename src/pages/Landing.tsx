@@ -674,6 +674,8 @@ export default function Landing() {
         style={{
           background: "#fff",
           padding: "4.5rem clamp(1.25rem, 5vw, 3rem) 5rem",
+          contentVisibility: "auto",
+          containIntrinsicSize: "0 500px",
         }}
       >
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
@@ -762,6 +764,8 @@ export default function Landing() {
           borderTop: "1px solid hsl(var(--border))",
           borderBottom: "1px solid hsl(var(--border))",
           padding: "5rem clamp(1.25rem, 5vw, 3rem)",
+          contentVisibility: "auto",
+          containIntrinsicSize: "0 500px",
         }}
       >
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
@@ -1013,6 +1017,8 @@ export default function Landing() {
           background: "hsl(var(--secondary))",
           borderTop: "1px solid hsl(var(--border))",
           padding: "5rem clamp(1.25rem, 5vw, 3rem)",
+          contentVisibility: "auto",
+          containIntrinsicSize: "0 500px",
         }}
       >
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
@@ -1059,7 +1065,7 @@ export default function Landing() {
       </section>
 
       {/* ── ABOUT / SOCIALS / FEEDBACK ─────────────────────────────────── */}
-      <section className="border-t border-border py-8 px-4">
+      <section className="border-t border-border py-8 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 300px" }}>
         <div className="flex flex-col md:flex-row gap-6 justify-center items-start max-w-3xl mx-auto">
           {/* Left — About */}
           <div className="flex-1 min-w-[200px]">
