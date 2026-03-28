@@ -166,8 +166,6 @@ const IconCheck = () => (
   </svg>
 );
 
-
-
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const WHY_ITEMS = [
   {
@@ -581,18 +579,20 @@ export default function Landing() {
             />
             <button
               type="submit"
-              className="premium-gradient"
+              // Adjusted responsive padding classes (square on mobile, wide on desktop)
+              className="premium-gradient p-2.5 sm:px-[22px] sm:py-[9px]"
               style={{
                 border: "none",
                 color: "#fff",
                 borderRadius: 8,
-                padding: "9px 22px",
+                /* padding: "9px 22px", <-- Removed from here to allow responsive classes */
                 fontSize: "0.875rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center", // Added to perfectly center the icon on mobile
                 gap: 7,
                 transition: "opacity .2s",
               }}
@@ -600,7 +600,8 @@ export default function Landing() {
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <IconSearchBtn />
-              Ieškoti
+              {/* Hidden on mobile screens, shown inline on 'sm' screens and larger */}
+              <span className="hidden sm:inline">Ieškoti</span>
             </button>
           </form>
 
