@@ -167,22 +167,36 @@ const IconCheck = () => (
 
 // ─── Static map background for hero ──────────────────────────────────────────
 function MapBackground() {
+  const mobileSrc =
+    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.55%2C54.35%2C25.95%2C55.05&bboxSR=4326&imageSR=4326&size=800%2C600&format=jpg&f=image";
+  const desktopSrc =
+    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.55%2C54.35%2C25.95%2C55.05&bboxSR=4326&imageSR=4326&size=1920%2C1080&format=jpg&f=image";
+
   return (
-    <img
-      src="https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=2337709,7089524,2937709,7389524&bboxSR=3857&imageSR=3857&size=1920,1080&format=jpg&f=image"
-      alt="Lietuvos žemėlapis"
-      draggable={false}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-      }}
-      onError={(e) => {
-        e.currentTarget.src = "https://tile.openstreetmap.org/7/38/22.png";
-      }}
-    />
+    <picture style={{ position: "absolute", inset: 0 }}>
+      <source media="(max-width: 768px)" srcSet={mobileSrc} />
+      <source media="(min-width: 769px)" srcSet={desktopSrc} />
+      <img
+        src={desktopSrc}
+        alt="Lietuvos žemėlapis"
+        draggable={false}
+        width={1920}
+        height={1080}
+        fetchPriority="high"
+        loading="eager"
+        decoding="async"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+        }}
+        onError={(e) => {
+          e.currentTarget.src = "https://tile.openstreetmap.org/10/588/340.png";
+        }}
+      />
+    </picture>
   );
 }
 
@@ -299,7 +313,7 @@ export default function Landing() {
   const heroTrust = config.content_hero_trust ?? "Patogu  •  Greita  •  Prieinama";
   const searchPlaceholder = config.content_search_placeholder ?? "Įveskite sklypo kadastrinį arba unikalų numerį";
   const whyTitle = config.content_why_title ?? "Kodėl verta naudoti ŽemėPro?";
-  const footerAttrib = config.content_footer_attribution ?? "Duomenys: Geoportal.lt · Registrų centras · VŽT";
+  const footerAttrib = config.content_footer_attribution ?? "© OpenStreetMap contributors · Geoportal.lt · Registrų centras · NŽT";
 
   // Why items from CMS
   const WHY_ITEMS_CMS = [
@@ -642,13 +656,13 @@ export default function Landing() {
           <span
             style={{
               fontSize: "10px",
-              color: "rgba(0,0,0,0.5)",
-              background: "rgba(255,255,255,0.75)",
+              color: "rgba(0,0,0,0.55)",
+              background: "rgba(255,255,255,0.82)",
               borderRadius: 4,
               padding: "2px 7px",
             }}
           >
-            Duomenys: Geoportal.lt · RC Kadastras
+            © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>OpenStreetMap</a> · Geoportal.lt · Registrų centras · NŽT
           </span>
         </div>
       </section>
