@@ -1,10 +1,9 @@
-import React, { useState, FormEvent, Suspense, lazy } from "react";
+import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import ContactDialog from "@/components/ContactDialog";
-
-const HeroMap = lazy(() => import("@/components/HeroMap"));
+import HeroMap from "@/components/HeroMap";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconLayers = () => (
@@ -473,10 +472,8 @@ export default function Landing() {
           overflow: "hidden",
         }}
       >
-        {/* Lazy-loaded native tile map fills the entire hero perfectly sized */}
-        <Suspense fallback={<div className="absolute inset-0 bg-secondary animate-pulse" />}>
-          <HeroMap />
-        </Suspense>
+        {/* Eagerly-loaded native tile map fills the entire hero perfectly sized */}
+        <HeroMap />
 
         {/* Very subtle centre radial scrim — just enough to read text */}
         <div
