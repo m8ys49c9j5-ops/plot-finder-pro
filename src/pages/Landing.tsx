@@ -468,165 +468,164 @@ export default function Landing() {
             )}
           </div>
         </nav>
-<div
-    style={{
-      position: "absolute",
-      inset: 0,
-      overflow: "hidden",
-    }}
-  >
-        {/* Eagerly-loaded native tile map fills the entire hero perfectly sized */}
-        <HeroMap />
-
-        {/* Very subtle centre radial scrim — just enough to read text */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "radial-gradient(ellipse 75% 65% at 50% 40%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.30) 55%, rgba(255,255,255,0) 100%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Floating content — upper-centre like screenshot */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 clamp(0.75rem, 4vw, 3rem)",
-            paddingTop: 80,
-            paddingBottom: "clamp(20px, 8vh, 80px)",
+            overflow: "hidden",
           }}
         >
-          {/* Title */}
-          <h1
-            className="lp1 font-display font-bold text-center"
-            style={{
-              fontSize: "clamp(1.75rem, 4.2vw, 2.9rem)",
-              letterSpacing: "-0.025em",
-              lineHeight: 1.15,
-              color: "hsl(var(--foreground))",
-              margin: "0 0 0.55rem",
-              textShadow: "0 1px 4px rgba(255,255,255,0.6)",
-            }}
-          >
-            {renderAppName(heroTitle)}
-          </h1>
+          {/* Eagerly-loaded native tile map fills the entire hero perfectly sized */}
+          <HeroMap />
 
-          {/* Subtitle 1 */}
-          <p
-            className="lp2 text-center"
+          {/* Very subtle centre radial scrim — just enough to read text */}
+          <div
             style={{
-              fontSize: "clamp(0.88rem, 1.8vw, 1.05rem)",
-              color: "hsl(var(--muted-foreground))",
-              margin: "0 0 0.35rem",
-              textShadow: "0 1px 3px rgba(255,255,255,0.7)",
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse 75% 65% at 50% 40%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.30) 55%, rgba(255,255,255,0) 100%)",
+              pointerEvents: "none",
             }}
-          >
-            {heroSub1}
-          </p>
+          />
 
-          {/* Subtitle 2 — bold, slightly larger */}
-          <p
-            className="lp3 text-center font-semibold"
+          {/* Floating content — upper-centre like screenshot */}
+          <div
             style={{
-              fontSize: "clamp(0.85rem, 1.6vw, 1rem)",
-              color: "hsl(var(--foreground))",
-              maxWidth: 600,
-              margin: "0 0 1.6rem",
-              textShadow: "0 1px 4px rgba(255,255,255,0.7)",
-            }}
-          >
-            {heroSub2}
-          </p>
-
-          {/* Search bar */}
-          <form
-            onSubmit={handleSearch}
-            className="lp4 lp-search"
-            style={{
+              position: "absolute",
+              inset: 0,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: 8,
-              background: "#fff",
-              border: "1px solid rgba(0,0,0,0.10)",
-              borderRadius: 12,
-              padding: "10px 10px 10px 14px",
-              width: "100%",
-              maxWidth: 600,
-              boxShadow: "0 2px 16px rgba(0,0,0,0.10)",
+              justifyContent: "center",
+              padding: "0 clamp(0.75rem, 4vw, 3rem)",
+              paddingTop: 80,
+              paddingBottom: "clamp(20px, 8vh, 80px)",
             }}
           >
-            <span className="text-primary shrink-0">
-              <IconMapPin />
-            </span>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              autoComplete="off"
-              inputMode="text"
+            {/* Title */}
+            <h1
+              className="lp1 font-display font-bold text-center"
               style={{
-                flex: 1,
-                minWidth: 0,
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                fontSize: "16px",
+                fontSize: "clamp(1.75rem, 4.2vw, 2.9rem)",
+                letterSpacing: "-0.025em",
+                lineHeight: 1.15,
                 color: "hsl(var(--foreground))",
+                margin: "0 0 0.55rem",
+                textShadow: "0 1px 4px rgba(255,255,255,0.6)",
               }}
-            />
-            <button
-              type="submit"
-              // Adjusted responsive padding classes (square on mobile, wide on desktop)
-              className="premium-gradient p-2.5 sm:px-[22px] sm:py-[9px]"
+            >
+              {renderAppName(heroTitle)}
+            </h1>
+
+            {/* Subtitle 1 */}
+            <p
+              className="lp2 text-center"
               style={{
-                border: "none",
-                color: "#fff",
-                borderRadius: 8,
-                /* padding: "9px 22px", <-- Removed from here to allow responsive classes */
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                flexShrink: 0,
+                fontSize: "clamp(0.88rem, 1.8vw, 1.05rem)",
+                color: "hsl(var(--muted-foreground))",
+                margin: "0 0 0.35rem",
+                textShadow: "0 1px 3px rgba(255,255,255,0.7)",
+              }}
+            >
+              {heroSub1}
+            </p>
+
+            {/* Subtitle 2 — bold, slightly larger */}
+            <p
+              className="lp3 text-center font-semibold"
+              style={{
+                fontSize: "clamp(0.85rem, 1.6vw, 1rem)",
+                color: "hsl(var(--foreground))",
+                maxWidth: 600,
+                margin: "0 0 1.6rem",
+                textShadow: "0 1px 4px rgba(255,255,255,0.7)",
+              }}
+            >
+              {heroSub2}
+            </p>
+
+            {/* Search bar */}
+            <form
+              onSubmit={handleSearch}
+              className="lp4 lp-search"
+              style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center", // Added to perfectly center the icon on mobile
-                gap: 7,
-                transition: "opacity .2s",
+                gap: 8,
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.10)",
+                borderRadius: 12,
+                padding: "10px 10px 10px 14px",
+                width: "100%",
+                maxWidth: 600,
+                boxShadow: "0 2px 16px rgba(0,0,0,0.10)",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              <IconSearchBtn />
-              {/* Hidden on mobile screens, shown inline on 'sm' screens and larger */}
-              <span className="hidden sm:inline">Ieškoti</span>
-            </button>
-          </form>
+              <span className="text-primary shrink-0">
+                <IconMapPin />
+              </span>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                autoComplete="off"
+                inputMode="text"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  fontSize: "16px",
+                  color: "hsl(var(--foreground))",
+                }}
+              />
+              <button
+                type="submit"
+                // Adjusted responsive padding classes (square on mobile, wide on desktop)
+                className="premium-gradient p-2.5 sm:px-[22px] sm:py-[9px]"
+                style={{
+                  border: "none",
+                  color: "#fff",
+                  borderRadius: 8,
+                  /* padding: "9px 22px", <-- Removed from here to allow responsive classes */
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center", // Added to perfectly center the icon on mobile
+                  gap: 7,
+                  transition: "opacity .2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                <IconSearchBtn />
+                {/* Hidden on mobile screens, shown inline on 'sm' screens and larger */}
+                <span className="hidden sm:inline">Ieškoti</span>
+              </button>
+            </form>
 
-          {/* Patogu · Greita · Prieinama — exactly like screenshot */}
-          <p
-            className="lp5"
-            style={{
-              fontSize: "0.85rem",
-              color: "hsl(var(--muted-foreground))",
-              marginTop: "0.9rem",
-              textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-              letterSpacing: "0.01em",
-            }}
-          >
-            {heroTrust}
-          </p>
+            {/* Patogu · Greita · Prieinama — exactly like screenshot */}
+            <p
+              className="lp5"
+              style={{
+                fontSize: "0.85rem",
+                color: "hsl(var(--muted-foreground))",
+                marginTop: "0.9rem",
+                textShadow: "0 1px 3px rgba(255,255,255,0.8)",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {heroTrust}
+            </p>
+          </div>
         </div>
       </section>
-   </div>
-
 
       {/* ── WHY ŽEMĖPRO — white section directly below map ────────────────── */}
       {/* No border/shadow separator — exactly like screenshot */}
