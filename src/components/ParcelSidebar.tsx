@@ -137,7 +137,7 @@ export const PURPOSE_MAP: Record<string, string> = {
   "590": "Kitos paskirties",
   "595": "Kiti inžineriniai statiniai (degalinių)",
   "610": "Žemės ūkio",
-  "611": "Žemės ūkio (sodų)",
+  "611": "Žemės ūkio ",
   "612": "Žemės ūkio",
   "710": "Miškų ūkio",
   "810": "Konservacinė",
@@ -222,7 +222,9 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
                   return (
                     <>
                       <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
-                        <div className="text-primary mt-0.5"><Globe className="h-4 w-4" /></div>
+                        <div className="text-primary mt-0.5">
+                          <Globe className="h-4 w-4" />
+                        </div>
                         <div className="min-w-0">
                           <p className="text-xs text-muted-foreground">Koordinatės</p>
                           <p className="text-sm font-medium text-foreground">
@@ -260,19 +262,28 @@ const ParcelSidebar = ({ parcel, onClose, searchInput }: ParcelSidebarProps) => 
               <div className="space-y-3">
                 {parcel.vidutineRinkosVerte && (
                   <div className="flex items-start gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3 border border-emerald-200 dark:border-emerald-800/40">
-                    <div className="text-emerald-600 mt-0.5"><Euro className="h-4 w-4" /></div>
+                    <div className="text-emerald-600 mt-0.5">
+                      <Euro className="h-4 w-4" />
+                    </div>
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">Vidutinė rinkos vertė</p>
-                      <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">{parcel.vidutineRinkosVerte}</p>
+                      <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">
+                        {parcel.vidutineRinkosVerte}
+                      </p>
                     </div>
                   </div>
                 )}
                 {parcel.vertinimoData && (
-                  <InfoRow icon={<Calendar className="h-4 w-4" />} label="Vertinimo data" value={parcel.vertinimoData} />
+                  <InfoRow
+                    icon={<Calendar className="h-4 w-4" />}
+                    label="Vertinimo data"
+                    value={parcel.vertinimoData}
+                  />
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-3 italic">
-                * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės vertės.
+                * Vidutinė rinkos vertė yra apskaičiuota masinio vertinimo būdu ir gali skirtis nuo realios komercinės
+                vertės.
               </p>
             </div>
           )}
