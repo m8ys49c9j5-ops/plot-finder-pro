@@ -31,6 +31,13 @@ const HeroMap = () => {
       opacity: 0.90, 
     }).addTo(map);
 
+    // 🚨 VITAL FIX: Leaflet maps initialized inside React.lazy() / Suspense
+    // frequently mount with mathematically 0 height for a split second, causing 
+    // them to permanently render a blank white screen. We force a resize geometry fix:
+    setTimeout(() => {
+      if (mapRef.current) mapRef.current.invalidateSize(true);
+    }, 300);
+
     mapRef.current = map;
 
     return () => {
