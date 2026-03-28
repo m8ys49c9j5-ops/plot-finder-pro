@@ -165,18 +165,7 @@ const IconCheck = () => (
   </svg>
 );
 
-// ─── Map tile grid (Geoportal Lithuanian topo tiles — same as app) ─────────────
-// z=12 centred on a nice rural Lithuanian area (near Kaunas/Prienai)
-const GEOPORTAL = "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer";
-
-function toTileXY(lat: number, lng: number, z: number) {
-  const n = Math.pow(2, z);
-  const x = Math.floor(((lng + 180) / 360) * n);
-  const latR = (lat * Math.PI) / 180;
-  const y = Math.floor(((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2) * n);
-  return { x, y };
-}
-
+// ─── Static map background for hero ──────────────────────────────────────────
 function MapBackground() {
   return (
     <img
