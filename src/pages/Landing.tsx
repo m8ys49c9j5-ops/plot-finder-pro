@@ -168,9 +168,9 @@ const IconCheck = () => (
 // ─── Static map background for hero ──────────────────────────────────────────
 function MapBackground() {
   const mobileSrc =
-    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.55%2C54.35%2C25.95%2C55.05&bboxSR=4326&imageSR=4326&size=800%2C600&format=jpg&f=image";
+    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=800%2C600&format=jpg&f=image";
   const desktopSrc =
-    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.55%2C54.35%2C25.95%2C55.05&bboxSR=4326&imageSR=4326&size=1920%2C1080&format=jpg&f=image";
+    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=1920%2C1080&format=jpg&f=image";
 
   return (
     <picture style={{ position: "absolute", inset: 0 }}>
@@ -651,20 +651,6 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Attribution bottom-left */}
-        <div style={{ position: "absolute", bottom: 8, left: 10, zIndex: 10 }}>
-          <span
-            style={{
-              fontSize: "10px",
-              color: "rgba(0,0,0,0.55)",
-              background: "rgba(255,255,255,0.82)",
-              borderRadius: 4,
-              padding: "2px 7px",
-            }}
-          >
-            © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>OpenStreetMap</a> · Geoportal.lt · Registrų centras · NŽT
-          </span>
-        </div>
       </section>
 
       {/* ── WHY ŽEMĖPRO — white section directly below map ────────────────── */}
