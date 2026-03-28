@@ -352,6 +352,8 @@ export default function Landing() {
         style={{
           position: "relative",
           width: "100%",
+          maxWidth: "100%",
+          overflowX: "hidden",
           height: "100vh",
           minHeight: "min(560px, 100vh)",
           maxHeight: 760,
@@ -361,6 +363,8 @@ export default function Landing() {
         <nav
           style={{
             position: "absolute",
+            width: "100%",
+            maxWidth: "100%",
             top: 0,
             left: 0,
             right: 0,
