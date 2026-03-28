@@ -212,38 +212,7 @@ async function buildFeatureResponse(feature: any, searchInput: string) {
       }
     }
 
-    // ── Step A2: Nominatim fallback — runs when postal code or location data is missing ──
-    if (centroidLat !== null && centroidLon !== null && !props.postalCode) {
-      try {
-        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${centroidLat}&lon=${centroidLon}&format=json&addressdetails=1&accept-language=lt`;
-        const nmRes = await fetch(nominatimUrl, {
-          headers: { "User-Agent": "ZemePro/1.0 (zemepro.lt)" },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (nmRes.ok) {
-          const nm = await nmRes.json();
-          const a = nm.address || {};
-          console.log("Nominatim address:", JSON.stringify(a));
 
-          // Postal code
-          if (a.postcode && !props.postalCode) {
-            props.postalCode = a.postcode;
-            console.log(`Postal code from Nominatim: ${a.postcode}`);
-          }
-          // Town / village
-          const gyvenviete = a.village || a.town || a.city || a.hamlet || a.suburb || "";
-          if (gyvenviete && !props.kaimas_miestas) props.kaimas_miestas = gyvenviete;
-          // Municipality (seniūnija / county)
-          const seniunija = a.municipality || a.county || "";
-          if (seniunija && !props.seniunija) props.seniunija = seniunija;
-          // Savivaldybė
-          const savivaldybe = a.state_district || a.state || "";
-          if (savivaldybe && !props.sav_pavadinimas) props.sav_pavadinimas = savivaldybe;
-        }
-      } catch (e) {
-        console.error("Nominatim fallback error:", e);
-      }
-    }
 
     // ── Step B: Try to find exact address inside plot boundaries (DB) ──
     const { data: exactAddrRows, error: exactError } = await supabase.rpc("find_exact_address_in_parcel", {
