@@ -168,9 +168,9 @@ const IconCheck = () => (
 // ─── Static map background for hero ──────────────────────────────────────────
 function MapBackground() {
   const mobileSrc =
-    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=800%2C600&format=jpg&f=image";
+    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=1600%2C1200&format=png32&dpi=192&f=image";
   const desktopSrc =
-    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=1920%2C1080&format=jpg&f=image";
+    "https://www.geoportal.lt/mapproxy/gisc_pagrindinis/MapServer/export?bbox=24.90%2C54.40%2C25.65%2C54.95&bboxSR=4326&imageSR=4326&size=3840%2C2160&format=png32&dpi=192&f=image";
 
   return (
     <picture style={{ position: "absolute", inset: 0 }}>
