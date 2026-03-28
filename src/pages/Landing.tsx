@@ -468,7 +468,13 @@ export default function Landing() {
             )}
           </div>
         </nav>
-
+<div
+    style={{
+      position: "absolute",
+      inset: 0,
+      overflow: "hidden",
+    }}
+  >
         {/* Eagerly-loaded native tile map fills the entire hero perfectly sized */}
         <HeroMap />
 
@@ -619,6 +625,8 @@ export default function Landing() {
           </p>
         </div>
       </section>
+   </div>
+
 
       {/* ── WHY ŽEMĖPRO — white section directly below map ────────────────── */}
       {/* No border/shadow separator — exactly like screenshot */}
