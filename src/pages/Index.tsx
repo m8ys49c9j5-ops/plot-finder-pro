@@ -353,7 +353,7 @@ const Index = () => {
       {!selectedParcel && lastParcel && (
         <button
           onClick={() => setSelectedParcel(lastParcel)}
-          className="fixed right-4 z-[900] glass-panel rounded-full h-10 w-10 shadow-lg hover:bg-muted/60 transition-colors flex items-center justify-center bottom-[calc(1rem+4*2.5rem)] sm:bottom-[calc(1rem+4*2.5rem)]"
+          className="fixed right-4 z-[900] glass-panel rounded-full h-11 w-11 shadow-lg hover:bg-muted/60 transition-colors flex items-center justify-center bottom-[calc(1rem+5.5rem)]"
           title="Rodyti sklypo informaciją"
         >
           <FileText className="h-5 w-5 text-primary" />
